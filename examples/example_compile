@@ -1,0 +1,1 @@
+g++ test.cpp -I.. -lX11 -o bin/test

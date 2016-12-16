@@ -17,10 +17,8 @@ int main(){
 
   
   win.drawBuffer(p, w, h);
+  int down = 0;
   while(1){
-    sleep(1);
-    win.flushEvents();
-    cout<<win.isKeyPressed(WK_A)<<endl;
   }
   //cout<<win.waitForKey()<<endl;;
   return 0;

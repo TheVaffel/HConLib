@@ -3,6 +3,22 @@
 #ifndef INCLUDED_INTILITY
 #define INCLUDED_INTILITY
 
+struct Bignum{
+  char* data;
+  
+  Bignum(int i);
+
+  Bignum(const char* i);
+  void setBinDigTo(int i, int u);
+  ~Bignum(){
+    delete[] data;
+  }
+};
+
+Bignum operator+(Bignum b1, Bignum b2);
+Bignum createBignum(long long l);
+    
+
 long long gcd(long long a, long long b);
 int gcd(int a, int b);
 long long pollard(long long a);
@@ -18,8 +34,27 @@ int rem(int a, int b);
 
 #ifdef INTILITY_IMPLEMENTATION
 
-#include <iostream>
-using namespace std;
+Bignum::Bignum(int i){
+  data = new char[i];
+}
+
+Bignum::Bignum(const char* num){
+  int l = 0;
+  while(num[l++]);
+  
+}
+
+void Bignum::setBinDigTo(int i, int u){
+  int a = i>>3;
+  int b = i&7;
+  data[a] = (data[a] & ~(1<<b)) | ((u > 0)<<b);
+}
+
+Bignum createBignum(long long l){
+  Bignum b(8);
+  ((long long* )b).data[0]) = l;
+}
+
 long long rem(long long a, long long b){
   long long c = a%b;
   return c>0?c:c+b;
@@ -45,16 +80,13 @@ int random(int a){
 }
 
 
-long long gcd(long long a, long long b){//23423746234623
-  
-  //cout<<"a = "<<a<<", b = "<<b<<endl;
-  //cout<<"S a = "<<(a>>1LL)<<", S b = "<<(b>>1LL)<<endl;
+long long gcd(long long a, long long b){
   if(a < b){
     _intility_temp = a;
     a = b;
     b = _intility_temp;
   }
-  //cout<<"(a - b)>>1LL = "<<((a-b)>>1LL)<<endl;
+  
   return !b?a:(
 	       ((b&1LL)&&(a&1LL)?gcd((a - b)>>1LL, b)
 	       :((a&1LL?
@@ -83,12 +115,8 @@ long long pollard(long long a){
   while(1){
     i++;
     x = rem((x*x)&(~(1LL<<63)) - 1, a);
-    //std::cout<<x<<std::endl;
-    //cout<<"Calling gcd with "<<rem(y - x, a)<<", "<<a<<endl;
     long long d = gcd(rem(y - x, a), a);
-    //cout<<"D = "<<d<<" after calling gcd with "<<rem(y - x, a)<<" and "<< a<<endl;
     if(d != 1 && d != a){
-      //std::cout<<"Y was "<<y<<std::endl;
       return d;
     }
     if(i == k){
@@ -96,7 +124,6 @@ long long pollard(long long a){
       k = k<<1;
     }
     if(i >  1000000){
-      //std::cout<<"Y was "<<y<<std::endl;
       return 1;
 
     }
@@ -123,7 +150,6 @@ int factorize_small_number(long long a, long long* res){
 
 int factorize(long long a, long long* res){
   int num = 0;
-  //cout<<"Came in with a = "<<a<<endl;
   while(a >1){
     if(a < 2500){
       num+=factorize_small_number(a, res + num);
@@ -131,7 +157,6 @@ int factorize(long long a, long long* res){
     }
     long long u;
     u = pollard(a);
-    //cout<<"Pollard for "<<a<<" returned "<<u<<endl;
     if(u == 1){
       res[num++] = a;
       return num;
@@ -140,7 +165,6 @@ int factorize(long long a, long long* res){
     num += factorize(u, res + num);
 
     a/= u;
-    //cout<<"A was reduced to "<<a<<endl;
   }
   return num;
 }

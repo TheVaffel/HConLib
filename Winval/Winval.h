@@ -4,8 +4,6 @@
 #include "X11/Xutil.h"
 #include "X11/keysym.h"
 
-#include <iostream>
-
 #define WK_SPACE XK_space                     
 #define WK_0 XK_0                            
 #define WK_1 XK_1                            
@@ -45,10 +43,10 @@
 #define WK_Y XK_y 
 #define WK_Z XK_z
 
-#define WX_LEFT XK_Left
-#define WX_RIGHT XK_Right
-#define WX_DOWN XK_Down
-#define WX_UP XK_Up
+#define WK_LEFT XK_Left
+#define WK_RIGHT XK_Right
+#define WK_DOWN XK_Down
+#define WK_UP XK_Up
 
 class Winval{
   int w, h;
@@ -91,7 +89,7 @@ class Winval{
 
 #define WINVAL_KEYMAP_OFFSET 8
 
-Winval::Winval(int w, int h, char** p){
+Winval::Winval(int w, int h, char** p = 0){
   dsp = XOpenDisplay(NULL);
   if(!dsp) return;
 
@@ -118,6 +116,7 @@ Winval::Winval(int w, int h, char** p){
   for(int i = 0; i < 256; i++){
     isDown[i] = false;
   }
+  
   pointerX = pointerY = 0;
   mouseButtonPressed = false;
 
@@ -128,22 +127,25 @@ Winval::Winval(int w, int h, char** p){
   gc = XCreateGC(dsp, win,
 		    0,
 		    NULL );
+  image = 0;
+  if(p){
+    *p = new char[4*w*h];
+    pixelData = *p;
+    Visual* visual = XDefaultVisual(dsp, screenNum);
 
-  *p = new char[4*w*h];
-  pixelData = *p;
-  Visual* visual = XDefaultVisual(dsp, screenNum);
-
-  image = XCreateImage(dsp, visual, 24, ZPixmap,
+    image = XCreateImage(dsp, visual, 24, ZPixmap,
 		       0, *p, w, h, 8, 0);
 
-  for(int i = 0; i < 4*w*h; i++){
-    (*p)[i] = 0;
+    for(int i = 0; i < 4*w*h; i++){
+      (*p)[i] = 0;
+    }
+    XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
   }
-  XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
 }
 
 Winval::~Winval(){
-  XDestroyImage(image);
+  if(image)
+    XDestroyImage(image);
   XDestroyWindow(dsp, win);
   XCloseDisplay(dsp);
 }
@@ -174,19 +176,21 @@ void Winval::handleEventProperly(XEvent& e){
   int key;
   switch(e.type){
   case Expose:
+    if(!image)
+      break;
     XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
     XFlush(dsp);
     break;
   case KeyPress:
     index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
     key = ks[index*keysyms];
-    if(key < 256)
+    if(key < 1<<16)
       isDown[key] = true;
     break;
   case KeyRelease:
     index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
     key = ks[index*keysyms];
-    if(key < 256)
+    if(key < 1<<16)
       isDown[key] = false;
     break;
   case MotionNotify:

@@ -188,6 +188,75 @@ Matrix4 operator~(const Matrix4& m);
 
 Matrix4 operator*(const Matrix4& m1, const Matrix4& m2);
 
+struct GeneralVector{
+  float* vec;
+  int l;
+
+  float& operator[](int a);
+  int getLength() const;
+  int getL() const;
+  float get(int a) const;
+  GeneralVector(int l);
+  GeneralVector(int l, const float* p);
+  GeneralVector(const GeneralVector& gv);
+  ~GeneralVector();
+
+  std::string str() const;
+};
+
+float operator*(const GeneralVector& g1, const GeneralVector& g2);
+
+GeneralVector operator+(const GeneralVector& g1, const GeneralVector& g2);
+
+GeneralVector operator-(const GeneralVector& g1, const GeneralVector& g2);
+
+GeneralVector operator*(const GeneralVector& g1, float f);
+
+GeneralVector operator*(float f, const GeneralVector& g1);
+
+GeneralVector operator/(const GeneralVector& g1, float f);
+
+
+
+struct GeneralMatrix{
+  float* mat;
+  int w, h;
+
+  float* operator[](int a);
+
+  float get(int a, int b) const;
+  float get(int a) const;
+  int getWidth() const;
+  int getHeight() const;
+  int getW() const;
+  int getH() const;
+  float det() const;
+  float _det() const;
+  GeneralMatrix inv() const;
+  GeneralMatrix(int w, int h);
+  GeneralMatrix(int w, int h, const float* p);
+  GeneralMatrix(const GeneralMatrix& gm);
+  ~GeneralMatrix();
+  
+  GeneralMatrix _minor(int a, int b) const;
+
+  std::string str() const;
+};
+
+GeneralVector operator*(const GeneralMatrix& gm, const GeneralVector& gv);
+
+GeneralVector operator*(const GeneralVector& gv, const GeneralMatrix& gm);
+
+GeneralMatrix operator~(const GeneralMatrix& gm);
+
+GeneralMatrix operator*(const GeneralMatrix& gm, float f);
+
+GeneralMatrix operator/(const GeneralMatrix& gm, float f);
+
+GeneralMatrix operator*(float f, const GeneralMatrix& gm);
+
+GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2);
+
 #endif // INCLUDED_FLATALG
 
 #ifdef FLATALG_IMPLEMENTATION
@@ -703,6 +772,356 @@ Matrix4 operator*(const Matrix4& m1, const Matrix4& m2){
     }
   }
   return r;
+}
+
+
+namespace flatalg{
+  typedef GeneralMatrix Matrix;
+  typedef GeneralVector Vector;
+}
+
+
+float& GeneralVector::operator[](int a){
+  return vec[a];
+}
+
+int GeneralVector::getLength() const{
+  return l;
+}
+
+int GeneralVector::getL() const{
+  return l;
+}
+
+
+float GeneralVector::get(int a) const{
+  return vec[a];
+}
+
+GeneralVector::GeneralVector(int ll){
+  l = ll;
+  vec = new float[l];
+}
+
+GeneralVector::GeneralVector(int ll, const float* p){
+  l = ll;
+  vec = new float[l];
+  for(int i = 0; i<  l; i++){
+    vec[i] = p[i];
+  }
+}
+
+GeneralVector::GeneralVector(const GeneralVector& gv){
+  l = gv.getLength();
+  vec = new float[l];
+  for(int i = 0; i<  l;i++){
+    vec[i] = gv.get(i);
+  }
+}
+
+GeneralVector::~GeneralVector(){
+  delete[] vec;
+}
+
+std::string GeneralVector::str() const{
+  std::ostringstream iss;
+  iss<<"[";
+  for(int i = 0; i< l - 1; i++){
+    iss<<vec[i]<<", ";
+  }
+  iss<<vec[l - 1]<<"]";
+  return iss.str();
+}
+
+
+float operator*(const GeneralVector& g1, const GeneralVector& g2){
+  float f = 0;
+  if(g1.getLength() == g2.getLength()){
+    for(int i = 0; i < g1.getLength(); i++){
+      f += g1.get(i)*g2.get(i);
+    }
+  }
+  return f;
+}
+
+
+
+GeneralVector operator+(const GeneralVector& g1, const GeneralVector& g2){
+  GeneralVector g(g1.getLength());
+  if(g1.getLength() == g2.getLength()){
+    for(int i = 0;i < g.getLength(); i++){
+      g[i] = g1.get(i) + g2.get(i);
+    }
+  }else{
+    for(int i= 0; i< g.getLength(); i++){
+      g[i] = 0;
+    }
+  }
+  return g;
+}
+
+GeneralVector operator-(const GeneralVector& g1, const GeneralVector& g2){
+  GeneralVector g(g1.getLength());
+  if(g1.getLength() == g2.getLength()){
+    for(int i = 0; i < g.getLength(); i++){
+      g[i] = g1.get(i) - g2.get(i);
+    }
+  }else{
+    for(int i= 0; i< g.getLength(); i++){
+      g[i] = 0;
+    }
+  }
+  return g;
+}
+
+GeneralVector operator*(const GeneralVector& g1, float f){
+  GeneralVector g(g1.getLength());
+  for(int i = 0; i< g.getLength(); i++){
+    g[i] = f*g1.get(i);
+  }
+  return g;
+}
+
+GeneralVector operator*(float f, const GeneralVector& g1){
+  GeneralVector g(g1.getLength());
+  for(int i = 0; i< g.getLength(); i++){
+    g[i] = f*g1.get(i);
+  }
+  return g;
+}
+
+GeneralVector operator/(const GeneralVector& g1, float f){
+  GeneralVector g(g1.getLength());
+  for(int i = 0; i< g.getLength(); i++){
+    g[i] = g1.get(i)/f;
+  }
+  return g;
+}
+
+
+float* GeneralMatrix::operator[](int a){
+  return mat + w*a;
+}
+
+int GeneralMatrix::getHeight() const{
+  return h;
+}
+
+int GeneralMatrix::getWidth() const{
+  return w;
+}
+
+int GeneralMatrix::getW() const{
+  return w;
+}
+int GeneralMatrix::getH() const{
+  return h;
+}
+
+float GeneralMatrix::get(int a, int b) const{
+  return mat[b*w + a];
+}
+
+float GeneralMatrix::get(int a) const{
+  return mat[a];
+}
+
+float GeneralMatrix::det() const{
+  if(w != h){
+    return 0;
+  }
+  if(w == 2 && h ==2){
+    return mat[0]*mat[3] - mat[1]*mat[2];
+  }else{
+    float sum = 0;
+    int u = 1;
+    for(int i = 0; i < w; i++){
+      sum += u*mat[i]*_minor(i, 0)._det();
+      u*=-1;
+    }
+    return sum;
+  }
+}
+
+float GeneralMatrix::_det() const{
+  if(w == 2 && h ==2){
+    return mat[0]*mat[3] - mat[1]*mat[2];
+  }else{
+    float sum = 0;
+    int u = 1;
+    for(int i = 0; i < w; i++){
+      sum += u*mat[i]*_minor(i, 0)._det();
+      u*=-1;
+    }
+    return sum;
+  }
+}
+
+GeneralMatrix GeneralMatrix::inv() const{
+  GeneralMatrix g(w, h);
+  for(int i= 0; i< h; i++){
+    for(int j = 0; j < w; j++){
+      g[i][j] = _minor(j, i).det();
+    }
+  }
+  for(int i = 0; i < h; i++){
+    for(int j = 0; j < w; j++){
+      g[i][j] = (i + j)&1?-g[i][j]:g[i][j];
+    }
+  }
+  
+  GeneralMatrix g2 = ~g;
+
+  return g2/det();
+}
+GeneralMatrix::GeneralMatrix(int ww, int hh){
+  w = ww; h = hh;
+  mat = new float[w*h];
+}
+GeneralMatrix::GeneralMatrix(int ww, int hh, const float* p){
+  w = ww; h = hh;
+  mat = new float[w*h];
+  for(int i = 0; i< w*h; i++){
+    mat[i] = p[i];
+  }
+}
+
+GeneralMatrix::GeneralMatrix(const GeneralMatrix& gm){
+  w = gm.getW();
+  h = gm.getH();
+  mat = new float[w*h];
+  for(int i = 0; i< h; i++){
+    for(int j = 0; j < w; j++){
+      mat[i*w + j] = gm.get(j, i);
+    }
+  }
+}
+
+GeneralMatrix::~GeneralMatrix(){
+  delete[] mat;
+}
+  
+
+GeneralMatrix GeneralMatrix::_minor(int a, int b) const{
+  GeneralMatrix g(w -1, h - 1);
+  int offi = 0;
+  int offj = 0;
+  for(int i = 0; i < h - 1; i++){
+    if(i == b)
+      offi++;
+    for(int j = 0; j < w - 1; j++){
+      if(j == a)
+	offj++;
+
+      g[i][j] = this->get(j + offj, i + offi);
+    }
+    offj = 0;
+  }
+  return g;
+}
+
+
+std::string GeneralMatrix::str() const{
+  std::ostringstream oss;
+  oss<<"[";
+  for(int i =0; i < h -1; i++){
+    oss<<"[";
+    for(int j = 0; j < w - 1; j++){
+      oss<<this->get(j, i)<<", ";
+    }
+    oss<<this->get(w - 1, i)<<"]"<<std::endl;
+  }
+  oss<<"[";
+  for(int i = 0; i < w-1; i++){
+    oss<<this->get(i, h - 1)<<", ";
+  }
+  oss<<this->get(w-1, h-1)<<"]]"<<std::endl;
+  return oss.str();
+}
+
+GeneralVector operator*(const GeneralMatrix& gm, const GeneralVector& gv){
+  GeneralVector g(gm.getH());
+  if(gm.getW() != gv.getL()){
+    return g;
+  }else{
+    for(int i = 0; i< gm.getH(); i++){
+      g[i] = 0;
+      for(int j = 0; j< gm.getW(); j++){
+	g[i] += gm.get(j, i)*gv.get(j);
+      }
+    }
+    return g;
+  }
+}
+
+GeneralVector operator*(const GeneralVector& gv, const GeneralMatrix& gm){
+  GeneralVector g(gm.getW());
+  if(gm.getH() != gv.getL()){
+    return g;
+  }else{
+    for(int i = 0; i< gm.getW(); i++){
+      g[i] = 0;
+      for(int j = 0; j< gm.getH(); j++){
+	g[i] += gm.get(j, i)*gv.get(j);
+      }
+    }
+    return g;
+  }
+}
+
+GeneralMatrix operator~(const GeneralMatrix& gm){
+  GeneralMatrix g(gm.getH(), gm.getW());
+  for(int i= 0 ; i< gm.getH(); i++){
+    for(int j = 0; j < gm.getW(); j++){
+      g[j][i] = gm.get(j, i);
+    }
+  }
+  return g;
+}
+
+GeneralMatrix operator*(const GeneralMatrix& gm, float f){
+  GeneralMatrix g(gm.getW(), gm.getH());
+  for(int i  = 0; i< gm.getH(); i++){
+    for(int j = 0; j < gm.getW(); j++){
+      g[i][j] = gm.get(j, i)*f;
+    }
+  }
+  return g;
+}
+
+GeneralMatrix operator*(float f, const GeneralMatrix& gm){
+  GeneralMatrix g(gm.getW(), gm.getH());
+  for(int i  = 0; i< gm.getH(); i++){
+    for(int j = 0; j < gm.getW(); j++){
+      g[i][j] = gm.get(j, i)*f;
+    }
+  }
+  return g;
+}
+
+GeneralMatrix operator/(const GeneralMatrix& gm, float f){
+  GeneralMatrix g(gm.getW(), gm.getH());
+  for(int i  = 0; i< gm.getH(); i++){
+    for(int j = 0; j < gm.getW(); j++){
+      g[i][j] = gm.get(j, i)/f;
+    }
+  }
+  return g;
+}
+  
+GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2){
+  GeneralMatrix g(g2.getW(), g1.getH());
+  if(g1.getW() == g2.getH()){
+    for(int i = 0; i< g1.getH(); i++){
+      for(int j = 0; j < g2.getW(); j++){
+	g[i][j] = 0;
+	for(int k = 0; k < g1.getW(); k++){
+	  g[i][j] += g1.get(k, i)*g2.get(j, k);
+	}
+      }
+    }
+  }
+  return g;
 }
 
 #endif // FLATALG_IMPLEMENTATION

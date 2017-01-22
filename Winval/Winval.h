@@ -67,6 +67,7 @@ class Winval{
   KeySym *ks;
  public:
   Winval(int w, int h, char** pointer);
+  Winval();
   ~Winval();
 
   void handleEventProperly(XEvent& e);
@@ -88,6 +89,9 @@ class Winval{
 #ifdef WINVAL_IMPLEMENTATION
 
 #define WINVAL_KEYMAP_OFFSET 8
+Winval::Winval(){
+
+}
 
 Winval::Winval(int w, int h, char** p = 0){
   dsp = XOpenDisplay(NULL);
@@ -146,7 +150,8 @@ Winval::Winval(int w, int h, char** p = 0){
 Winval::~Winval(){
   if(image)
     XDestroyImage(image);
-  XDestroyWindow(dsp, win);
+  if(win)
+    XDestroyWindow(dsp, win);
   XCloseDisplay(dsp);
 }
 
@@ -195,6 +200,12 @@ void Winval::handleEventProperly(XEvent& e){
     break;
   case MotionNotify:
     pointerX = e.xmotion.x, pointerY = e.xmotion.y;
+    break;
+  case ButtonRelease:
+    mouseButtonPressed = false;
+    break;
+  case ButtonPress:
+    mouseButtonPressed = true;
     break;
   }
 }
@@ -247,6 +258,7 @@ void Winval::drawBuffer(char* buffer, int w, int h){
   XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, buffer, w, h, 32, 0);
   XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
   XFlush(dsp);
+  //XDestroyImage(im);
 }
 #endif // WINVAL_IMPLEMENTATION
 

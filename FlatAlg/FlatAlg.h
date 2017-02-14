@@ -115,10 +115,14 @@ struct Matrix3{
 
   Matrix3(int i, float arg1, float arg2);
 
+  
+  Matrix3(int i, const Vector3& v, float arg1);
+
   Matrix3();
   Matrix3(float a1, float a2, float a3,
 	  float a4, float a5, float a6,
 	  float a7, float a8, float a9);
+  
 
   std::string str() const;
 };
@@ -141,9 +145,13 @@ Vector3 operator*(const Matrix3& m, const Vector3& v);
 
 Vector3 operator*(const Vector3& v, const Matrix3& m);
 
+Matrix3 operator+(const Matrix3& m1, const Matrix3& m2);
+
 Matrix3 operator*(const Matrix3& m, float f);
 
 Matrix3 operator*(float f, const Matrix3& m);
+
+Matrix3 operator/(const Matrix3& m, float f);
 
 Matrix3 operator~(const Matrix3& m);
 
@@ -519,7 +527,23 @@ Matrix3::Matrix3(int i, float arg1, float arg2){
     mat[6] = st*sp; mat[7] = ct*sp; mat[8] = cp;
     break;
   }
+}
+
+Matrix3::Matrix3(int i, const Vector3& v, float arg1){
+  switch(i){
+  case FLATALG_MATRIX_ROTATION:
+    float norm = sqrt(v.x*v.x + v.y*v.y  + v.z*v.z);
+    Matrix3 what(0, -v.get(2), v.get(1),
+		 v.get(2), 0, -v.get(0),
+		 -v.get(1), v.get(0), 0);
+    Matrix3 u = Matrix3(FLATALG_MATRIX_IDENTITY) + what/(norm)*sin(arg1) + what*what/pow(norm, 2)*(1 - cos(arg1));
     
+    for(int i = 0 ; i< 9; i++){
+      mat[i] = u.mat[i];
+    }
+
+    break;
+  }
 }
 
 Matrix3::Matrix3(){
@@ -594,6 +618,11 @@ Matrix3 operator~(const Matrix3& m){
 		 m.get(2, 0), m.get(2, 1), m.get(2, 2));
 }
 
+Matrix3 operator+(const Matrix3& m1, const Matrix3& m2){
+  return Matrix3(m1.get(0, 0) + m2.get(0, 0), m1.get(1, 0) + m2.get(1, 0), m1.get(2, 0) + m2.get(2, 0),
+		 m1.get(0, 1) + m2.get(0, 1), m1.get(1, 1) + m2.get(1, 1), m1.get(2, 1) + m2.get(2, 1),
+		 m1.get(0, 2) + m2.get(0, 2), m1.get(1, 2) + m2.get(1, 2), m1.get(2, 2) + m2.get(2, 2));
+}
  
 Matrix3 operator*(const Matrix3& m, float f){
   return Matrix3(m.get(0, 0)*f, m.get(1, 0)*f, m.get(2, 0)*f,
@@ -605,6 +634,12 @@ Matrix3 operator*(float f, const Matrix3& m){
   return Matrix3(m.get(0, 0)*f, m.get(1, 0)*f, m.get(2, 0)*f,
 		 m.get(0, 1)*f, m.get(1, 1)*f, m.get(2, 1)*f,
 		 m.get(0, 2)*f, m.get(1, 2)*f, m.get(2, 2)*f);
+}
+
+Matrix3 operator/(const Matrix3& m, float f){
+  return Matrix3(m.get(0, 0)/f, m.get(1, 0)/f, m.get(2, 0)/f,
+		 m.get(0, 1)/f, m.get(1, 1)/f, m.get(2, 1)/f,
+		 m.get(0, 2)/f, m.get(1, 2)/f, m.get(2, 2)/f);
 }
 
 Matrix3 operator*(const Matrix3& m1, const Matrix3& m2){

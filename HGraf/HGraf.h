@@ -172,17 +172,14 @@ namespace hg{
     }
     int pssx, psex, pssy;
     int stepx, stepy;
-  
-    int xind = 0, yind = 1;
+
     int err = 0;
-    int num = 0;
 
     if(std::abs(dx) < std::abs(dy)){
       pssx = starty, psex = endy, pssy = startx;
       int a = dx;
       dx = dy;
       dy = a;
-      xind = 1; yind = 0;
     }else{
       pssx = startx, psex = endx, pssy = starty;
     }
@@ -202,7 +199,7 @@ namespace hg{
     }
 
     int ny = pssy;
-    if(yind){
+    //if(yind){
       for(int nx = pssx; nx != psex; nx += stepx){
 	((int*)buffer)[w*ny + nx] = colorNum;
 	err += dy;
@@ -211,7 +208,7 @@ namespace hg{
 	  ny += stepy;
 	}
       }
-    }else{
+    /*}else{
       for(int nx = pssx; nx != psex; nx += stepx){
 	((int*)buffer)[w*nx + ny] = colorNum;
 	err += dy;
@@ -220,7 +217,7 @@ namespace hg{
 	  ny += stepy;
 	}
       }
-    }
+    }*/
   }
 
   inline int _cross(int x1, int y1, int x2, int y2){
@@ -230,8 +227,6 @@ namespace hg{
   //return whether it is possible
   
   bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h){
-    int dx;
-    int dy;
     
     int u = _signum(_cross(ex - sx, ey - sy, ex - 0, ey - 0));
     if((sx < 0 ||sy < 0 || sx >=w || sy >= h) && (ex < 0 || ey < 0 || ex >=w || ey >= h) &&
@@ -282,7 +277,7 @@ namespace hg{
       return;
     }
 
-    drawLine(buffer, w, h, startx, starty, endx, endy, colorNum);
+    hg::drawLine(buffer, w, h, startx, starty, endx, endy, colorNum);
   }
 
   inline void drawLineSafe(Canvas& canvas, int startx, int starty, int endx, int endy, int colorNum){
@@ -296,9 +291,10 @@ namespace hg{
     int pssx, psex, pssy;
     int stepx, stepy;
   
-    int xind = 0, yind = 1;
     int num = 0;
     int err = 0;
+    int xind = 0, yind = 1;
+
 
     if(std::abs(dx) < std::abs(dy)){
       pssx = y0, psex = y1, pssy = x0;

@@ -1,0 +1,3 @@
+include_rules
+: foreach *.cpp |> !cc |>
+: *.o |> !lb -lpthread `pkg-config opencv --cflags` `pkg-config opencv --libs` |> run 

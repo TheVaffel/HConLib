@@ -4,7 +4,9 @@
 #include "X11/Xutil.h"
 #include "X11/keysym.h"
 
-#define WK_SPACE XK_space                     
+#define WK_SPACE XK_space
+#define WK_ESC XK_Escape
+
 #define WK_0 XK_0                            
 #define WK_1 XK_1                            
 #define WK_2 XK_2                            

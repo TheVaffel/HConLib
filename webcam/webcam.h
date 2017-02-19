@@ -16,9 +16,6 @@
 #include <sys/ioctl.h>
 
 #include <linux/videodev2.h>
-#define STBI_ONLY_JPEG
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 

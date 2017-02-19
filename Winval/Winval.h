@@ -111,7 +111,7 @@ Winval::Winval(int w, int h, char** p = 0){
 			    0, Black,
 			    Black);
 
-  long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask;
+  long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
   XSelectInput(dsp, win, eventMask);
 
   XMapWindow(dsp, win);

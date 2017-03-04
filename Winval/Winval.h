@@ -84,6 +84,7 @@ class Winval{
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
   void waitForButtonPress(int& x, int& y);
   void drawBuffer(char* p, int w, int h);
+  void drawBuffer(unsigned char* p, int w, int h);
 };
 
 #endif // INCLUDED_WINVAL
@@ -261,6 +262,10 @@ void Winval::drawBuffer(char* buffer, int w, int h){
   XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
   XFlush(dsp);
   //XDestroyImage(im);
+}
+
+void Winval::drawBuffer(unsigned char* buffer, int w, int h){
+  drawBuffer((char*)buffer, w, h);
 }
 #endif // WINVAL_IMPLEMENTATION
 

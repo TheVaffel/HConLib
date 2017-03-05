@@ -22,6 +22,8 @@
 bool webcam_camActive = false;
 bool webcam_quit = false;
 
+bool webcam_bayer = false;
+
 int webcam_fd;
 
 struct webcam_buffer {
@@ -138,33 +140,83 @@ int webcam_init_mmap()
 
 static void YUV422toRGB888(int width, int height, unsigned char *src, unsigned char *dst)
 {
-  int line, column;
-  unsigned char *py, *pu, *pv;
-  unsigned char *tmp = dst;
+  if(!webcam_bayer){
+    int line, column;
+    unsigned char *py, *pu, *pv;
+    unsigned char *tmp = dst;
+    /*FILE* fp = fopen("something.raw", "wb");
+      assert(fp);
+      fwrite(src, width*height*2, 1, fp);
+      fclose(fp);
 
-  /* In this format each four bytes is two pixels. Each four bytes is two Y's, a Cb and a Cr. 
-     Each Y goes to one of the pixels, and the Cb and Cr belong to both pixels. */
-  py = src;
-  pu = src + 1;
-  pv = src + 3;
+      exit(0);*/
 
-  #define CLIP(x) ( (x)>=0xFF ? 0xFF : ( (x) <= 0x00 ? 0x00 : (x) ) )
+    /* In this format each four bytes is two pixels. Each four bytes is two Y's, a Cb and a Cr. 
+       Each Y goes to one of the pixels, and the Cb and Cr belong to both pixels. */
+    py = src;
+    pu = src + 1;
+    pv = src + 3;
 
-  for (line = 0; line < height; ++line) {
-    for (column = 0; column < width; ++column) {
-      *tmp++ = CLIP((double)*py + 1.772*((double)*pu-128.0));
-      *tmp++ = CLIP((double)*py - 0.344*((double)*pu-128.0) - 0.714*((double)*pv-128.0));
-      *tmp++ = CLIP((double)*py + 1.402*((double)*pv-128.0));
-      *tmp++;
-      // increase py every time
-      py += 2;
-      // increase pu,pv every second time
-      if ((column & 1)==1) {
-        pu += 4;
-        pv += 4;
+#define CLIP(x) ( (x)>=0xFF ? 0xFF : ( (x) <= 0x00 ? 0x00 : (x) ) )
+
+    for (line = 0; line < height; ++line) {
+      for (column = 0; column < width; ++column) {
+	*tmp++ = CLIP((double)*py + 1.772*((double)*pu-128.0));
+	*tmp++ = CLIP((double)*py - 0.344*((double)*pu-128.0) - 0.714*((double)*pv-128.0));
+	*tmp++ = CLIP((double)*py + 1.402*((double)*pv-128.0));
+
+	*tmp++;
+	// increase py every time
+	py += 2;
+	// increase pu,pv every second time
+	if ((column & 1)==1) {
+	  pu += 4;
+	  pv += 4;
+	}
       }
     }
+  }else{
+    int w = width;
+    int h = height;
+
+    short *col = (short*)src;
+    short mx = 0;
+    
+    for(int i = 1; i < h-1; i++){
+      for(int j = 1; j < w-1; j++){
+	int r, g, b;
+	if(i&1){
+	  if(j&1){
+	    g = col[i*w + j];
+	    b = (col[(i - 1)*w + j] + col[(i + 1)*w + j]) >> 1;
+	    r = (col[i*w + j - 1] + col[i*w + j + 1]) >> 1;
+	  }else{
+	    g = (col[(i - 1)*w + j] + col[(i + 1)*w + j] + col[i*w + j - 1] + col[i*w + j + 1]) >> 2;
+	    b = (col[(i - 1)*w + j - 1] + col[(i - 1)*w + j + 1] +
+		 col[(i + 1)*w + j - 1] + col[(i + 1)*w + j + 1]) >> 2;
+	    r = col[i*w + j];
+	  }
+	}else{
+	  if(j&1){
+	    g = (col[(i - 1)*w + j] + col[(i + 1)*w + j] + col[i*w + j - 1] + col[i*w + j + 1]) >> 2;
+	    b = col[i*w + j];
+	    r = (col[(i - 1)*w + j - 1] + col[(i - 1)*w + j + 1] +
+		 col[(i + 1)*w + j - 1] + col[(i + 1)*w + j + 1]) >> 2;
+	  }else{
+	    g = col[i*w + j];
+	    b = (col[i*w + j - 1] + col[i*w + j + 1]) >> 1;
+	    r = (col[(i - 1)*w + j] + col[(i + 1)*w + j]) >> 1;
+	  }
+	}
+	//Since we get 12 bits for every channel
+	dst[4*(i*w + j) + 2] = b>>4;
+	dst[4*(i*w + j) + 1] = g>>4;
+	dst[4*(i*w + j) ] = r>>4;
+      }
+    }
+
   }
+  
 }
 
  
@@ -222,7 +274,7 @@ int webcam_capture_image(unsigned char** rgb_buffer)
 
   //process_image(buffers[buf.index].start, buf.bytesused);
 
-  
+  //std::cout<<buf.bytesused<<std::endl;
   YUV422toRGB888(webcam_width, webcam_height, (unsigned char*)webcam_buffers[buf.index].start, *rgb_buffer);
 
   if (-1 == webcam_xioctl(webcam_fd, VIDIOC_QBUF, &buf))
@@ -238,9 +290,9 @@ int webcam_capture_image(unsigned char** rgb_buffer)
   return 0;
 }
 
-void webcam_init(int width, int height, int deviceNum){
+void webcam_init(int width, int height, int deviceNum, bool bayer = 0){
 
-  
+  webcam_bayer = bayer;
   const char* pattern = "/dev/video%d";
   sprintf(webcam_name, pattern, deviceNum);
 

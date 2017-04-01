@@ -16,8 +16,16 @@
 #include <sys/ioctl.h>
 #include <cmath>
 
+
+//Define this if you want super-ultra-fast decompression of jpeg
+#ifdef USE_TURBOJPEG
+#include <turbojpeg.h>
+
+tjhandle _webcam_decompressor;
+#else
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#endif
 
 #include <linux/videodev2.h>
 
@@ -290,14 +298,34 @@ int webcam_capture_image(unsigned char** rgb_buffer)
       BayerToRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
     
     }else if(_webcam_input_mode == WEBCAM_MODE_JPEG){
-    
+
       int w, h, c;
+      #ifdef USE_TURBOJPEG
+      int jpg_subsamples;
+      
+      tjDecompressHeader2(_webcam_decompressor,
+	(unsigned char*)_webcam_buffers[buf.index].start,
+	buf.length,
+	&w,
+	&h,
+	&jpg_subsamples);
+
+      tjDecompress2(_webcam_decompressor,
+	(unsigned char*)_webcam_buffers[buf.index].start,
+	buf.length,
+	*rgb_buffer,
+	w,
+	0,
+	h,
+	TJPF_BGRA,
+	TJFLAG_FASTDCT);
+      #else
       if(rgb_buffer && *rgb_buffer){
 	stbi_image_free(*rgb_buffer);
       }
     
-    
       *rgb_buffer = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
+      #endif
     }
     if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
       _webcam_errno_exit("VIDIOC_QBUF");
@@ -432,10 +460,10 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
   if (fmt.fmt.pix.sizeimage < min)
     fmt.fmt.pix.sizeimage = min;
 
-  _webcam_width = width;
-  _webcam_height = height;
   _webcam_init_mmap();
-
+#ifdef USE_TURBOJPEG
+  _webcam_decompressor = tjInitDecompress();
+#endif
   _webcam_start_capture();
 }
 

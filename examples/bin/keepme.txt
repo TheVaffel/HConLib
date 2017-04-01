@@ -1,0 +1,1 @@
+A file whose only purpose is to ensure the bin-folder is correctly stored in Git

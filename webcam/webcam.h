@@ -227,92 +227,90 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
  
 int webcam_capture_image(unsigned char** rgb_buffer)
 {
-  fd_set fds;
-  struct timeval tv;
-  int r;
+  do{
+    fd_set fds;
+    struct timeval tv;
+    int r;
 
-  do
-    {
-      FD_ZERO(&fds);
-      FD_SET(_webcam_fd, &fds);
+    do
+      {
+	FD_ZERO(&fds);
+	FD_SET(_webcam_fd, &fds);
       
-      tv.tv_sec = 2;
-      tv.tv_usec = 0;
-      r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
-    } while ((r == -1 && (errno = EINTR)));
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+	r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
+      } while ((r == -1 && (errno = EINTR)));
 
-  if (-1 == r) {
-    if (EINTR == errno){}else{
-      _webcam_errno_exit("select");
+    if (-1 == r) {
+      if (EINTR == errno){}else{
+	_webcam_errno_exit("select");
+      }
     }
-  }
 
-  if (0 == r) {
-    fprintf(stderr, "select timeout\n");
-    exit(EXIT_FAILURE);
-  }
-
-  struct v4l2_buffer buf;
-  unsigned int i;
-
-  CLEAR(buf);
-
-  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  buf.memory = V4L2_MEMORY_MMAP;
-
-  if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
-    switch (errno) {
-    case EAGAIN:
-      return 0;
-
-    case EIO:
-      /* Could ignore EIO, see spec. */
-
-      /* fall through */
-
-    default:
-      _webcam_errno_exit("VIDIOC_DQBUF");
+    if (0 == r) {
+      fprintf(stderr, "select timeout\n");
+      exit(EXIT_FAILURE);
     }
-  }
 
-  assert(buf.index < _webcam_n_buffers);
+    struct v4l2_buffer buf;
+    unsigned int i;
 
-  //process_image(buffers[buf.index].start, buf.bytesused);
+    CLEAR(buf);
 
-  //std::cout<<buf.bytesused<<std::endl;
-  if(_webcam_input_mode == WEBCAM_MODE_YUYV) {
-    
-    YUVtoRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
-    
-  }else if(_webcam_input_mode == WEBCAM_MODE_BAYER){
-    
-    BayerToRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
-    
-  }else if(_webcam_input_mode == WEBCAM_MODE_JPEG){
-    
-    int w, h, c;
-    if(rgb_buffer && *rgb_buffer){
-      stbi_image_free(*rgb_buffer);
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+
+    if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
+      switch (errno) {
+      case EAGAIN:
+	return 0;
+
+      case EIO:
+	/* Could ignore EIO, see spec. */
+
+	/* fall through */
+
+      default:
+	_webcam_errno_exit("VIDIOC_DQBUF");
+      }
     }
-  
-    *rgb_buffer = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
+
+    assert(buf.index < _webcam_n_buffers);
+
+    //process_image(buffers[buf.index].start, buf.bytesused);
+
+    //std::cout<<buf.bytesused<<std::endl;
+    if(_webcam_input_mode == WEBCAM_MODE_YUYV) {
     
-  }
-  if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
+      YUVtoRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
+    
+    }else if(_webcam_input_mode == WEBCAM_MODE_BAYER){
+    
+      BayerToRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
+    
+    }else if(_webcam_input_mode == WEBCAM_MODE_JPEG){
+    
+      int w, h, c;
+      if(rgb_buffer && *rgb_buffer){
+	stbi_image_free(*rgb_buffer);
+      }
+    
+    
+      *rgb_buffer = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
+    }
+    if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
       _webcam_errno_exit("VIDIOC_QBUF");
   
-  assert(*rgb_buffer);
-
+  }while(!*rgb_buffer); // Ugly level > 9000, but works.. My laptop webcam had some problems otherwise. Oh well.
   
   return 0;
 }
 
-void webcam_init(int width, int height, int deviceNum, int mode = WEBCAM_MODE_JPEG){
-
+void webcam_init_full_name(int width, int height, const char* deviceName, int mode = WEBCAM_MODE_JPEG) {
+  memcpy(_webcam_name, deviceName, strlen(deviceName));
   _webcam_input_mode = mode;
-  const char* pattern = "/dev/video%d";
-  sprintf(_webcam_name, pattern, deviceNum);
-
+  
   struct stat st;
 
   _webcam_width = width;
@@ -439,6 +437,15 @@ void webcam_init(int width, int height, int deviceNum, int mode = WEBCAM_MODE_JP
   _webcam_init_mmap();
 
   _webcam_start_capture();
+}
+
+void webcam_init(int width, int height, int deviceNum, int mode = WEBCAM_MODE_JPEG){
+  const char* pattern = "/dev/video%d";
+  char temp_name[100];
+  memset(temp_name, 0, 100);
+  sprintf(temp_name, pattern, deviceNum);
+  
+  webcam_init_full_name(width, height, temp_name, mode);
 }
 
 void _webcam_stop_capture(){

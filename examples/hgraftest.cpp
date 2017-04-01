@@ -28,17 +28,17 @@ int main(){
   Matrix4 m(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-5));
   Matrix4 r;
   Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05);
-
+  int i = 0;
   LineCube lc(1, 1, 1);
-  for(int i = 0; i< 1000; i++){
+  while(true){
     r = r*rr;
     m = Matrix4(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-3 + 1.5*cos(i*0.07)));
     m = m*r;
     hg::clearCanvas(vas);
     hg::drawLineModel(vas, par, lc, m, 0xFF0000);
     win.drawBuffer(vas.getData(), w, h);
-    //usleep(20000);
-    cout<<"At line "<<i<<endl;
+    usleep(20000);
+    ++i;
   }
 
   win.drawBuffer(vas.getData(), w, h);

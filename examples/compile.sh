@@ -3,7 +3,6 @@
 currDir="`dirname $0`"
 HConLibDir="$currDir/.."
 binDir="$currDir/bin"
-echo $HConLibDir
 g++ "$currDir/cam.cpp" -o "$binDir/cam" -I $HConLibDir -lX11
 g++ "$currDir/test.cpp" -o "$binDir/test" -I $HConLibDir -lX11
 g++ "$currDir/hgraftest.cpp" -o "$binDir/test" -I $HConLibDir -lX11

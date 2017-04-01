@@ -1,10 +1,11 @@
 #!/bin/bash
 
-currdir="`dirname $0`"
-HConLibDir="$currdir/.."
-
-g++ "$currdir/cam.cpp" -o "$currdir/cam" -I $HConLibDir -lX11
-g++ "$currdir/test.cpp" -o "$currdir/test" -I $HConLibDir -lX11
-g++ "$currdir/hgraftest.cpp" -o "$currdir/test" -I $HConLibDir -lX11
-g++ "$currdir/linetest.cpp" -o "$currdir/linetest" -I $HConLibDir -lX11
-g++ "$currdir/algtest.cpp" -o "$currdir/algtest" -I $HConLibDir -lX11
+currDir="`dirname $0`"
+HConLibDir="$currDir/.."
+binDir="$currDir/bin"
+echo $HConLibDir
+g++ "$currDir/cam.cpp" -o "$binDir/cam" -I $HConLibDir -lX11
+g++ "$currDir/test.cpp" -o "$binDir/test" -I $HConLibDir -lX11
+g++ "$currDir/hgraftest.cpp" -o "$binDir/test" -I $HConLibDir -lX11
+g++ "$currDir/linetest.cpp" -o "$binDir/linetest" -I $HConLibDir -lX11
+g++ "$currDir/algtest.cpp" -o "$binDir/algtest" -I $HConLibDir -lX11

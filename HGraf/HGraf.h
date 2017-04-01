@@ -60,6 +60,23 @@ namespace hg{
   void drawLineSafe(Canvas& canvas, int startx, int starty, int endx, int endy, int colorNum);
 
   void getLinePoints(int x0, int y0, int x1, int y1, int poss[][2], int& numposs);
+  
+  struct LineIterator{
+    int currPoint[2];
+    int ground, notGround;
+    int stepGround, stepNotGround;
+    int endPoint[2];
+    int dd[2];
+    int curr;
+    LineIterator(int, int);
+    LineIterator(int sx, int sy, int ex, int ey);
+    LineIterator(const LineIterator&);
+    int operator[](int i) const;
+    LineIterator operator++(int);
+    LineIterator end();
+    bool operator==(const LineIterator&);
+    bool isFinished() const;
+  };
 
   void getBoundaryIntersections(const int point[2], const float vector[2], const int boundary[2][2], int endPoints[2][2]);
   void drawLine3D(Canvas& canvas, const CamParam& camparam, const Point3& start, const Point3& end);
@@ -170,18 +187,28 @@ namespace hg{
       ((int*)buffer)[w*starty + startx] = colorNum;
       return;
     }
-    int pssx, psex, pssy;
+    int psex;
     int stepx, stepy;
+    int ny = starty;
+    int nx = startx;
+    int* iterx;
+    int* itery;
 
     int err = 0;
 
     if(std::abs(dx) < std::abs(dy)){
-      pssx = starty, psex = endy, pssy = startx;
+      psex = endy;
+      iterx = &ny;
+      itery = &nx;
+      
       int a = dx;
       dx = dy;
       dy = a;
     }else{
-      pssx = startx, psex = endx, pssy = starty;
+      psex = endx;
+
+      iterx = &nx;
+      itery = &ny;
     }
 
     if(dx < 0){
@@ -198,14 +225,13 @@ namespace hg{
       stepy = 1;
     }
 
-    int ny = pssy;
     //if(yind){
-      for(int nx = pssx; nx != psex; nx += stepx){
+      for(; *iterx != psex; *iterx += stepx){
 	((int*)buffer)[w*ny + nx] = colorNum;
 	err += dy;
 	if(err > dx){
 	  err-=dx;
-	  ny += stepy;
+	  *itery += stepy;
 	}
       }
     /*}else{
@@ -332,6 +358,58 @@ namespace hg{
       }
     }
     numposs = num;
+  }
+
+  LineIterator::LineIterator(int x, int y){
+    currPoint[0] = x, currPoint[1] = y;
+  }
+
+  LineIterator::LineIterator(int sx, int sy, int ex, int ey){
+    dd[0] = ex - sx; dd[1] =  ey - sy;
+    endPoint[0] = ex, endPoint[1] = ey;
+    currPoint[0] = sx, currPoint[1] = sy;
+    curr = 0;
+    if(std::abs(dd[0]) > std::abs(dd[1])){
+      ground = 0;
+    }else{
+      ground = 1;
+    }
+    notGround = ground ^ 1;
+    stepGround = dd[ground]>=0?1:-1;
+    stepNotGround = dd[notGround] >= 0?1:-1;
+    dd[0] = std::abs(dd[0]);
+    dd[1] = std::abs(dd[1]);
+  }
+  
+  LineIterator::LineIterator(const LineIterator& it){
+    currPoint[0] = it[0];
+    currPoint[1] = it[1];
+  }
+  int LineIterator::operator[](int i) const{
+    return currPoint[i];
+  }
+  
+  LineIterator LineIterator::operator++(int i){
+    LineIterator li(*this);
+    currPoint[ground] += stepGround;
+    curr+= dd[notGround];
+    if(curr >= dd[ground]){
+      curr -= dd[ground];
+      currPoint[notGround]+=stepNotGround;
+    }
+    return li;
+  }
+  
+  LineIterator LineIterator::end(){
+    return LineIterator(endPoint[0], endPoint[1]);
+  }
+  
+  bool LineIterator::operator==(const LineIterator& li){
+    return currPoint[0] == li[0] && currPoint[1] == li[1];
+  }
+
+  bool LineIterator::isFinished() const{
+    return currPoint[ground] - stepGround == endPoint[ground];
   }
 
   void getBoundaryIntersections(const int point[2], const float vector[2], const int boundary[2][2], int endPoints[2][2]){

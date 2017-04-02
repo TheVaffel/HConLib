@@ -201,13 +201,11 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
 	  g = col[i*w + j];
 	  b = (col[(i - 1)*w + j] + col[(i + 1)*w + j]) >> 1;
 	  r = (col[i*w + j - 1] + col[i*w + j + 1]) >> 1;
-	  //tg += g;
 	}else{
 	  g = (col[(i - 1)*w + j] + col[(i + 1)*w + j] + col[i*w + j - 1] + col[i*w + j + 1]) >> 2;
 	  b = (col[(i - 1)*w + j - 1] + col[(i - 1)*w + j + 1] +
 	       col[(i + 1)*w + j - 1] + col[(i + 1)*w + j + 1]) >> 2;
 	  r = col[i*w + j];
-	  //tr += r;
 	}
       }else{
 	if(j&1){
@@ -215,17 +213,14 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
 	  b = col[i*w + j];
 	  r = (col[(i - 1)*w + j - 1] + col[(i - 1)*w + j + 1] +
 	       col[(i + 1)*w + j - 1] + col[(i + 1)*w + j + 1]) >> 2;
-	  //tb += b;
 	}else{
 	  g = col[i*w + j];
 	  b = (col[i*w + j - 1] + col[i*w + j + 1]) >> 1;
 	  r = (col[(i - 1)*w + j] + col[(i + 1)*w + j]) >> 1;
-	  //tg2 += g;
 	}
       }
       //Since we get 12 bits for every channel
       dst[4*(i*w + j) + 2] = std::min(b*6/5>>4, 255);
-      //dst[4*(i*w + j) + 2] = b>>4;
       dst[4*(i*w + j) + 1] = g>>4;
       dst[4*(i*w + j) ] = r>>4;
     }
@@ -233,104 +228,102 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
 }
 
  
-int webcam_capture_image(unsigned char** rgb_buffer)
+int webcam_capture_image(unsigned char* rgb_buffer)
 {
-  do{
-    fd_set fds;
-    struct timeval tv;
-    int r;
-
-    do
-      {
-	FD_ZERO(&fds);
-	FD_SET(_webcam_fd, &fds);
-      
-	tv.tv_sec = 2;
-	tv.tv_usec = 0;
-	r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
-      } while ((r == -1 && (errno = EINTR)));
-
-    if (-1 == r) {
-      if (EINTR == errno){}else{
-	_webcam_errno_exit("select");
-      }
-    }
-
-    if (0 == r) {
-      fprintf(stderr, "select timeout\n");
-      exit(EXIT_FAILURE);
-    }
-
-    struct v4l2_buffer buf;
-    unsigned int i;
-
-    CLEAR(buf);
-
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    buf.memory = V4L2_MEMORY_MMAP;
-
-    if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
-      switch (errno) {
-      case EAGAIN:
-	return 0;
-
-      case EIO:
-	/* Could ignore EIO, see spec. */
-
-	/* fall through */
-
-      default:
-	_webcam_errno_exit("VIDIOC_DQBUF");
-      }
-    }
-
-    assert(buf.index < _webcam_n_buffers);
-
-    //process_image(buffers[buf.index].start, buf.bytesused);
-
-    //std::cout<<buf.bytesused<<std::endl;
-    if(_webcam_input_mode == WEBCAM_MODE_YUYV) {
-    
-      YUVtoRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
-    
-    }else if(_webcam_input_mode == WEBCAM_MODE_BAYER){
-    
-      BayerToRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, *rgb_buffer);
-    
-    }else if(_webcam_input_mode == WEBCAM_MODE_JPEG){
-
-      int w, h, c;
-      #ifdef USE_TURBOJPEG
-      int jpg_subsamples;
-      
-      tjDecompressHeader2(_webcam_decompressor,
-	(unsigned char*)_webcam_buffers[buf.index].start,
-	buf.length,
-	&w,
-	&h,
-	&jpg_subsamples);
-
-      tjDecompress2(_webcam_decompressor,
-	(unsigned char*)_webcam_buffers[buf.index].start,
-	buf.length,
-	*rgb_buffer,
-	w,
-	0,
-	h,
-	TJPF_BGRA,
-	TJFLAG_FASTDCT);
-      #else
-      if(rgb_buffer && *rgb_buffer){
-	stbi_image_free(*rgb_buffer);
-      }
-    
-      *rgb_buffer = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
-      #endif
-    }
-    if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
-      _webcam_errno_exit("VIDIOC_QBUF");
   
-  }while(!*rgb_buffer); // Ugly level > 9000, but works.. My laptop webcam had some problems otherwise. Oh well.
+  fd_set fds;
+  struct timeval tv;
+  int r;
+
+  do
+    {
+      FD_ZERO(&fds);
+      FD_SET(_webcam_fd, &fds);
+      
+      tv.tv_sec = 2;
+      tv.tv_usec = 0;
+      r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
+    } while ((r == -1 && (errno = EINTR)));
+
+  if (-1 == r) {
+    if (EINTR == errno){}else{
+      _webcam_errno_exit("select");
+    }
+  }
+
+  if (0 == r) {
+    fprintf(stderr, "select timeout\n");
+    exit(EXIT_FAILURE);
+  }
+
+  struct v4l2_buffer buf;
+  unsigned int i;
+
+  CLEAR(buf);
+
+  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  buf.memory = V4L2_MEMORY_MMAP;
+
+  if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
+    switch (errno) {
+    case EAGAIN:
+      return 0;
+
+    case EIO:
+      /* Could ignore EIO, see spec. */
+
+      /* fall through */
+
+    default:
+      _webcam_errno_exit("VIDIOC_DQBUF");
+    }
+  }
+
+  assert(buf.index < _webcam_n_buffers);
+
+  //process_image(buffers[buf.index].start, buf.bytesused);
+
+  //std::cout<<buf.bytesused<<std::endl;
+  if(_webcam_input_mode == WEBCAM_MODE_YUYV) {
+    
+    YUVtoRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, rgb_buffer);
+    
+  }else if(_webcam_input_mode == WEBCAM_MODE_BAYER){
+    
+    BayerToRGB(_webcam_width, _webcam_height, (unsigned char*)_webcam_buffers[buf.index].start, rgb_buffer);
+    
+  }else if(_webcam_input_mode == WEBCAM_MODE_JPEG){
+
+    int w, h, c;
+#ifdef USE_TURBOJPEG
+    int jpg_subsamples;
+      
+    tjDecompressHeader2(_webcam_decompressor,
+			(unsigned char*)_webcam_buffers[buf.index].start,
+			buf.length,
+			&w,
+			&h,
+			&jpg_subsamples);
+
+    tjDecompress2(_webcam_decompressor,
+		  (unsigned char*)_webcam_buffers[buf.index].start,
+		  buf.length,
+		  rgb_buffer,
+		  w,
+		  0,
+		  h,
+		  TJPF_BGRA,
+		  TJFLAG_FASTDCT);
+#else
+    
+    unsigned char* temp  = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
+    memcpy(rgb_buffer, temp, w*h*4); //Hopefully, the compiler optimizes this away
+    stbi_image_free(temp);
+      
+#endif
+  }
+  if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
+    _webcam_errno_exit("VIDIOC_QBUF");
   
   return 0;
 }

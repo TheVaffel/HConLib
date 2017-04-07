@@ -105,7 +105,7 @@ struct Matrix3{
 
   float* operator[](int a);
 
-  float det();
+  float det() const;
 
   float get(int a, int b) const;
 
@@ -569,6 +569,11 @@ std::string Matrix3::str() const {
   return oss.str();
 }
 
+float Matrix3::det() const {
+  return mat[0]*(mat[4]*mat[8] - mat[5]*mat[7]) - 
+         mat[1]*(mat[3]*mat[8] - mat[5]*mat[6]) +
+	 mat[2]*(mat[3]*mat[7] - mat[4]*mat[6]);
+}
 
 Vector3 cross(const Vector3& v1, const Vector3& v2){
   return Vector3(v1.get(1)*v2.get(2) - v1.get(2)*v2.get(1),

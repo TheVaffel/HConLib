@@ -19,11 +19,15 @@ int main(){
   Matrix mat(6, 6, data);
 
   Matrix mm = mat.inv();
-
+  
   cout<<"This is our inverse:\n"<<mm.str()<<endl;
 
   cout<<"The product is "<<(mat*mm).str()<<endl;
 
+  Matrix3 rot(FLATALG_MATRIX_ROTATION,
+		      Vector3(1, 0, -1),
+		      1.0f);
+  cout<<"The determinant of the rotation matrix "<<rot.str()<<" is "<<rot.det()<<endl; 
   return 0;
   
 }

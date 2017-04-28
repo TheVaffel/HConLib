@@ -15,7 +15,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <cmath>
-
+#include <algorithm> //std::min/max
 
 //Define this if you want super-ultra-fast decompression of jpeg
 #ifdef USE_TURBOJPEG

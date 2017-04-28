@@ -8,3 +8,4 @@ g++ "$currDir/test.cpp" -o "$binDir/test" -I $HConLibDir -lX11
 g++ "$currDir/hgraftest.cpp" -o "$binDir/test" -I $HConLibDir -lX11
 g++ "$currDir/linetest.cpp" -o "$binDir/linetest" -I $HConLibDir -lX11
 g++ "$currDir/algtest.cpp" -o "$binDir/algtest" -I $HConLibDir -lX11
+g++ "$currDir/cartoonifycam.cpp" -o "$binDir/cartoonifycam" -I $HConLibDir -I $currDir -lX11

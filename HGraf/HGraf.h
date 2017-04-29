@@ -427,19 +427,27 @@ namespace hg{
       left = temp;
     }
 
-    if(std::abs(right*vector[1]) < std::abs(down*vector[0])){
+    float a, b;
+
+    if((a = std::abs(right*vector[1])) < (b = std::abs(down*vector[0]))){
       endPoints[0][0] = point[0] + right;
       endPoints[0][1] = point[1] + right*vector[1]/vector[0];
-    }else{
+    }else if(a > b){
       endPoints[0][0] = point[0] + down*vector[0]/vector[1];
       endPoints[0][1] = point[1] + down;
+    }else{
+      endPoints[0][0] = point[0] + right;
+      endPoints[0][1] = point[0] + down;
     }
 
-    if(std::abs(left*vector[1]) < std::abs(up*vector[0])){
+    if((a = std::abs(left*vector[1])) < (b = std::abs(up*vector[0]))){
       endPoints[1][0] = point[0] + left;
       endPoints[1][1] = point[1] + left*vector[1]/vector[0];
-    }else{
+    }else if(a > b){
       endPoints[1][0] = point[0] + up*vector[0]/vector[1];
+      endPoints[1][1] = point[1] + up;
+    }else{
+      endPoints[1][0] = point[0] + left;
       endPoints[1][1] = point[1] + up;
     }
   }

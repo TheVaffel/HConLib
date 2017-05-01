@@ -417,11 +417,8 @@ namespace hg{
     int right = boundary[1][0] - point[0], left = boundary[0][0] - point[0],
       up = boundary[0][1] - point[1], down = boundary[1][1] - point[1];
 
-    float dux1 = right*vector[0],
-      duy1 = down*vector[1]; //Kinda meaningless variables, but with right signs
-    //Also, theoretically faster than division
-
-    if(dux1*duy1 <0){
+    //Check against right quarter
+    if((vector[0] > 0 && vector[1] < 0) || (vector[1] > 0 && vector[0] < 0)){
       int temp = right;
       right = left;
       left = temp;

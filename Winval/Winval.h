@@ -85,6 +85,7 @@ class Winval{
   void waitForButtonPress(int& x, int& y);
   void drawBuffer(char* p, int w, int h);
   void drawBuffer(unsigned char* p, int w, int h);
+  void setTitle(const char* window_name);
 };
 
 #endif // INCLUDED_WINVAL
@@ -266,6 +267,10 @@ void Winval::drawBuffer(char* buffer, int w, int h){
 
 void Winval::drawBuffer(unsigned char* buffer, int w, int h){
   drawBuffer((char*)buffer, w, h);
+}
+
+void Winval::setTitle(const char* window_name){
+  XStoreName(dsp, win, window_name);
 }
 #endif // WINVAL_IMPLEMENTATION
 

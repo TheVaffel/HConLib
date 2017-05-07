@@ -51,10 +51,10 @@ int _webcam_width, _webcam_height;
 struct _webcam_buffer          *_webcam_buffers;
 static unsigned int     _webcam_n_buffers;
 
-static void _webcam_errno_exit(const char* s)
+static void _webcam_errno_exit(const char* s, int u)
 {
-        fprintf(stderr, "%s error %d, %s\n", s, errno, strerror(errno));
-        exit(EXIT_FAILURE);
+  fprintf(stderr, "%s error %d, %s at line %d\n", s, errno, strerror(errno), u);
+  exit(EXIT_FAILURE);
 }
   
 char _webcam_name[100];
@@ -83,12 +83,12 @@ void _webcam_start_capture(){
     buf.index = i;
 
     if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
-      _webcam_errno_exit("VIDIOC_QBUF");
+      _webcam_errno_exit("VIDIOC_QBUF", __LINE__);
   }
   
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_STREAMON, &type))
-    _webcam_errno_exit("VIDIOC_STREAMON");
+    _webcam_errno_exit("VIDIOC_STREAMON", __LINE__);
 }
  
 int _webcam_init_mmap()
@@ -107,7 +107,7 @@ int _webcam_init_mmap()
 		"memory mapping\n", _webcam_name);
 	exit(EXIT_FAILURE);
       } else {
-	_webcam_errno_exit("VIDIOC_REQBUFS");
+	_webcam_errno_exit("VIDIOC_REQBUFS", __LINE__);
       }
     }
 
@@ -134,7 +134,7 @@ int _webcam_init_mmap()
       buf.index       = _webcam_n_buffers;
 
       if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QUERYBUF, &buf))
-	_webcam_errno_exit("VIDIOC_QUERYBUF");
+	_webcam_errno_exit("VIDIOC_QUERYBUF", __LINE__);
 
       _webcam_buffers[_webcam_n_buffers].length = buf.length;
       _webcam_buffers[_webcam_n_buffers].start =
@@ -145,7 +145,7 @@ int _webcam_init_mmap()
 	     _webcam_fd, buf.m.offset);
 
       if (MAP_FAILED == _webcam_buffers[_webcam_n_buffers].start)
-	_webcam_errno_exit("mmap");
+	_webcam_errno_exit("mmap", __LINE__);
     }
 
     //printf("Length: %d\nAddress: %p\n", buf.length, buffer);
@@ -233,51 +233,61 @@ int webcam_capture_image(unsigned char* rgb_buffer)
   
   fd_set fds;
   struct timeval tv;
-  int r;
+  int r = 1;
 
-  do
-    {
-      FD_ZERO(&fds);
-      FD_SET(_webcam_fd, &fds);
-      
-      tv.tv_sec = 2;
-      tv.tv_usec = 0;
-      r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
-    } while ((r == -1 && (errno = EINTR)));
-
-  if (-1 == r) {
-    if (EINTR == errno){}else{
-      _webcam_errno_exit("select");
-    }
-  }
-
-  if (0 == r) {
-    fprintf(stderr, "select timeout\n");
-    exit(EXIT_FAILURE);
-  }
 
   struct v4l2_buffer buf;
   unsigned int i;
+
+  
 
   CLEAR(buf);
 
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
+  
 
-  if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
-    switch (errno) {
-    case EAGAIN:
-      return 0;
+    {
+      FD_ZERO(&fds);
+      FD_SET(_webcam_fd, &fds);
+      r = 0;
+      
+      tv.tv_sec = 2;
+      tv.tv_usec = 0;
+      
+      _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf);
+      tv.tv_sec = 0;
+      r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
 
-    case EIO:
-      /* Could ignore EIO, see spec. */
+      /*if (0 == r) {
+	fprintf(stderr, "select timeout\n");
+	exit(EXIT_FAILURE);
+	}*/
+      
+      while(r == 1){
+	_webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf);
 
-      /* fall through */
+        if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_DQBUF, &buf)) {
+	  switch (errno) {
+	  case EAGAIN:
+	    printf("Got EAGAIN error \n");
+	    return 0;
 
-    default:
-      _webcam_errno_exit("VIDIOC_DQBUF");
+	  case EIO:
+	    /* Could ignore EIO, see spec. */
+
+	    /* fall through */
+
+	  default:
+	    _webcam_errno_exit("VIDIOC_DQBUF", __LINE__);
+	  }
+	}
+	r = select(_webcam_fd + 1, &fds, NULL, NULL, &tv);
+      }
     }
-  }
+
+
+
 
   assert(buf.index < _webcam_n_buffers);
 
@@ -317,13 +327,15 @@ int webcam_capture_image(unsigned char* rgb_buffer)
 #else
     
     unsigned char* temp  = stbi_load_from_memory((unsigned char*)_webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
-    memcpy(rgb_buffer, temp, w*h*4); //Hopefully, the compiler optimizes this away
-    stbi_image_free(temp);
+    if(temp){
+      memcpy(rgb_buffer, temp, w*h*4); //Hopefully, the compiler optimizes this away
+      stbi_image_free(temp);
+    }
       
 #endif
   }
   if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_QBUF, &buf))
-    _webcam_errno_exit("VIDIOC_QBUF");
+    _webcam_errno_exit("VIDIOC_QBUF", __LINE__);
   
   return 0;
 }
@@ -348,7 +360,7 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
     exit(EXIT_FAILURE);
   }
 
-  _webcam_fd = open(_webcam_name, O_RDWR /* required */ | O_NONBLOCK, 0);
+  _webcam_fd = open(_webcam_name, O_RDWR /* required */, 0);
 
   if (-1 == _webcam_fd) {
     fprintf(stderr, "Cannot open '%s': %d, %s\n",
@@ -368,7 +380,7 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
 	      _webcam_name);
       exit(EXIT_FAILURE);
     } else {
-      _webcam_errno_exit("VIDIOC_QUERYCAP");
+      _webcam_errno_exit("VIDIOC_QUERYCAP", __LINE__);
     }
   }
 
@@ -420,7 +432,7 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
   fmt.fmt.pix.field       = V4L2_FIELD_ANY;
     
   if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_S_FMT, &fmt))
-    _webcam_errno_exit("VIDIOC_S_FMT");
+    _webcam_errno_exit("VIDIOC_S_FMT", __LINE__);
 
   v4l2_streamparm parm = {};
   parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -430,7 +442,7 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
   assert(fmt.fmt.pix.pixelformat == formats[mode]);
 
   if(-1 == _webcam_xioctl(_webcam_fd, VIDIOC_S_PARM, &parm)){
-    _webcam_errno_exit("VIDIOC_S_PARM");
+    _webcam_errno_exit("VIDIOC_S_PARM", __LINE__);
   }
 
   /* Note VIDIOC_S_FMT may change width and height. */
@@ -474,7 +486,7 @@ void _webcam_stop_capture(){
 
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == _webcam_xioctl(_webcam_fd, VIDIOC_STREAMOFF, &type))
-    _webcam_errno_exit("VIDIOC_STREAMOFF");
+    _webcam_errno_exit("VIDIOC_STREAMOFF", __LINE__);
 }
 
 void webcam_close(){
@@ -484,7 +496,7 @@ void webcam_close(){
 
   for (i = 0; i < _webcam_n_buffers; ++i)
     if (-1 == munmap(_webcam_buffers[i].start, _webcam_buffers[i].length))
-      _webcam_errno_exit("munmap");
+      _webcam_errno_exit("munmap", __LINE__);
   free(_webcam_buffers);
   
   close(_webcam_fd);

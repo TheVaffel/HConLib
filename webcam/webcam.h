@@ -37,6 +37,7 @@ tjhandle _webcam_decompressor;
 
 bool _webcam_camActive = false;
 bool _webcam_quit = false;
+bool _webcam_upside_down = false;
 
 int _webcam_input_mode;
 
@@ -159,25 +160,42 @@ static void YUVtoRGB(int width, int height, unsigned char *src, unsigned char *d
   int line, column;
   unsigned char *py, *pu, *pv;
   unsigned char *tmp = dst;
-  py = src;
-  pu = src + 1;
-  pv = src + 3;
 
 #define CLIP(x) ( (x)>=0xFF ? 0xFF : ( (x) <= 0x00 ? 0x00 : (x) ) )
 
-  for (line = 0; line < height; ++line) {
-    for (column = 0; column < width; ++column) {
+  int increment;
+
+  int pyinc = 2, puinc = 4, pvinc = 4;
+  if(_webcam_upside_down){
+    py = src + (width*height-1)*2;
+    pu = py - 1;
+    pv = py + 1;
+    increment = -1;
+  }else{
+    py = src;
+    pu = py + 1;
+    pv = py + 3;
+    increment = 1;
+  }
+
+  pyinc *= increment;
+  puinc *= increment;
+  pvinc *= increment;
+  
+
+  for (line = 0; line < height; line++){
+    for (column = 0; column < width; column++) {
       *tmp++ = CLIP((double)*py + 1.772*((double)*pu-128.0));
       *tmp++ = CLIP((double)*py - 0.344*((double)*pu-128.0) - 0.714*((double)*pv-128.0));
       *tmp++ = CLIP((double)*py + 1.402*((double)*pv-128.0));
 
       *tmp++;
       // increase py every time
-      py += 2;
+      py += pyinc;
       // increase pu,pv every second time
       if ((column & 1)==1) {
-	pu += 4;
-	pv += 4;
+	pu += puinc;
+	pv += pvinc;
       }
     }
   }
@@ -194,6 +212,7 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
   //int tr = 0, tg = 0, tb = 0, tg2 = 0;
     
   for(int i = 1; i < h-1; i++){
+    int write_row = _webcam_upside_down?h -i - 1: i;
     for(int j = 1; j < w-1; j++){
       int r, g, b;
       if(i&1){
@@ -219,10 +238,13 @@ static void BayerToRGB(int width, int height, unsigned char *src, unsigned char 
 	  r = (col[(i - 1)*w + j] + col[(i + 1)*w + j]) >> 1;
 	}
       }
+
+      int write_column = _webcam_upside_down? w-j-1 : j;
+      
       //Since we get 12 bits for every channel
-      dst[4*(i*w + j) + 2] = std::min(b*6/5>>4, 255);
-      dst[4*(i*w + j) + 1] = g>>4;
-      dst[4*(i*w + j) ] = r>>4;
+      dst[4*(write_row*w + write_column) + 2] = b>>4, 255;
+      dst[4*(write_row*w + write_column) + 1] = g>>4;
+      dst[4*(write_row*w + write_column) ] = r>>4;
     }
   }
 }
@@ -340,9 +362,10 @@ int webcam_capture_image(unsigned char* rgb_buffer)
   return 0;
 }
 
-void webcam_init_full_name(int width, int height, const char* deviceName, int mode = WEBCAM_MODE_JPEG) {
+void webcam_init_full_name(int width, int height, const char* deviceName, int mode = WEBCAM_MODE_JPEG, bool upsideDown = false) {
   memcpy(_webcam_name, deviceName, strlen(deviceName));
   _webcam_input_mode = mode;
+  _webcam_upside_down = upsideDown;
   
   struct stat st;
 
@@ -472,13 +495,13 @@ void webcam_init_full_name(int width, int height, const char* deviceName, int mo
   _webcam_start_capture();
 }
 
-void webcam_init(int width, int height, int deviceNum, int mode = WEBCAM_MODE_JPEG){
+void webcam_init(int width, int height, int deviceNum, int mode = WEBCAM_MODE_JPEG, bool upsideDown = false){
   const char* pattern = "/dev/video%d";
   char temp_name[100];
   memset(temp_name, 0, 100);
   sprintf(temp_name, pattern, deviceNum);
   
-  webcam_init_full_name(width, height, temp_name, mode);
+  webcam_init_full_name(width, height, temp_name, mode, upsideDown);
 }
 
 void _webcam_stop_capture(){

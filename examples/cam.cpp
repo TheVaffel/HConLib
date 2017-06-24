@@ -6,11 +6,11 @@
 
 using namespace std;
 
-int w = 1280, h = 720;
+int w = 640, h = 480;
 
 int main(){
   Winval win(w, h);
-  webcam_init(w, h, 0);
+  webcam_init(w, h, 0, WEBCAM_MODE_YUYV, true);
   int n;
   unsigned char buffer[w*h*4];
   

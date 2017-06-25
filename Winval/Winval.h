@@ -1,8 +1,11 @@
 #ifndef INCLUDED_WINVAL
 #define INCLUDED_WINVAL
+
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
 #include "X11/keysym.h"
+
+#include <string> //std::string
 
 #define WK_SPACE XK_space
 #define WK_ESC XK_Escape
@@ -71,6 +74,8 @@ class Winval{
   Winval(int w, int h, char** pointer);
   Winval();
   ~Winval();
+
+  std::string window_title;
 
   void handleEventProperly(XEvent& e);
 
@@ -271,7 +276,13 @@ void Winval::drawBuffer(unsigned char* buffer, int w, int h){
 
 void Winval::setTitle(const char* window_name){
   XStoreName(dsp, win, window_name);
+  window_title = window_name;
 }
+
+const char* Winval::getTitle(){
+  return window_title.c_str();
+}
+
 #endif // WINVAL_IMPLEMENTATION
 
 

@@ -7,6 +7,11 @@
 
 #include <string> //std::string
 
+#ifdef WINVAL_VULKAN
+class Winval;
+#include "Winvulk.h"
+#endif //WINVAL_VULKAN
+
 #define WK_SPACE XK_space
 #define WK_ESC XK_Escape
 
@@ -72,6 +77,11 @@ class Winval{
   bool mouseButtonPressed;
 
   KeySym *ks;
+
+#ifdef WINVAL_VULKAN
+  vulkan_state vk_state;
+#endif
+  
  public:
   Winval(int w, int h, char** pointer);
   Winval();
@@ -100,6 +110,14 @@ class Winval{
 #endif // INCLUDED_WINVAL
 
 #ifdef WINVAL_IMPLEMENTATION
+
+#ifdef WINVAL_VULKAN
+
+#define WINVAL_VULKAN_IMPLEMENTATION
+#include "Winvulk.h"
+
+#endif //WINVAL_VULKAN
+
 
 #define WINVAL_KEYMAP_OFFSET 8
 Winval::Winval(){
@@ -160,9 +178,18 @@ Winval::Winval(int w, int h, char** p = 0){
   }
 
   autoRepeat = false;
+  
+#ifdef WINVAL_VULKAN
+  winvulk_init_vulkan(&vk_state, this);
+#endif
+  
 }
 
 Winval::~Winval(){
+#ifdef WINVAL_VULKAN
+  winvulk_destroy_vulkan(&vk_state);
+#endif
+  
   if(image)
     XDestroyImage(image);
   if(win)

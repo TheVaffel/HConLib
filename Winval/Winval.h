@@ -65,6 +65,8 @@ class Winval{
   
   bool isDown[65536];
   int keysyms;
+
+  bool autoRepeat;
   
   int pointerX, pointerY;
   bool mouseButtonPressed;
@@ -154,6 +156,8 @@ Winval::Winval(int w, int h, char** p = 0){
     }
     XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
   }
+
+  autoRepeat = false;
 }
 
 Winval::~Winval(){
@@ -204,8 +208,22 @@ void Winval::handleEventProperly(XEvent& e){
   case KeyRelease:
     index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
     key = ks[index*keysyms];
-    if(key < 1<<16)
-      isDown[key] = false;
+    if(key < 1<<16){
+      bool pressDown = false;
+      if(!autoRepeat){
+	if(XEventsQueued(dsp, QueuedAlready)){
+	  
+	  XEvent nextEvent;
+	  XPeekEvent(dsp, &nextEvent);
+	  if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
+	     e.xkey.time == nextEvent.xkey.time){
+	    XNextEvent(dsp, &nextEvent);
+	    pressDown = true;
+	  }
+	}
+      }
+      isDown[key] = pressDown;
+    }
     break;
   case MotionNotify:
     pointerX = e.xmotion.x, pointerY = e.xmotion.y;
@@ -277,6 +295,10 @@ void Winval::drawBuffer(unsigned char* buffer, int w, int h){
 void Winval::setTitle(const char* window_name){
   XStoreName(dsp, win, window_name);
   window_title = window_name;
+}
+
+void Winval::enableAutoRepeat(bool enable){
+  autoRepeat = enable;
 }
 
 const char* Winval::getTitle(){

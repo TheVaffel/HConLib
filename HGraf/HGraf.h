@@ -434,7 +434,7 @@ namespace hg{
       endPoints[0][1] = point[1] + down;
     }else{
       endPoints[0][0] = point[0] + right;
-      endPoints[0][1] = point[0] + down;
+      endPoints[0][1] = point[1] + down;
     }
 
     if((a = std::abs(left*vector[1])) < (b = std::abs(up*vector[0]))){

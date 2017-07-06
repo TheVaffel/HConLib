@@ -16,6 +16,7 @@ private:
 public:
 
   Canvas(int nw, int nh);
+  Canvas(unsigned char* buffer, int nw, int nh);
 
   int& operator[](int a);
 
@@ -98,6 +99,11 @@ namespace hg{
 Canvas::Canvas(int nw, int nh){
   w = nw; h = nh;
   buffer = new char[nw*nh*channels];
+}
+
+Canvas::Canvas(unsigned char* nbuffer, int nw, int nh){
+	w = nw; h = nh;
+	buffer = nbuffer;
 }
 
 int& Canvas::operator[](int a){

@@ -10,7 +10,7 @@ typedef Point3 Color;
 
 struct Canvas{
 private:
-  char* buffer;
+  unsigned char* buffer;
   static const int channels = 4;
   int w, h;
 public:
@@ -23,7 +23,7 @@ public:
   int getWidth();
   int getHeight();
 
-  char* getData();
+  unsigned char* getData();
   void clear(int c);
   ~Canvas();
   
@@ -54,9 +54,9 @@ struct LineCube: LineModel{
 namespace hg{
   int colorToInt(Color c);
 
-  void drawLine(char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum);
+  void drawLine(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum);
 
-  void drawLineSafe(char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum);
+  void drawLineSafe(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum);
 
   void drawLineSafe(Canvas& canvas, int startx, int starty, int endx, int endy, int colorNum);
 
@@ -80,7 +80,7 @@ namespace hg{
   };
 
   void getBoundaryIntersections(const int point[2], const float vector[2], const int boundary[2][2], int endPoints[2][2]);
-  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Point3& start, const Point3& end);
+  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Point3& start, const Point3& end, int color);
   bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h);
 
   void cutLineToZPlane(const Point3& p1, const Point3& p2, float plane, Point3& dst1, Point3& dst2);
@@ -98,7 +98,7 @@ namespace hg{
 
 Canvas::Canvas(int nw, int nh){
   w = nw; h = nh;
-  buffer = new char[nw*nh*channels];
+  buffer = new unsigned char[nw*nh*channels];
 }
 
 Canvas::Canvas(unsigned char* nbuffer, int nw, int nh){
@@ -118,7 +118,7 @@ int Canvas::getHeight(){
   return h;
 }
 
-char* Canvas::getData(){
+unsigned char* Canvas::getData(){
   return buffer;
 }
   
@@ -185,7 +185,7 @@ namespace hg{
   }
 
   //An implementation of Bresenham's algorithm
-  void drawLine(char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum){
+  void drawLine(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum){
     
     int dx = endx - startx, dy = endy - starty;
     
@@ -304,7 +304,7 @@ namespace hg{
   }
 
   
-  inline void drawLineSafe(char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum){
+  inline void drawLineSafe(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum){
     if(!moveEndpointsOntoScreen(startx, starty, endx, endy, w, h)){
       return;
     }

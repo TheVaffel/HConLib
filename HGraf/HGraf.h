@@ -13,6 +13,7 @@ private:
   unsigned char* buffer;
   static const int channels = 4;
   int w, h;
+  bool initializedBuffer;
 public:
 
   Canvas(int nw, int nh);
@@ -99,11 +100,13 @@ namespace hg{
 Canvas::Canvas(int nw, int nh){
   w = nw; h = nh;
   buffer = new unsigned char[nw*nh*channels];
+  initializedBuffer = true;
 }
 
 Canvas::Canvas(unsigned char* nbuffer, int nw, int nh){
-	w = nw; h = nh;
-	buffer = nbuffer;
+  w = nw; h = nh;
+  buffer = nbuffer;
+  initializedBuffer = false;
 }
 
 int& Canvas::operator[](int a){
@@ -123,7 +126,8 @@ unsigned char* Canvas::getData(){
 }
   
 Canvas::~Canvas(){
-  delete[] buffer;
+  if(initializedBuffer)
+    delete[] buffer;
 }
 
 void Canvas::clear(int c = 0x000000){

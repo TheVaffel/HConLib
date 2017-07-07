@@ -31,7 +31,7 @@ public:
 
 struct CamParam{
 public:
-  double tanfovhover2, tanfovvover2;
+  double invtanfovhover2, invtanfovvover2;
   int screenWidth, screenHeight;
   float nearPlane;
   CamParam(int w, int h, double fovh, float nplane);
@@ -135,8 +135,8 @@ void Canvas::clear(int c = 0x000000){
 CamParam::CamParam(int w, int h, double fovh = M_PI/2, float nplane = 0.01){
   screenWidth = w;
   screenHeight = h;
-  tanfovhover2 = tan(fovh/2);
-  tanfovvover2 = tanfovhover2/w*h;
+  invtanfovhover2 = 1.f/tan(fovh/2);
+  invtanfovvover2 = invtanfovhover2*w/h;
   nearPlane = nplane;
 }
 
@@ -262,9 +262,9 @@ namespace hg{
     
     int u = _signum(_cross(ex - sx, ey - sy, ex - 0, ey - 0));
     if((sx < 0 ||sy < 0 || sx >=w || sy >= h) && (ex < 0 || ey < 0 || ex >=w || ey >= h) &&
-       _signum(_cross(ex - sx, ey - sy, ex - 0, ey - h)) == u &&
-       _signum(_cross(ex - sx, ey - sy, ex - w, ey - 0)) == u &&
-       _signum(_cross(ex - sx, ey - sy, ex - w, ey - h)) == u){
+	 _signum(_cross(ex - sx, ey - sy, ex - 0, ey - h)) == u &&
+	 _signum(_cross(ex - sx, ey - sy, ex - w, ey - 0)) == u &&
+	 _signum(_cross(ex - sx, ey - sy, ex - w, ey - h)) == u){
       return false;
     }
     
@@ -458,14 +458,12 @@ namespace hg{
   void cutLineToZPlane(const Point3& p1, const Point3& p2, float plane, Point3& dst1, Point3& dst2){
     Vector3 v = p2 - p1;
 
-    if(p1.z > plane){
-      v.normalize();
-      dst1 = p1 + v*(p1.z - plane);
+    if(p1.z > -plane){
+      dst1 = p1 - v*((p1.z + plane)/v.z);
     }else dst1 = p1;
 
-    if(p2.z > plane){
-      v.normalize();
-      dst2 = p2 - v*(p2.z - plane);
+    if(p2.z > -plane){
+      dst2 = p2 - v*((p2.z + plane)/v.z);
     }else dst2 = p2;
   }
 
@@ -479,10 +477,30 @@ namespace hg{
     
     cutLineToZPlane(start, end, camparam.nearPlane, nstart, nend);
 
-    int ps[2] = {(int)((-nstart.x/nstart.z + camparam.tanfovhover2)*camparam.screenWidth)/2,
-		 (int)((nstart.y/nstart.z + camparam.tanfovvover2)*camparam.screenHeight)/2};
-    int pe[2] = {(int)((-nend.x/nend.z + camparam.tanfovhover2)*camparam.screenWidth)/2,
-		 (int)((nend.y/nend.z + camparam.tanfovvover2)*camparam.screenHeight)/2};
+    int ps[2] = {(int)((-nstart.x/nstart.z*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
+		 (int)((nstart.y/nstart.z*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
+    int pe[2] = {(int)((-nend.x/nend.z*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
+		 (int)((nend.y/nend.z*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
+
+    int di[2] = {pe[0] - ps[0], pe[1] - ps[1]};
+    if(std::abs(di[0]) > 2*canvas.getWidth() || std::abs(di[1]) > 2*canvas.getHeight()){
+      if(abs(ps[0]) > canvas.getWidth() || abs(ps[1] > canvas.getHeight())){
+	int msb_wh = 32 - std::min(__builtin_clz(canvas.getWidth()), __builtin_clz(canvas.getHeight()));
+	int msb_ps = 32 - std::max(__builtin_clz(ps[0]), __builtin_clz(ps[1])); //Most significant bit of ps
+	int shift = msb_ps - msb_wh - 1;
+	if(shift > 0){
+	  ps[0] = (ps[0]<0?-( std::abs(ps[0] - pe[0])>>shift) : (ps[0] + pe[0])>>shift) + pe[0];
+	  ps[1] = (ps[1]<0?-( std::abs(ps[1] - pe[1])>>shift) : (ps[1] + pe[1])>>shift) + pe[1];
+	}
+	int msb_pe = 32 - std::max(__builtin_clz(pe[0]), __builtin_clz(pe[1]));
+	shift = msb_pe - msb_wh - 1;
+	if(shift > 0){
+	  pe[0] = (pe[0]<0?-( std::abs(pe[0] - ps[0])>>shift) : (pe[0] + ps[0])>>shift) + ps[0];
+	  pe[1] = (pe[1]<0?-( std::abs(pe[1] - ps[1])>>shift) : (pe[1] + ps[1])>>shift) + ps[1];
+	}
+      }
+    }
+    
     drawLineSafe(canvas, ps[0], ps[1], pe[0], pe[1], color);
   }
   

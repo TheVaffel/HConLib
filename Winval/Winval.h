@@ -79,7 +79,7 @@ class Winval{
   KeySym *ks;
 
 #ifdef WINVAL_VULKAN
-  vulkan_state vk_state;
+  winvulk_vulkan_state vk_state;
 #endif
   
  public:
@@ -105,6 +105,8 @@ class Winval{
 	void enableAutoRepeat(bool enable);
 	const char* getTitle();
   void setTitle(const char* window_name);
+  Window getWindow();
+  Display* getDisplay();
 };
 
 #endif // INCLUDED_WINVAL
@@ -332,6 +334,14 @@ void Winval::enableAutoRepeat(bool enable){
 
 const char* Winval::getTitle(){
   return window_title.c_str();
+}
+
+Window Winval::getWindow(){
+  return win;
+}
+
+Display* Winval::getDisplay(){
+  return dsp;
 }
 
 #endif // WINVAL_IMPLEMENTATION

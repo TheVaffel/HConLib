@@ -7,8 +7,8 @@ using namespace std;
 
 
 int main(){
-	Winval win(400, 400);
-  
+	Winval win(1280, 720);
+	
 	win.waitForKey();
 	return 0;
 }

@@ -2,6 +2,7 @@
 #define INCLUDED_WINVULK
 
 #include <unistd.h>
+
 #define VK_USE_PLATFORM_XLIB_KHR
 #include "vulkan/vulkan.h"
 
@@ -61,7 +62,6 @@ void printError(VkResult res){
     printf("Feature not here\n");
   }
 }
-
 #define GET_INSTANCE_PROC_ADDR(instance, entry)			\
   (PFN_vk##entry)vkGetInstanceProcAddr(instance, "vk" #entry);
 
@@ -70,6 +70,7 @@ void printError(VkResult res){
 
 VkResult init_global_extension_properties();
 VkResult init_global_layer_properties();
+
 
 void init_vulkan(winvulk_vulkan_state*, Winval*);
 
@@ -85,6 +86,7 @@ void winvulk_destroy_command_buffers(winvulk_vulkan_state*);
 void winvukl_destroy_swapchain(winvulk_vulkan_state*);
 
 void winvulk_destroy_vulkan(winvulk_vulkan_state*);
+
 
 #endif //INCLUDED_WINVULK
 

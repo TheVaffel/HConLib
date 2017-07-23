@@ -1,6 +1,6 @@
 #define WINVAL_IMPLEMENTATION
 #define WINVAL_VULKAN
-#include <Winval/Winval.h>
+#include <Winval/Winval_XCB.h>
 #include <iostream>
 
 using namespace std;

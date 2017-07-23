@@ -103,7 +103,7 @@ class Winval{
   int waitForKey();  
   //XEvent getNextEvent();
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
-  void waitForButtonPress(int& x, int& y);
+  void waitForButtonPress(int* x, int* y);
   void drawBuffer(char* p, int w, int h);
   void drawBuffer(unsigned char* p, int w, int h);
 	void enableAutoRepeat(bool enable);
@@ -210,23 +210,6 @@ Winval::Winval(int w, int h, char** p = 0){
   if(!kstate) printf("Could not initialize xkb_state\n");
   
   
-  /*
-  if(p){
-    *p = new char[4*w*h];
-    pixelData = *p;
-    Visual* visual = XDefaultVisual(dsp, screenNum);
-
-    image = XCreateImage(dsp, visual, 24, ZPixmap,
-		       0, *p, w, h, 8, 0);
-
-    for(int i = 0; i < 4*w*h; i++){
-      (*p)[i] = 0;
-    }
-    XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
-  }
-
-  autoRepeat = false;*/
-  
 #ifdef WINVAL_VULKAN
   winvulk_init_vulkan(&vk_state, this);
 #endif
@@ -245,25 +228,23 @@ Winval::~Winval(){
 int Winval::waitForKey(){
   xcb_generic_event_t* event;
   do{
-    event = xcb_poll_for_event(connection);
+    event = xcb_wait_for_event(connection);
     handleEventProperly(event);
    }while(event->response_type != XCB_KEY_PRESS);
   
   return xkb_state_key_get_one_sym(kstate, ((xcb_key_press_event_t*)event)->detail);
 }
 
-/*
-void Winval::waitForButtonPress(int& x, int& y){
-  XEvent e;
-  do {
-    XNextEvent(dsp, &e);
-    handleEventProperly(e);
-  }while(e.type != ButtonPress);
+void Winval::waitForButtonPress(int* x, int* y){
+  xcb_generic_event_t* event;
+  do{
+    event = xcb_wait_for_event(connection);
+    handleEventProperly(event);
+  }while(event->response_type != XCB_BUTTON_PRESS);
 
-  x = e.xbutton.x, y = e.xbutton.y;
-  return;
-  
-  }*/
+  pointerX = ((xcb_button_press_event_t*)event)->event_x;
+  pointerY = ((xcb_button_press_event_t*)event)->event_y;
+}
 
 void Winval::handleEventProperly(xcb_generic_event_t* event){
   xcb_expose_event_t* ee;
@@ -305,22 +286,6 @@ void Winval::handleEventProperly(xcb_generic_event_t* event){
     break;
   }
 }
-/*
-void Winval::handleEventProperly(XEvent& e){
-  int index;
-  int key;
-  switch(e.type){
-  case MotionNotify:
-    pointerX = e.xmotion.x, pointerY = e.xmotion.y;
-    break;
-  case ButtonRelease:
-    mouseButtonPressed = false;
-    break;
-  case ButtonPress:
-    mouseButtonPressed = true;
-    break;
-  }
-  }*/
 
 void Winval::getPointerPosition(int* x, int* y){
   *x = pointerX; *y = pointerY;

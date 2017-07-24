@@ -488,19 +488,19 @@ namespace hg{
 
     int di[2] = {pe[0] - ps[0], pe[1] - ps[1]};
     if(std::abs(di[0]) > 2*canvas.getWidth() || std::abs(di[1]) > 2*canvas.getHeight()){
-      if(abs(ps[0]) > canvas.getWidth() || abs(ps[1] > canvas.getHeight())){
+      if(std::abs(ps[0]) > canvas.getWidth() || std::abs(ps[1] > canvas.getHeight())){
 	int msb_wh = 32 - std::min(__builtin_clz(canvas.getWidth()), __builtin_clz(canvas.getHeight()));
 	int msb_ps = 32 - std::max(__builtin_clz(ps[0]), __builtin_clz(ps[1])); //Most significant bit of ps
 	int shift = msb_ps - msb_wh - 1;
 	if(shift > 0){
-	  ps[0] = (ps[0]<0?-( std::abs(ps[0] - pe[0])>>shift) : (ps[0] + pe[0])>>shift) + pe[0];
-	  ps[1] = (ps[1]<0?-( std::abs(ps[1] - pe[1])>>shift) : (ps[1] + pe[1])>>shift) + pe[1];
+	  ps[0] = (ps[0]<0?-( ((int)std::abs(ps[0] - pe[0]))>>shift) : (ps[0] + pe[0])>>shift) + pe[0];
+	  ps[1] = (ps[1]<0?-( ((int)std::abs(ps[1] - pe[1]))>>shift) : (ps[1] + pe[1])>>shift) + pe[1];
 	}
 	int msb_pe = 32 - std::max(__builtin_clz(pe[0]), __builtin_clz(pe[1]));
 	shift = msb_pe - msb_wh - 1;
 	if(shift > 0){
-	  pe[0] = (pe[0]<0?-( std::abs(pe[0] - ps[0])>>shift) : (pe[0] + ps[0])>>shift) + ps[0];
-	  pe[1] = (pe[1]<0?-( std::abs(pe[1] - ps[1])>>shift) : (pe[1] + ps[1])>>shift) + ps[1];
+	  pe[0] = (pe[0]<0?-( ((int)std::abs(pe[0] - ps[0]))>>shift) : (pe[0] + ps[0])>>shift) + ps[0];
+	  pe[1] = (pe[1]<0?-( ((int)std::abs(pe[1] - ps[1]))>>shift) : (pe[1] + ps[1])>>shift) + ps[1];
 	}
       }
     }

@@ -110,7 +110,7 @@ class Winval{
 	const char* getTitle();
   void setTitle(const char* window_name);
   xcb_window_t getWindow();
-  //Display* getDisplay();
+  xcb_connection_t* getConnection();
 };
 
 #endif // INCLUDED_WINVAL
@@ -131,8 +131,14 @@ Winval::Winval(){
 }
 
 Winval::Winval(int w, int h, char** p = 0){
-  connection = xcb_connect(NULL, NULL);
-  screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
+  int screens;
+  xcb_screen_iterator_t iter;
+  connection = xcb_connect(NULL, &screens);
+  const xcb_setup_t *setup = xcb_get_setup(connection);
+  iter = xcb_setup_roots_iterator(setup);
+  while(screens-- > 0) xcb_screen_next(&iter);
+  
+  screen = iter.data;
 
   window = xcb_generate_id(connection);
 
@@ -156,24 +162,22 @@ Winval::Winval(int w, int h, char** p = 0){
 
   pmap = xcb_generate_id(connection);
   xcb_create_pixmap(connection, 24, pmap, window, w, h);
-
+  
+  xcb_map_window(connection, window);
+  
   mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND;
   values[0] = screen->black_pixel;
   values[1] = 0xFFFFFFFF;
   graphics_context = xcb_generate_id(connection);
   xcb_create_gc(connection, graphics_context, pmap, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND,
 		values);
-
-  xcb_map_window(connection, window);
-
   
   xcb_copy_area(connection, pmap, window, graphics_context,
 		0, 0, 0, 0,
 		w, h);
   xcb_flush(connection);
 
-
-  const xcb_setup_t *setup = xcb_get_setup(connection);
+  
   fmt = xcb_setup_pixmap_formats(setup);
   xcb_format_t *fmtend = fmt + xcb_setup_pixmap_formats_length(setup);
   for(; fmt != fmtend; ++fmt)
@@ -181,7 +185,8 @@ Winval::Winval(int w, int h, char** p = 0){
       //printf("fmt %p has pad %d depth %d, bpp %d\n",
       //fmt,fmt->scanline_pad, depth,bpp);
       break;
-	}
+    }
+
 
   xkb_context * xbcontext;
   xbcontext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -242,8 +247,8 @@ void Winval::waitForButtonPress(int* x, int* y){
     handleEventProperly(event);
   }while(event->response_type != XCB_BUTTON_PRESS);
 
-  pointerX = ((xcb_button_press_event_t*)event)->event_x;
-  pointerY = ((xcb_button_press_event_t*)event)->event_y;
+  *x = ((xcb_button_press_event_t*)event)->event_x;
+  *y = ((xcb_button_press_event_t*)event)->event_y;
 }
 
 void Winval::handleEventProperly(xcb_generic_event_t* event){
@@ -330,10 +335,8 @@ void Winval::drawBuffer(char* buffer, int w, int h){
   
   xcb_flush(connection);
   xcb_generic_event_t* event;
-  do{
-    event = xcb_wait_for_event(connection);
-    handleEventProperly(event);
-  }while(event->response_type != XCB_EXPOSE); // Ensure it is shown before returning
+  
+  image->base = 0; //Ensure buffer is not deleted
   xcb_image_destroy(image);
 
 }
@@ -365,6 +368,10 @@ const char* Winval::getTitle(){
 
 xcb_window_t Winval::getWindow(){
   return window;
+}
+
+xcb_connection_t* Winval::getConnection(){
+  return connection;
 }
 
 #endif // WINVAL_IMPLEMENTATION

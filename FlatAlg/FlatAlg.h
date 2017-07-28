@@ -5,8 +5,6 @@
 #include <string>
 
 struct Point2{
-private:
-  float len;
 public:
   union{
     struct{float x, y;};
@@ -22,7 +20,8 @@ public:
   
   Point2(float nx, float ny);
   void normalize();
-  float length();
+  float length() const;
+  float sqLength() const;
 
   std::string str() const;
 };
@@ -75,9 +74,6 @@ Matrix2 operator*(float f, const Matrix2& m1);
 
 
 struct Point3{
-private:
-  float len;
-  
 public:
   union{
     struct{float x, y, z;};
@@ -93,7 +89,10 @@ public:
   Point3(float nx, float ny, float nz);
 
   void normalize();
-  float length();
+  float length() const;
+  float sqLength() const;
+
+  Point3 normalized() const;
 
   std::string str() const;
 };
@@ -196,6 +195,17 @@ Matrix4 operator~(const Matrix4& m);
 
 Matrix4 operator*(const Matrix4& m1, const Matrix4& m2);
 
+namespace flatalg{
+  Matrix4 lookAt(const Vector3& position,
+		 const Vector3& target,
+		 const Vector3& up);
+  
+  Matrix4 projection(float angle_radians,
+		     float ratio,
+		     float near,
+		     float far);
+};
+ 
 struct GeneralVector{
   float* vec;
   int l;
@@ -223,7 +233,6 @@ GeneralVector operator*(const GeneralVector& g1, float f);
 GeneralVector operator*(float f, const GeneralVector& g1);
 
 GeneralVector operator/(const GeneralVector& g1, float f);
-
 
 
 struct GeneralMatrix{
@@ -282,7 +291,6 @@ GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2);
 #define FLATALG_MATRIX_ROTATION_Z 5
 
 float& Point2::operator[](int a){
-  len = -1;
   return p[a];
 }
 
@@ -291,25 +299,24 @@ float Point2::get(int a) const{
 }
 
 Point2::Point2(){
-  len = 0;
   p[0] = 0; p[1] = 0;
 }
   
 Point2::Point2(float nx, float ny){
-  len = -1;
   p[0] = nx; p[1] = ny;
 }
 
 void Point2::normalize(){
-  if(len == 1)
-    return;
   float inv = 1/length();
-  len = 1;
   x *= inv; y *= inv;
 }
 
-float Point2::length(){
-  return len>=0?len:(len = sqrt(x*x + y*y));
+float Point2::length() const{
+  return sqrt(x*x + y*y);
+}
+
+float Point2::sqLength() const {
+  return x*x + y*y;
 }
 
 std::string Point2::str() const {
@@ -437,7 +444,6 @@ Matrix2 operator*(float f, const Matrix2& m1){
 
 
 float& Point3::operator[](int a){
-  len = -1;
   return p[a];
 }
 
@@ -446,23 +452,29 @@ float Point3::get(int a) const {
 }
 
 Point3::Point3(){
-  len = 0;
   x = 0; y = 0; z = 0;
 }
 
 Point3::Point3(float nx, float ny, float nz){
-  len = -1;
   x = nx, y = ny, z = nz;
 }
 
 void Point3::normalize(){
   float invsq = 1/length();
-  len = 1;
   x*=invsq; y*=invsq; z*=invsq;
 }
 
-float Point3::length(){
-  return len>=0?len:(len=sqrt(x*x + y*y + z*z));
+float Point3::length() const {
+  return sqrt(x*x + y*y + z*z);
+}
+
+float Point3::sqLength() const{
+  return x*x + y*y + z*z;
+}
+
+Vector3 Point3::normalized() const {
+  float invsq = 1/length();
+  return Vector3(x*invsq, y*invsq, z*invsq);
 }
 
 std::string Point3::str() const {
@@ -814,8 +826,46 @@ Matrix4 operator*(const Matrix4& m1, const Matrix4& m2){
   return r;
 }
 
-
 namespace flatalg{
+  
+  // Front: negative z, right: positive x, up: positive y
+  Matrix4 lookAt(const Vector3& position,
+		 const Vector3& target,
+		 const Vector3& up){ // Assumes up is normalized
+  
+    Vector3 dir = (target - position);
+    Vector3 normDir = dir.normalized();
+    Vector3 right = normDir.cross(up);
+    if(right.sqLength() > 1e-5){
+      right = right.normalized();
+    }else{
+      right = Vector3(up.y, up.z, up.x);
+    }
+
+    Vector3 nUp = right.cross(normDir);
+
+    
+    return Matrix4 r(right.x,    right.y,    right.z,    -position.x,
+		     nUp.x,      nUp.y,      nUp.z,      -position.y,
+		     -normDir.x, -normDir.y, -normDir.z, -position.z,
+		     0.f,        0.f,        0.f,        1.f);
+  }
+
+  Matrix4 projection(float angle_radians,
+		     float invratio,
+		     float near,
+		     float far){
+    float fx = 1/tan(angle_radians/2);
+    float fy = 1/tan(angle_radians*invratio/2);
+
+    return Matrix4(fx, .0f, .0f, .0f,
+		   .0f, fy, .0f, .0f,
+		   .0f,  .0f,  -(far + near)/(far - near), -1.f,
+		   .0f, .0f, -(2*far*near)/(far - near), .0f);
+		   
+  }
+
+  
   typedef GeneralMatrix Matrix;
   typedef GeneralVector Vector;
 }
@@ -983,7 +1033,7 @@ float GeneralMatrix::det() const{
   }
 }
 
-float GeneralMatrix::_det() const{
+float GeneralMatrix::_det() const{ // Does not check for squareness
   if(w == 2 && h ==2){
     return mat[0]*mat[3] - mat[1]*mat[2];
   }else{

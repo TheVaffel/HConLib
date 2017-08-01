@@ -140,6 +140,8 @@ Vector3 operator-(const Vector3& v1, const Vector3& v2);
 
 Vector3 operator/(const Vector3& v, float f);
 
+Vector3 operator-(const Vector3& v);
+
 Vector3 operator*(const Matrix3& m, const Vector3& v);
 
 Vector3 operator*(const Vector3& v, const Matrix3& m);
@@ -617,6 +619,10 @@ Vector3 operator/(const Vector3& v, float f){
   return Vector3(v.get(0)/f, v.get(1)/f, v.get(2)/f);
 }
 
+Vector3 operator-(const Vector3& v){
+  return Vector3(-v.get(0), -v.get(1), -v.get(2));
+}
+
 Vector3 operator*(const Matrix3& m, const Vector3& v){
   return Vector3(m.get(0, 0)*v.get(0) + m.get(1, 0)*v.get(1) + m.get(2, 0)*v.get(2),
 		 m.get(0, 1)*v.get(0) + m.get(1, 1)*v.get(1) + m.get(2, 1)*v.get(2),
@@ -835,19 +841,19 @@ namespace flatalg{
   
     Vector3 dir = (target - position);
     Vector3 normDir = dir.normalized();
-    Vector3 right = normDir.cross(up);
+    Vector3 right = cross(normDir, up);
     if(right.sqLength() > 1e-5){
       right = right.normalized();
     }else{
       right = Vector3(up.y, up.z, up.x);
     }
 
-    Vector3 nUp = right.cross(normDir);
+    Vector3 nUp = cross(right, normDir);
 
     
-    return Matrix4 r(right.x,    right.y,    right.z,    -position.x,
-		     nUp.x,      nUp.y,      nUp.z,      -position.y,
-		     -normDir.x, -normDir.y, -normDir.z, -position.z,
+    return Matrix4(right.x,    right.y,    right.z,    -position*right,
+		     nUp.x,      nUp.y,      nUp.z,      -position*nUp,
+		     -normDir.x, -normDir.y, -normDir.z, position*normDir,
 		     0.f,        0.f,        0.f,        1.f);
   }
 
@@ -856,12 +862,12 @@ namespace flatalg{
 		     float near,
 		     float far){
     float fx = 1/tan(angle_radians/2);
-    float fy = 1/tan(angle_radians*invratio/2);
+    float fy = 1/(invratio*tan(angle_radians/2));
 
     return Matrix4(fx, .0f, .0f, .0f,
 		   .0f, fy, .0f, .0f,
-		   .0f,  .0f,  -(far + near)/(far - near), -1.f,
-		   .0f, .0f, -(2*far*near)/(far - near), .0f);
+		   .0f,  .0f,  -(far + near)/(far - near), -(2*far*near)/(far - near),
+		   .0f, .0f, -1.0f, .0f);
 		   
   }
 

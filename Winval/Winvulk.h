@@ -18,12 +18,7 @@
 #include "vulkan/glsl_util.h"
 #include "vulkan/cube_data.h"
 
-
-#define GLM_FORCE_RADIANS
-#include "glm/glm.hpp"
-#include <glm/gtc/matrix_transform.hpp>
-
-#define DEBUG
+//#define DEBUG
 
 struct winvulk_vulkan_state {
   VkInstance instance;
@@ -670,43 +665,26 @@ VkResult winvulk_init_depth_buffer(winvulk_vulkan_state* vs){
 }
 
 VkResult winvulk_init_uniform_buffer(winvulk_vulkan_state* vs){
-  /*Matrix4 projection = flatalg::projection(45.f/180.0f*M_PI, 9.0f/16.0f, 0.1f, 100.0f);
+  Matrix4 projection = flatalg::projection(45.f/180.0f*M_PI, 9.0f/16.0f, 0.1f, 100.0f);
 
-  Matrix4 view = Matrix4(1.f, 0.f, 0.f, 0.f,
-			 0.f, 1.f, 0.f, 0.f,
-			 .0f, .0f, 1.f, 2.f,
-			 .0f, .0f, .0f, 1.0f);
-  Matrix4 model = Matrix4(1.f, 0.f, 0.f, -1.f,
-			  0.f, 1.f, 0.f, 1.f,
-			  0.f, 0.f, 1.f, -15.f,
-			  0.f, 0.f, 0.f, 1.f);
+  Matrix4 view = flatalg::lookAt(Vector3(-5, 3, -10),
+			Vector3(0, 0, 0),
+			Vector3(0, 1, 0));
+  Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
   Matrix4 clip = Matrix4(1.f, 0.f, 0.f, 0.f,
 			 0.f, -1.f, 0.f, 0.f,
-			 0.f, 0.f, 0.5f, 0.f,
-			 0.f, 0.f, 0.5f, 1.f);*/
-  float fov = glm::radians(45.0f);
-  if (vs->width > vs->height) {
-    fov *= static_cast<float>(vs->height) / static_cast<float>(vs->width);
-  }
-  glm::mat4 Projection = glm::perspective(fov, static_cast<float>(vs->width) / static_cast<float>(vs->height), 0.1f, 100.0f);
-  glm::mat4 View = glm::lookAt(glm::vec3(-5, 3, -10),  // Camera is at (-5,3,-10), in World Space
-			       glm::vec3(0, 0, 0),     // and looks at the origin
-			       glm::vec3(0, -1, 0)     // Head is up (set to 0,-1,0 to look upside-down)
-			       );
-  glm::mat4 Model = glm::mat4(1.0f);
-  // Vulkan clip space has inverted Y and half Z.
-  glm::mat4 Clip = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.5f, 1.0f);
+			 0.f, 0.f, 0.5f, 0.5f,
+			 0.f, 0.f, 0.0f, 1.f);
 
-  glm::mat4 mvp = Clip * Projection * View * Model;
-
-  //Matrix4 mvp = clip*projection*view*model;
+  Matrix4 mvp = clip*projection*view*model;
+  Matrix4 usableMvp = ~mvp;
   //printf("MVP = %s\n", mvp.str().c_str());
 
   VkBufferCreateInfo buf_info = {};
   buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   buf_info.pNext = NULL;
   buf_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-  buf_info.size = sizeof(mvp);
+  buf_info.size = sizeof(usableMvp);
   buf_info.queueFamilyIndexCount = 0;
   buf_info.pQueueFamilyIndices = NULL;
   buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -747,7 +725,7 @@ VkResult winvulk_init_uniform_buffer(winvulk_vulkan_state* vs){
     exit(0);
   }
 
-  memcpy(pData, &mvp, sizeof(mvp));
+  memcpy(pData, &usableMvp, sizeof(usableMvp));
 
   vkUnmapMemory(vs->device, vs->uniform_memory);
 
@@ -758,7 +736,7 @@ VkResult winvulk_init_uniform_buffer(winvulk_vulkan_state* vs){
 
   vs->uniform_buffer_info.buffer = vs->uniform_buffer;
   vs->uniform_buffer_info.offset = 0;
-  vs->uniform_buffer_info.range = sizeof(mvp);
+  vs->uniform_buffer_info.range = sizeof(usableMvp);
 }
 
 VkResult winvulk_init_descriptor_set_layouts(winvulk_vulkan_state* vs){

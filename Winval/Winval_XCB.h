@@ -109,6 +109,8 @@ class Winval{
 	void enableAutoRepeat(bool enable);
 	const char* getTitle();
   void setTitle(const char* window_name);
+  int getWidth();
+  int getHeight();
   xcb_window_t getWindow();
   xcb_connection_t* getConnection();
 };
@@ -130,7 +132,7 @@ Winval::Winval(){
 
 }
 
-Winval::Winval(int w, int h, char** p = 0){
+Winval::Winval(int width, int height, char** p = 0){
   int screens;
   xcb_screen_iterator_t iter;
   connection = xcb_connect(NULL, &screens);
@@ -154,16 +156,21 @@ Winval::Winval(int w, int h, char** p = 0){
 		    window,
 		    screen->root,
 		    50, 50,
-		    w, h,
+		    width, height,
 		    1,
 		    XCB_WINDOW_CLASS_INPUT_OUTPUT,
 		    screen->root_visual,
 		    mask, values);
 
-  pmap = xcb_generate_id(connection);
-  xcb_create_pixmap(connection, 24, pmap, window, w, h);
+  w = width;
+  h = height;
+  
   
   xcb_map_window(connection, window);
+
+  
+  pmap = xcb_generate_id(connection);
+  xcb_create_pixmap(connection, 24, pmap, window, w, h);
   
   mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND;
   values[0] = screen->black_pixel;
@@ -364,6 +371,14 @@ void Winval::enableAutoRepeat(bool enable){
 
 const char* Winval::getTitle(){
   return window_title.c_str();
+}
+
+int Winval::getWidth(){
+  return w;
+}
+
+int Winval::getHeight(){
+  return h;
 }
 
 xcb_window_t Winval::getWindow(){

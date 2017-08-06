@@ -146,7 +146,7 @@ Winval::Winval(int width, int height, char** p = 0){
 
   uint32_t mask, values[2];
   mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-  values[0] = screen->white_pixel;
+  values[0] = screen->black_pixel;
   values[1] = XCB_EVENT_MASK_EXPOSURE       | XCB_EVENT_MASK_BUTTON_PRESS   |
               XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |
               XCB_EVENT_MASK_KEY_PRESS      | XCB_EVENT_MASK_KEY_RELEASE;
@@ -165,10 +165,21 @@ Winval::Winval(int width, int height, char** p = 0){
   w = width;
   h = height;
   
+  /* Magic code that will send notification when window is destroyed */
+  xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+  xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie, 0);
+
+  xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
+  xcb_intern_atom_reply_t* atom_wm_delete_window = xcb_intern_atom_reply(connection, cookie2, 0);
+
+  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1,
+		      &(*atom_wm_delete_window).atom);
+  free(reply);
   
   xcb_map_window(connection, window);
 
   
+#ifndef WINVAL_VULKAN
   pmap = xcb_generate_id(connection);
   xcb_create_pixmap(connection, 24, pmap, window, w, h);
   
@@ -193,7 +204,7 @@ Winval::Winval(int width, int height, char** p = 0){
       //fmt,fmt->scanline_pad, depth,bpp);
       break;
     }
-
+#endif
 
   xkb_context * xbcontext;
   xbcontext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -313,7 +324,7 @@ bool Winval::isKeyPressed(int i){
 
 void Winval::flushEvents(){
   xcb_generic_event_t* event;
-  while(event = xcb_poll_for_event(connection)){
+  while((event = xcb_poll_for_event(connection))){
     handleEventProperly(event);
   }
 }
@@ -341,7 +352,6 @@ void Winval::drawBuffer(char* buffer, int w, int h){
   xcb_copy_area(connection, pmap, window, graphics_context, 0, 0, 0, 0, w, h);
   
   xcb_flush(connection);
-  xcb_generic_event_t* event;
   
   image->base = 0; //Ensure buffer is not deleted
   xcb_image_destroy(image);

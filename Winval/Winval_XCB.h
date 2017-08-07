@@ -10,7 +10,7 @@
 
 #ifdef WINVAL_VULKAN
 class Winval;
-#include "Winvulk.h"
+#include "Wingine.h"
 #endif //WINVAL_VULKAN
 
 #define WK_SPACE XKB_KEY_space
@@ -78,11 +78,10 @@ class Winval{
   xcb_format_t* fmt;
   
   xkb_state * kstate;
-  
-  //KeySym *ks;
 
+    
 #ifdef WINVAL_VULKAN
-  winvulk_vulkan_state vk_state;
+  Wingine wingine;
 #endif
   
  public:
@@ -122,7 +121,7 @@ class Winval{
 #ifdef WINVAL_VULKAN
 
 #define WINVAL_VULKAN_IMPLEMENTATION
-#include "Winvulk.h"
+#include "Wingine.h"
 
 #endif //WINVAL_VULKAN
 
@@ -231,18 +230,15 @@ Winval::Winval(int width, int height, char** p = 0){
   kstate = xkb_x11_state_new_from_device(keymap, connection, keyboard_id);
 
   if(!kstate) printf("Could not initialize xkb_state\n");
+
   
-  
+
 #ifdef WINVAL_VULKAN
-  winvulk_init_vulkan(&vk_state, this);
+  wingine.init_vulkan(this);
 #endif
-  
 }
 
 Winval::~Winval(){
-#ifdef WINVAL_VULKAN
-  winvulk_destroy_vulkan(&vk_state);
-#endif
   xcb_free_pixmap(connection, pmap);
   xcb_disconnect(connection);
 

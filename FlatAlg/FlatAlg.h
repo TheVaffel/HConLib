@@ -852,9 +852,9 @@ namespace flatalg{
 
     
     return Matrix4(right.x,    right.y,    right.z,    -position*right,
-		     nUp.x,      nUp.y,      nUp.z,      -position*nUp,
-		     -normDir.x, -normDir.y, -normDir.z, position*normDir,
-		     0.f,        0.f,        0.f,        1.f);
+		   nUp.x,      nUp.y,      nUp.z,      -position*nUp,
+		   -normDir.x, -normDir.y, -normDir.z, position*normDir,
+		   0.f,        0.f,        0.f,        1.f);
   }
 
   Matrix4 projection(float angle_radians,

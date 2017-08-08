@@ -85,6 +85,11 @@ class Winval{
 #endif
   
  public:
+
+#ifdef WINVAL_VULKAN
+  Wingine* getWingine();
+#endif
+  
   Winval(int w, int h, char** pointer);
   Winval();
   ~Winval();
@@ -234,7 +239,7 @@ Winval::Winval(int width, int height, char** p = 0){
   
 
 #ifdef WINVAL_VULKAN
-  wingine.init_vulkan(this);
+  wingine.initVulkan(this);
 #endif
 }
 
@@ -394,6 +399,12 @@ xcb_window_t Winval::getWindow(){
 xcb_connection_t* Winval::getConnection(){
   return connection;
 }
+
+#ifdef WINVAL_VULKAN
+Wingine* Winval::getWingine(){
+  return &wingine;
+}
+#endif
 
 #endif // WINVAL_IMPLEMENTATION
 

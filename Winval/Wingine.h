@@ -38,10 +38,15 @@
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
 
-
 struct WingineBuffer{
   VkBuffer buffer;
   VkDeviceMemory memory;
+};
+
+
+struct WingineUniform{
+  WingineBuffer buffer;
+  VkDescriptorBufferInfo bufferInfo;
 };
 
 struct WinginePipelineSetup{
@@ -60,6 +65,28 @@ struct WinginePipelineSetup{
   VkPipelineMultisampleStateCreateInfo ms;
 };
 
+
+class WingineCamera{
+  const Matrix4 clip = {1.f, 0.f, 0.f, 0.f,
+			0.f, -1.f, 0.f, 0.f,
+			0.f, 0.f, 0.5f, 0.5f,
+			0.f, 0.f, 0.0f, 1.f};
+  Matrix4 projection, view, total;
+  bool altered;
+ public:
+  
+  WingineCamera(float horizontalFOVRadians = 45.f/180.f*M_PI, float invAspect = 9.0f/16.0f, float near = 0.1f, float far = 100.0f);
+
+  void setPosition(const Vector3& v);
+  
+  void setLookAt(const Vector3& pos,
+		 const Vector3& target,
+		 const Vector3& up);
+
+  Matrix4 getRenderMatrix();
+
+};
+
 class Wingine{
 
   VkInstance instance;
@@ -72,7 +99,6 @@ class Wingine{
   uint queue_family_count;
   uint graphics_queue_family_index;
   uint present_queue_family_index;
-  
   VkCommandPool cmd_pool;
   VkCommandBuffer cmd_buffer;
   VkSurfaceKHR surface;
@@ -97,7 +123,7 @@ class Wingine{
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_memory;
   VkDescriptorBufferInfo uniform_buffer_info;
-
+  
   VkDescriptorSetLayout* desc_layout;
   VkPipelineLayout pipeline_layout;
 
@@ -112,10 +138,13 @@ class Wingine{
   VkDeviceMemory vertex_buffer_memory;
   VkDescriptorBufferInfo vertex_buffer_info;
 
-  VkPipeline pipeline;
+  VkPipeline color_pipeline;
   VkViewport viewport;
   VkRect2D scissor;
   VkPipelineCache pipeline_cache;
+  
+  WingineBuffer VPCUniform;
+  WingineBuffer ModelTransformUniform;
   
   std::vector<VkLayerProperties> instance_layer_properties;
   std::vector<const char*> instance_extension_names;
@@ -135,7 +164,7 @@ class Wingine{
   VkResult init_command_buffers();
   VkResult init_swapchain();
   VkResult init_depth_buffer();
-  VkResult init_uniform_buffer();
+  void init_uniform_buffer();
   VkResult init_descriptor_set_layouts();
   VkResult init_descriptor_pool();
   VkResult init_descriptor_set();
@@ -170,18 +199,24 @@ class Wingine{
 
   void printError(VkResult res);
 
-  WingineBuffer createBuffer(uint, uint);
-  VkResult setBuffer(const WingineBuffer&, const void*, uint);
   void pipeline_setup_color_renderer( WinginePipelineSetup* setup);
   void create_pipeline_color_renderer_single_buffer(VkPipeline*);
   void create_pipeline_color_renderer(VkPipeline*);
   
   void updateMVP(const Matrix4&);
-  void render(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&);
-  void render_loop();
+  void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
+
  public:
+
+  WingineBuffer createBuffer(uint, uint);
+  VkResult setBuffer(const WingineBuffer&, const void*, uint);
+
+  WingineUniform createUniform(uint size);
+  void setUniform(const WingineUniform&, void*, uint);
   
-  void init_vulkan( Winval*);
+  void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
+  void setCamera(WingineCamera& camera);
+  void initVulkan( Winval*);
   
   Wingine(){
   }
@@ -214,6 +249,36 @@ class ColorModel{
 
 #define FLATALG_IMPLEMENTATION
 #include <FlatAlg/FlatAlg.h>
+
+
+WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
+  projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
+  view = Matrix4(FLATALG_MATRIX_IDENTITY);
+  altered = true;
+}
+
+void WingineCamera::setPosition(const Vector3& v){
+  view[0][3] = -Vector3(view[0][0], view[0][1], view[0][2])*v;
+  view[1][3] = -Vector3(view[1][0], view[1][1], view[1][2])*v;
+  view[2][3] = -Vector3(view[2][0], view[2][1], view[2][2])*v;
+  altered = true;
+}
+  
+void WingineCamera::setLookAt(const Vector3& pos,
+			      const Vector3& target,
+			      const Vector3& up){
+  view = flatalg::lookAt(pos, target, up);
+  altered = true;
+}
+
+Matrix4 WingineCamera::getRenderMatrix(){
+  if(altered){
+    total = clip*projection*view;
+    altered = false;
+  }
+
+  return ~total;
+}
 
 void Wingine::printError(VkResult res){
   if(res == VK_ERROR_OUT_OF_HOST_MEMORY){
@@ -735,12 +800,12 @@ VkResult Wingine::init_depth_buffer(){
   
 }
 
-VkResult Wingine::init_uniform_buffer(){
+void Wingine::init_uniform_buffer(){
   Matrix4 projection = flatalg::projection(45.f/180.0f*M_PI, 9.0f/16.0f, 0.1f, 100.0f);
 
   Matrix4 view = flatalg::lookAt(Vector3(-5, 3, -10),
-			Vector3(0, 0, 0),
-			Vector3(0, 1, 0));
+				 Vector3(0, 0, 0),
+				 Vector3(0, 1, 0));
   Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
   Matrix4 clip = Matrix4(1.f, 0.f, 0.f, 0.f,
 			 0.f, -1.f, 0.f, 0.f,
@@ -750,66 +815,19 @@ VkResult Wingine::init_uniform_buffer(){
   Matrix4 mvp = clip*projection*view*model;
   Matrix4 usableMvp = ~mvp;
   //printf("MVP = %s\n", mvp.str().c_str());
-
-  VkBufferCreateInfo buf_info = {};
-  buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  buf_info.pNext = NULL;
-  buf_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-  buf_info.size = sizeof(usableMvp);
-  buf_info.queueFamilyIndexCount = 0;
-  buf_info.pQueueFamilyIndices = NULL;
-  buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  buf_info.flags = 0;
-  VkResult res = vkCreateBuffer(device, &buf_info, NULL, &uniform_buffer);
-
-  if(res != VK_SUCCESS){
-    printf("Could not create uniform buffer\n");
-    exit(0);
-  }
-
-  VkMemoryRequirements mem_reqs;
-  vkGetBufferMemoryRequirements(device, uniform_buffer, &mem_reqs);
-
-  VkMemoryAllocateInfo alloc_info = {};
-  alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  alloc_info.pNext = NULL;
-  alloc_info.memoryTypeIndex = 0;
-
-  alloc_info.allocationSize = mem_reqs.size;
-  alloc_info.memoryTypeIndex = get_memory_type_index(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  if(alloc_info.memoryTypeIndex < 0){
-    printf("Could not find proper memory\n");
-    exit(0);
-  }
-
-  res = vkAllocateMemory(device, &alloc_info, NULL, &uniform_memory);
-  if(res != VK_SUCCESS){
-    printf("Could not allocate memory\n");
-    exit(0);
-  }
-
-  unsigned char *pData;
-  res = vkMapMemory(device, uniform_memory, 0, mem_reqs.size, 0, (void**)&pData);
-  if(res != VK_SUCCESS){
-    printf("Could not map memory\n");
-    exit(0);
-  }
-
-  memcpy(pData, &usableMvp, sizeof(usableMvp));
-
-  vkUnmapMemory(device, uniform_memory);
-
-  res = vkBindBufferMemory(device, uniform_buffer, uniform_memory, 0);
-  if(res != VK_SUCCESS){
-    printf("Could not bind buffer and memory\n");
-  }
+  
+  VPCUniform = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 4*4*sizeof(float));
+  setBuffer(VPCUniform, &usableMvp, 4*4*sizeof(float));
+  
+  uniform_buffer = VPCUniform.buffer;
+  uniform_memory = VPCUniform.memory;
 
   uniform_buffer_info.buffer = uniform_buffer;
   uniform_buffer_info.offset = 0;
-  uniform_buffer_info.range = sizeof(usableMvp);
+  uniform_buffer_info.range = 4*4*sizeof(float);
 
-  return res;
+  ModelTransformUniform = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 4*4*sizeof(float));
+  setBuffer(ModelTransformUniform, &model, 4*4*sizeof(float));
 }
 
 VkResult Wingine::init_descriptor_set_layouts(){
@@ -964,89 +982,89 @@ VkResult Wingine::init_render_pass(){
 
 VkResult Wingine::init_shaders(){
   static const char *vertShaderText =
-        "#version 400\n"
-        "#extension GL_ARB_separate_shader_objects : enable\n"
-        "#extension GL_ARB_shading_language_420pack : enable\n"
-        "layout (std140, binding = 0) uniform bufferVals {\n"
-        "    mat4 mvp;\n"
-        "} myBufferVals;\n"
-        "layout (location = 0) in vec4 pos;\n"
-        "layout (location = 1) in vec4 inColor;\n"
-        "layout (location = 0) out vec4 outColor;\n"
-        "out gl_PerVertex { \n"
-        "    vec4 gl_Position;\n"
-        "};\n"
-        "void main() {\n"
-        "   outColor = inColor;\n"
-        "   gl_Position = myBufferVals.mvp * pos;\n"
-        "}\n";
+    "#version 400\n"
+    "#extension GL_ARB_separate_shader_objects : enable\n"
+    "#extension GL_ARB_shading_language_420pack : enable\n"
+    "layout (std140, binding = 0) uniform bufferVals {\n"
+    "    mat4 mvp;\n"
+    "} myBufferVals;\n"
+    "layout (location = 0) in vec4 pos;\n"
+    "layout (location = 1) in vec4 inColor;\n"
+    "layout (location = 0) out vec4 outColor;\n"
+    "out gl_PerVertex { \n"
+    "    vec4 gl_Position;\n"
+    "};\n"
+    "void main() {\n"
+    "   outColor = inColor;\n"
+    "   gl_Position = myBufferVals.mvp * pos;\n"
+    "}\n";
 
-    static const char *fragShaderText =
-        "#version 400\n"
-        "#extension GL_ARB_separate_shader_objects : enable\n"
-        "#extension GL_ARB_shading_language_420pack : enable\n"
-        "layout (location = 0) in vec4 color;\n"
-        "layout (location = 0) out vec4 outColor;\n"
-        "void main() {\n"
-        "  outColor = color;\n"
-        "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
-        "}\n";
+  static const char *fragShaderText =
+    "#version 400\n"
+    "#extension GL_ARB_separate_shader_objects : enable\n"
+    "#extension GL_ARB_shading_language_420pack : enable\n"
+    "layout (location = 0) in vec4 color;\n"
+    "layout (location = 0) out vec4 outColor;\n"
+    "void main() {\n"
+    "  outColor = color;\n"
+    "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
+    "}\n";
 
-    std::vector<unsigned int> vtx_spv;
-    shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStages[0].pNext = NULL;
-    shaderStages[0].pSpecializationInfo = NULL;
-    shaderStages[0].flags = 0;
-    shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-    shaderStages[0].pName = "main";
+  std::vector<unsigned int> vtx_spv;
+  shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStages[0].pNext = NULL;
+  shaderStages[0].pSpecializationInfo = NULL;
+  shaderStages[0].flags = 0;
+  shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+  shaderStages[0].pName = "main";
 
-    glslang::InitializeProcess();
-    bool retVal = GLSLtoSPV(VK_SHADER_STAGE_VERTEX_BIT, vertShaderText, vtx_spv);
-    if(!retVal){
-      printf("Could not compile vertex shader\n");
-      exit(0);
-    }
+  glslang::InitializeProcess();
+  bool retVal = GLSLtoSPV(VK_SHADER_STAGE_VERTEX_BIT, vertShaderText, vtx_spv);
+  if(!retVal){
+    printf("Could not compile vertex shader\n");
+    exit(0);
+  }
 
-    VkShaderModuleCreateInfo moduleCreateInfo;
-    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.pNext = NULL;
-    moduleCreateInfo.flags = 0;
-    moduleCreateInfo.codeSize = vtx_spv.size() * sizeof(unsigned int);
-    moduleCreateInfo.pCode = vtx_spv.data();
-    VkResult res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[0].module);
-    if(res != VK_SUCCESS){
-      printf("Could not create vertex shadermodule\n");
-      exit(0);
-    }
+  VkShaderModuleCreateInfo moduleCreateInfo;
+  moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  moduleCreateInfo.pNext = NULL;
+  moduleCreateInfo.flags = 0;
+  moduleCreateInfo.codeSize = vtx_spv.size() * sizeof(unsigned int);
+  moduleCreateInfo.pCode = vtx_spv.data();
+  VkResult res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[0].module);
+  if(res != VK_SUCCESS){
+    printf("Could not create vertex shadermodule\n");
+    exit(0);
+  }
 
-    std::vector<unsigned int> frag_spv;
-    shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStages[1].pNext = NULL;
-    shaderStages[1].pSpecializationInfo = NULL;
-    shaderStages[1].flags = 0;
-    shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    shaderStages[1].pName = "main";
+  std::vector<unsigned int> frag_spv;
+  shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStages[1].pNext = NULL;
+  shaderStages[1].pSpecializationInfo = NULL;
+  shaderStages[1].flags = 0;
+  shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  shaderStages[1].pName = "main";
 
-    retVal = GLSLtoSPV(VK_SHADER_STAGE_FRAGMENT_BIT, fragShaderText, frag_spv);
-    if(!retVal){
-      printf("Could not compile fragment shader\n");
-      exit(0);
-    }
+  retVal = GLSLtoSPV(VK_SHADER_STAGE_FRAGMENT_BIT, fragShaderText, frag_spv);
+  if(!retVal){
+    printf("Could not compile fragment shader\n");
+    exit(0);
+  }
 
-    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.pNext = NULL;
-    moduleCreateInfo.flags = 0;
-    moduleCreateInfo.codeSize = frag_spv.size() * sizeof(unsigned int);
-    moduleCreateInfo.pCode = frag_spv.data();
-    res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[1].module);
-    if(res != VK_SUCCESS){
-      printf("Could not create fragment shader module\n");
-      exit(0);
-    }
+  moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  moduleCreateInfo.pNext = NULL;
+  moduleCreateInfo.flags = 0;
+  moduleCreateInfo.codeSize = frag_spv.size() * sizeof(unsigned int);
+  moduleCreateInfo.pCode = frag_spv.data();
+  res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[1].module);
+  if(res != VK_SUCCESS){
+    printf("Could not create fragment shader module\n");
+    exit(0);
+  }
 
-    glslang::FinalizeProcess();
+  glslang::FinalizeProcess();
 
-    return res;
+  return res;
 }
 
 VkResult Wingine::init_framebuffers(){
@@ -1150,8 +1168,8 @@ void Wingine::destroy_render_pass(){
 }
 
 void Wingine::destroy_shaders(){
-    vkDestroyShaderModule(device, shaderStages[0].module, NULL);
-    vkDestroyShaderModule(device, shaderStages[1].module, NULL);
+  vkDestroyShaderModule(device, shaderStages[0].module, NULL);
+  vkDestroyShaderModule(device, shaderStages[1].module, NULL);
 }
 
 void Wingine::destroy_framebuffers(){
@@ -1168,14 +1186,14 @@ void Wingine::destroy_vertex_buffer(){
 }
 
 void Wingine::destroy_pipeline(){
-  vkDestroyPipeline(device, pipeline, NULL);
+  vkDestroyPipeline(device, color_pipeline, NULL);
 }
 
 void Wingine::destroy_pipeline_cache(){
   vkDestroyPipelineCache(device, pipeline_cache, NULL);
 }
 
-void Wingine::updateMVP(const Matrix4& nmvp){
+/*void Wingine::updateMVP(const Matrix4& nmvp){
   unsigned char *pData;
   
   VkMemoryRequirements mem_reqs;
@@ -1183,13 +1201,18 @@ void Wingine::updateMVP(const Matrix4& nmvp){
   
   VkResult res = vkMapMemory(device, uniform_memory, 0, mem_reqs.size, 0, (void**)&pData);
   if(res != VK_SUCCESS){
-    printf("Could not map memory\n");
-    exit(0);
+  printf("Could not map memory\n");
+  exit(0);
   }
 
   memcpy(pData, &nmvp, sizeof(nmvp));
 
   vkUnmapMemory(device, uniform_memory);
+  }*/
+
+void Wingine::setCamera(WingineCamera& camera){
+  Matrix4 VPC = camera.getRenderMatrix();
+  setBuffer(VPCUniform, (void*)&VPC, 4*4*sizeof(float));
 }
 
 
@@ -1258,6 +1281,20 @@ VkResult Wingine::setBuffer( const WingineBuffer& buffer, const void* data, uint
   return res;
 }
 
+WingineUniform Wingine::createUniform(uint size){
+  WingineUniform uniform;
+  uniform.buffer = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
+  uniform.bufferInfo.buffer = uniform.buffer.buffer;
+  uniform.bufferInfo.offset = 0;
+  uniform.bufferInfo.range = size;
+
+  return uniform;
+}
+
+void Wingine::setUniform(const WingineUniform& uniform, void* data, uint size){
+  setBuffer(uniform.buffer, data, size);
+}
+
 void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
   
   memset(setup->dynamicStateEnables, 0, sizeof(setup->dynamicStateEnables));
@@ -1318,13 +1355,13 @@ void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
   setup->cb.flags = 0;
 
   setup->att_state[0].colorWriteMask = 0xf;
-  setup->att_state[0].blendEnable = VK_FALSE;
+  setup->att_state[0].blendEnable = VK_TRUE;
   setup->att_state[0].alphaBlendOp = VK_BLEND_OP_ADD;
   setup->att_state[0].colorBlendOp = VK_BLEND_OP_ADD;
-  setup->att_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-  setup->att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+  setup->att_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+  setup->att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
   setup->att_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-  setup->att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+  setup->att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
   
   setup->cb.attachmentCount = 1;
   setup->cb.pAttachments = setup->att_state;
@@ -1425,9 +1462,49 @@ void Wingine::create_pipeline_color_renderer_single_buffer( VkPipeline* pipeline
   }
 }
 
-
-void Wingine::render( VkPipeline pipeline, const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer){
+void Wingine::initVulkan(Winval* win){
+  init_instance( win);
+  find_device();
+  init_surface( win);
+  init_device();
+  init_device_queue();
+  init_swapchain();
+  init_command_buffers();
+  init_depth_buffer();
+  init_uniform_buffer();
+  init_descriptor_set_layouts();
   
+  init_render_pass();
+  init_shaders();
+  init_framebuffers();
+  init_vertex_buffer();
+  init_descriptor_pool();
+  init_descriptor_set();
+  init_pipeline_cache();
+  
+  create_pipeline_color_renderer( &color_pipeline);
+}
+
+void Wingine::destroy_vulkan(){
+  destroy_pipeline();
+  destroy_pipeline_cache();
+  destroy_vertex_buffer();
+  destroy_framebuffers();
+  destroy_shaders();
+  destroy_render_pass();
+  destroy_descriptor_set();
+  destroy_descriptor_set_layouts();
+  destroy_uniform_buffer();
+  destroy_depth_buffer();
+  destroy_swapchain();
+  destroy_command_buffers();
+  destroy_device();
+  destroy_instance();
+}
+
+void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model){
+
+  setBuffer(ModelTransformUniform, &model, 4*4*sizeof(float));
 
   VkCommandBufferBeginInfo cmd_buf_info = {};
   cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1599,96 +1676,8 @@ void Wingine::render( VkPipeline pipeline, const WingineBuffer& vertexBuffer, co
   vkDestroySemaphore(device, imageAcquiredSemaphore, NULL);
 }
 
-void Wingine::render_loop(){
-  Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01);
-  //rotation[1][3] = 0.01;
-    
-  Matrix4 projection = flatalg::projection(45.f/180.0f*M_PI, 9.0f/16.0f, 0.1f, 100.0f);
-
-  Matrix4 view = flatalg::lookAt(Vector3(-5, 3, -10),
-				 Vector3(0, 0, 0),
-				 Vector3(0, 1, 0));
-  Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
-  Matrix4 clip = Matrix4(1.f, 0.f, 0.f, 0.f,
-			 0.f, -1.f, 0.f, 0.f,
-			 0.f, 0.f, 0.5f, 0.5f,
-			 0.f, 0.f, 0.0f, 1.f);
-
-  WingineBuffer vertexBuffer = createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-
-  setBuffer( vertexBuffer, test_vertices, 3*4*sizeof(float));
-
-  WingineBuffer colorBuffer = createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-
-  setBuffer( colorBuffer, test_colors, 3*4*sizeof(float));
-
-  WingineBuffer indexBuffer = createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(float));
-
-  setBuffer( indexBuffer, test_indices, 2*3*sizeof(uint32_t));
-
-  VkPipeline pipeline;
-  create_pipeline_color_renderer( &pipeline);
-  //create_pipeline_color_renderer_single_buffer( &pipeline);
-  
-  clock_t start_time = clock();
-  Matrix4 mvp = clip*projection*view*model;
-  int count = 0;
-  while(1){
-    model = rotation*model;
-    mvp = clip*projection*view*model;
-    Matrix4 usableMvp = ~mvp;
-    updateMVP(usableMvp);
-    render( pipeline, vertexBuffer, colorBuffer, indexBuffer);
-    count++;
-    clock_t current_time = clock();
-
-    long long int diff = current_time - start_time;
-    long long w = 1000000/60 - 1000000*diff/CLOCKS_PER_SEC;
-    if(w > 0){
-      usleep(1000000/60 - 1000000*diff/CLOCKS_PER_SEC);
-    }
-    start_time = current_time;
-  }
-}
-
-void Wingine::init_vulkan(Winval* win){
-  init_instance( win);
-  find_device();
-  init_surface( win);
-  init_device();
-  init_device_queue();
-  init_swapchain();
-  init_command_buffers();
-  init_depth_buffer();
-  init_uniform_buffer();
-  init_descriptor_set_layouts();
-  
-  init_render_pass();
-  init_shaders();
-  init_framebuffers();
-  init_vertex_buffer();
-  init_descriptor_pool();
-  init_descriptor_set();
-  init_pipeline_cache();
-  
-  render_loop();
-}
-
-void Wingine::destroy_vulkan(){
-  destroy_pipeline();
-  destroy_pipeline_cache();
-  destroy_vertex_buffer();
-  destroy_framebuffers();
-  destroy_shaders();
-  destroy_render_pass();
-  destroy_descriptor_set();
-  destroy_descriptor_set_layouts();
-  destroy_uniform_buffer();
-  destroy_depth_buffer();
-  destroy_swapchain();
-  destroy_command_buffers();
-  destroy_device();
-  destroy_instance();
+void Wingine::renderColor(const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model){
+  render_generic(color_pipeline, vertexBuffer, colorBuffer, indexBuffer, model);
 }
 
 

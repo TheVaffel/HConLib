@@ -1,6 +1,5 @@
-#define WINVAL_IMPLEMENTATION
-#define WINVAL_VULKAN
 #include <Winval/Winval_XCB.h>
+#include <Wingine/Wingine.h>
 #include <iostream>
 
 using namespace std;
@@ -24,19 +23,18 @@ static const uint32_t _test_indices[] =
 int main(){
   
   Winval win(1280, 720);
-  Wingine* wg = win.getWingine();
-
+  Wingine wg(win);
   Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01);
   Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
 
-  WingineBuffer vertexBuffer = wg->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg->setBuffer( vertexBuffer, _test_vertices, 3*4*sizeof(float));
+  WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
+  wg.setBuffer( vertexBuffer, _test_vertices, 3*4*sizeof(float));
 
-  WingineBuffer colorBuffer = wg->createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg->setBuffer( colorBuffer, _test_colors, 3*4*sizeof(float));
+  WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
+  wg.setBuffer( colorBuffer, _test_colors, 3*4*sizeof(float));
 
-  WingineBuffer indexBuffer = wg->createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg->setBuffer( indexBuffer, _test_indices, 2*3*sizeof(uint32_t));
+  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(float));
+  wg.setBuffer( indexBuffer, _test_indices, 2*3*sizeof(uint32_t));
   
   clock_t start_time = clock();
   int count = 0;
@@ -46,14 +44,14 @@ int main(){
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
   
-  wg->setCamera(cam);
+  wg.setCamera(cam);
   while(1){
     cam.setPosition(camPos + 0.2*camPos*sin(0.01*count));
-    wg->setCamera(cam);
+    wg.setCamera(cam);
     model = rotation*model;
     //Matrix4 usableMvp = ~mvp;
     //updateMVP(usableMvp);
-    wg->renderColor(vertexBuffer, colorBuffer, indexBuffer, model);
+    wg.renderColor(vertexBuffer, colorBuffer, indexBuffer, model);
     count++;
     clock_t current_time = clock();
 
@@ -64,7 +62,7 @@ int main(){
     }
     start_time = current_time;
     
-    win.waitForKey();
+    //win.waitForKey();
   }
 
   return 0;

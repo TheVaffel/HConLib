@@ -5,4 +5,3 @@ cd build
 cmake ..
 make 
 cd ..
-rm -r build

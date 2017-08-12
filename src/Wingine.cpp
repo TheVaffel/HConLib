@@ -1,5 +1,5 @@
 #include <Wingine.h>
-#include <external/vulkan/glsl_util.h>
+#include <external/glsl_util.h>
 
 #include <FlatAlg.h>
 
@@ -1306,7 +1306,7 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
     printf("Could not create semaphore\n");
     exit(0);
   }
-
+  
   res = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE,
 			      &current_buffer);
 

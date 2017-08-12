@@ -1,5 +1,5 @@
-#include "vulkan.h"
-#include "SPIRV/GlslangToSpv.h"
+#include "vulkan/vulkan.h"
+#include "vulkan/SPIRV/GlslangToSpv.h"
 
 //// Shamelessly copied from LunarG's Vulkan tutorial
 

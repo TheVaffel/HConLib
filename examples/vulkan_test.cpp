@@ -58,8 +58,9 @@ int main(){
     //Matrix4 usableMvp = ~mvp;
     //updateMVP(usableMvp);
     wg.renderColor(vertexBuffer, count%2 == 0?colorBuffer:colorBuffer2, indexBuffer, model);
-    count++;
+    
     cout<<count%2<<endl;
+    count++;
     
     clock_t current_time = clock();
 

@@ -1,4 +1,4 @@
-#include <HGraf/HGraf.h>
+#include <HGraf.h>
 
 Canvas::Canvas(int nw, int nh){
   w = nw; h = nh;
@@ -411,7 +411,7 @@ namespace hg{
     drawLineSafe(canvas, ps[0], ps[1], pe[0], pe[1], color);
   }
   
-  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, Matrix4 mat, int color){
+  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4& mat, int color){
     Point3* p = new Point3[model.numPoints];
     for(int i = 0; i< model.numPoints; i++){
       p[i] = mat*model.points[i];

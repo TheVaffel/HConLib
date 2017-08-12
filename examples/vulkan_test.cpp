@@ -1,5 +1,5 @@
-#include <Winval/Winval_XCB.h>
-#include <Wingine/Wingine.h>
+#include <Winval_XCB.h>
+#include <Wingine.h>
 #include <iostream>
 
 using namespace std;
@@ -14,7 +14,10 @@ static const float _test_colors[] =
     0.0f, 1.0f, 0.0f, 1.0f,
     0.0f, 0.0f, 1.0f, 1.0f};
     
-
+static const float _test_colors2[] =
+  { 1.0f, 1.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f, 1.0f};
 static const uint32_t _test_indices[] =
   { 0, 1, 2,
     0, 2, 1
@@ -35,6 +38,9 @@ int main(){
 
   WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(float));
   wg.setBuffer( indexBuffer, _test_indices, 2*3*sizeof(uint32_t));
+
+  WingineBuffer colorBuffer2 = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
+  wg.setBuffer( colorBuffer2, _test_colors2, 3*4*sizeof(float));
   
   clock_t start_time = clock();
   int count = 0;
@@ -51,8 +57,10 @@ int main(){
     model = rotation*model;
     //Matrix4 usableMvp = ~mvp;
     //updateMVP(usableMvp);
-    wg.renderColor(vertexBuffer, colorBuffer, indexBuffer, model);
+    wg.renderColor(vertexBuffer, count%2 == 0?colorBuffer:colorBuffer2, indexBuffer, model);
     count++;
+    cout<<count%2<<endl;
+    
     clock_t current_time = clock();
 
     long long int diff = current_time - start_time;
@@ -62,7 +70,7 @@ int main(){
     }
     start_time = current_time;
     
-    //win.waitForKey();
+    win.waitForKey();
   }
 
   return 0;

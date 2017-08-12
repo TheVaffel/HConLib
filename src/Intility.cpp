@@ -1,4 +1,4 @@
-#include <Intility/Intility.h>
+#include <Intility.h>
 
 Bignum::Bignum(int i){
   data = new char[i];
@@ -18,7 +18,7 @@ void Bignum::setBinDigTo(int i, int u){
 
 Bignum createBignum(long long l){
   Bignum b(8);
-  ((long long* )b).data[0]) = l;
+  ((long long* )b.data[0]) = l;
 }
 
 long long rem(long long a, long long b){

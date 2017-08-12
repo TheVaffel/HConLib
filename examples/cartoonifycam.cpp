@@ -1,8 +1,7 @@
-#define WINVAL_IMPLEMENTATION
-#include <Winval/Winval.h>
-#include <cartoonify.h>
+#include <Winval_XCB.h>
+#include "cartoonify.h"
 
-#include <webcam/webcam.h>
+#include <webcam.h>
 
 int main(){
 	const int w = 1280, h = 720;

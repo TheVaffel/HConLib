@@ -1,8 +1,7 @@
 #include <iostream>
 
-#define WINVAL_IMPLEMENTATION
-#include <Winval/Winval.h>
-#include <webcam/webcam.h>
+#include <Winval_XCB.h>
+#include <webcam.h>
 
 using namespace std;
 
@@ -10,7 +9,7 @@ int w = 640, h = 480;
 
 int main(){
   Winval win(w, h);
-  webcam_init(w, h, 0, WEBCAM_MODE_YUYV, true);
+  webcam_init(w, h, 0);
   int n;
   unsigned char buffer[w*h*4];
   

@@ -1,7 +1,5 @@
-#define WINVAL_IMPLEMENTATION
-#include "Winval/Winval.h"
-#define HGRAF_IMPLEMENTATION
-#include "HGraf/HGraf.h"
+#include "Winval_XCB.h"
+#include "HGraf.h"
 #include <unistd.h>
 #include <iostream>
 
@@ -10,7 +8,6 @@ using namespace std;
 //Winval win;
 
 int main(){
-  char* dummy;
   int h = 600;
   int w = 800;
   
@@ -21,7 +18,7 @@ int main(){
   }
 
   
-  Winval win(w, h, &dummy);
+  Winval win(w,h );
   win.setTitle("This is a test application");
   win.drawBuffer(p, w, h);
   int down = 0;
@@ -51,7 +48,7 @@ int main(){
     if(win.isKeyPressed(WK_ESC))
        break;
     win.flushEvents();
-    win.getPointerPosition(x, y);
+    win.getPointerPosition(&x, &y);
     cout<<"Mouse is at "<<x<<", "<<y<<endl;
   }
   return 0;

@@ -2,7 +2,7 @@
 
 #ifndef INCLUDED_HGRAF
 #define INCLUDED_HGRAF
-#include "FlatAlg/FlatAlg.h"
+#include "FlatAlg.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
 
@@ -85,7 +85,7 @@ namespace hg{
   bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h);
 
   void cutLineToZPlane(const Point3& p1, const Point3& p2, float plane, Point3& dst1, Point3& dst2);
-  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model);
+  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4&, int);
   void clearCanvas(Canvas& canvas);
 };
 #endif // #ifndef INCLUDED_HGRAF

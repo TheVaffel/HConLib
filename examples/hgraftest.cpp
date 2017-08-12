@@ -1,9 +1,7 @@
 #include <unistd.h>
 #include <iostream>
-#define WINVAL_IMPLEMENTATION
-#include "Winval/Winval.h"
-#define HGRAF_IMPLEMENTATION
-#include "HGraf/HGraf.h"
+#include "Winval_XCB.h"
+#include "HGraf.h"
 
 using namespace std;
 
@@ -13,7 +11,7 @@ int main(){
 
   Canvas vas(w, h);
 
-  CamParam par(w, h, M_PI/2);
+  CamParam par(w, h, M_PI/2, 0.1);
   for(int i = 0; i < w*h; i++){
     vas[i] = 0;
   }

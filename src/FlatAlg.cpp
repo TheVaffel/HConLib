@@ -1,4 +1,4 @@
-#include <FlatAlg/FlatAlg.h>
+#include <FlatAlg.h>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <sstream> // For human-readable representations
@@ -582,9 +582,6 @@ namespace flatalg{
 		   
   }
 
-  
-  typedef GeneralMatrix Matrix;
-  typedef GeneralVector Vector;
 }
 
 

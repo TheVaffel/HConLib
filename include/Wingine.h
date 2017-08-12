@@ -5,14 +5,14 @@
 #ifndef INCLUDED_WINGINE
 #define INCLUDED_WINGINE
 
-#include <Winval/Winval_XCB.h>
-#include <Wingine/vulkan/SPIRV/GlslangToSpv.h>
+#include <Winval_XCB.h>
+#include <external/vulkan/SPIRV/GlslangToSpv.h>
 #include <unistd.h>
 
-#include <FlatAlg/FlatAlg.h>
+#include <FlatAlg.h>
 
 #define VK_USE_PLATFORM_XCB_KHR
-#include "vulkan/vulkan.h"
+#include "external/vulkan/vulkan.h"
 
 #include <stdio.h> // printf
 #include <vector> //vector

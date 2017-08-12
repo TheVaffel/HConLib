@@ -1,14 +1,10 @@
-#define WINVAL_IMPLEMENTATION
-#include <Winval/Winval.h>
-
-
+#include <Winval_XCB.h>
 
 #include <iostream>
 
 using namespace std;
 
-#define HGRAF_IMPLEMENTATION
-#include <HGraf/HGraf.h>
+#include <HGraf.h>
 
 
 int main(){

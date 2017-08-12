@@ -1,7 +1,7 @@
-#include <Wingine/Wingine.h>
-#include <Wingine/vulkan/glsl_util.h>
+#include <Wingine.h>
+#include <external/vulkan/glsl_util.h>
 
-#include <FlatAlg/FlatAlg.h>
+#include <FlatAlg.h>
 
 
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){

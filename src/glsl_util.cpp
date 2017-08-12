@@ -1,4 +1,4 @@
-#include <Wingine/vulkan/glsl_util.h>
+#include <external/vulkan/glsl_util.h>
 //// Shamelessly copied from LunarG's Vulkan tutorial
 
 void init_resources(TBuiltInResource &Resources) {

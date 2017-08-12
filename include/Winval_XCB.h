@@ -4,6 +4,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_image.h>
 #include <xkbcommon/xkbcommon-x11.h>
+#include <cstdlib>
 
 #include <string> //std::string
 #include <string.h> //strlen

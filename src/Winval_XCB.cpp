@@ -1,4 +1,4 @@
-#include <Winval/Winval_XCB.h>
+#include <Winval_XCB.h>
 
 #define WINVAL_KEYMAP_OFFSET 8
 Winval::Winval(){

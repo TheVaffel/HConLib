@@ -24,7 +24,7 @@
 tjhandle _webcam_decompressor;
 #else
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "external/stb_image.h"
 #endif
 
 #include <linux/videodev2.h>

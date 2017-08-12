@@ -285,5 +285,11 @@ GeneralMatrix operator*(float f, const GeneralMatrix& gm);
 
 GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2);
 
+namespace flatalg{
+  
+  typedef GeneralMatrix Matrix;
+  typedef GeneralVector Vector;
+}
+
 #endif // INCLUDED_FLATALG
 

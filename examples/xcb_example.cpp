@@ -1,6 +1,5 @@
 #include <stdio.h>
-#define WINVAL_IMPLEMENTATION
-#include <Winval/Winval_XCB.h>
+#include <Winval_XCB.h>
 
 #include <unistd.h>
 #include <iostream>

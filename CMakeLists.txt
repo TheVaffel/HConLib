@@ -1,10 +1,37 @@
 cmake_minimum_required(VERSION 2.4)
 project(HConLib)
 
-add_definitions(-std=c++11)
-add_library(HConLib src/Wingine.cpp src/glsl_util.cpp src/Winval_XCB.cpp src/HGraf.cpp src/FlatAlg.cpp)
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
 
-target_include_directories(HConLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_definitions(-std=c++11)
+
+set(componentNames Winval_XCB Wingine FlatAlg HGraf glsl_util)
+set(includeDir ${CMAKE_HOME_DIRECTORY}/include)
+set(srcDir ${CMAKE_HOME_DIRECTORY}/src)
+
+set(sourceList)
+
+include_directories(${includeDir} )
+link_directories(${srcDir})
+
+foreach(str IN ITEMS ${componentNames})
+  
+  set(source ${srcDir}/${str}.cpp)
+
+  list(APPEND sourceList ${source})
+endforeach(str)
+
+      
+#FlatAlg
+add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
+
+#HGraf
+add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
+
+#Wingine
+add_library(Wingine STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp)
+
+#Winval_XCB
+add_library(Winval_XCB STATIC ${srcDir}/Winval_XCB.cpp)
+
+add_library(HConLib STATIC ${sourceList})

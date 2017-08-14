@@ -4,24 +4,11 @@ project(HConLib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
 
 add_definitions(-std=c++11)
-
-set(componentNames Winval_XCB Wingine FlatAlg HGraf glsl_util)
 set(includeDir ${CMAKE_HOME_DIRECTORY}/include)
 set(srcDir ${CMAKE_HOME_DIRECTORY}/src)
 
-set(sourceList)
-
 include_directories(${includeDir} )
-link_directories(${srcDir})
 
-foreach(str IN ITEMS ${componentNames})
-  
-  set(source ${srcDir}/${str}.cpp)
-
-  list(APPEND sourceList ${source})
-endforeach(str)
-
-      
 #FlatAlg
 add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
@@ -45,9 +32,4 @@ if(XCB_LIBS)
 else()
 	message("Not all required XCB libraries found, Winval not built")
 endif()
-
-
-#All
-add_library(HConLib STATIC ${sourceList})
-
 

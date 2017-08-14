@@ -22,9 +22,15 @@ if(XCB_LIBS)
 
 	find_library( VULKAN_LIBS NAMES vulkan)
 	
-	if(VULKAN_LIBS)
-		#Wingine
-		add_library(Wingine STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp)
+	if(VULKAN_LIBS)	
+		find_library(GLSLANG_LIBS NAMES glslang PATHS ${CMAKE_HOME_DIRECTORY}/lib NO_DEFAULT_PATH) #Could search for the rest of the glslang archives too, but takes this as indicator
+		
+		if(GLSLANG_LIBS)
+			#Wingine
+			add_library(Wingine STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp)
+		else()
+			message("glslang is not initialized, Wingine not built")
+		endif()
 	else()
 		message("Vulkan not found, Wingine not built")
 	endif()

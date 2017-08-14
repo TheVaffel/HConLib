@@ -78,12 +78,24 @@ void Flaudio::writeBuffer(int16_t* buffer, int num){
 
 void Flaudio::playStep(){
 
-  long int delay;
+  
+  long int delay = 0;
   snd_pcm_delay(handle, &delay);
   
   while(delay > 3*frames_per_period/2){
-    usleep(1000); //Sleep 1 ms at a time  
-    snd_pcm_delay(handle, &delay);
+    usleep(1000); //Sleep 1 ms at a time
+    int err = snd_pcm_delay(handle, &delay);
+    if(err < 0){
+      int u = snd_pcm_recover(handle, err, 1);
+      if(u < 0){
+	printf("Recovery failed\n");
+	exit(0);
+      }
+    }
+    
+    if(snd_pcm_state(handle) != SND_PCM_STATE_RUNNING){
+      snd_pcm_prepare(handle);
+    }
   }
   //int numberToWrite = frames_per_period - (total_buffer_size - av);
   //printf("NumberToWrite = %d, computed from %ld, %d and %d\n", numberToWrite, frames_per_period, total_buffer_size, av);
@@ -93,7 +105,7 @@ void Flaudio::playStep(){
   if(numberToWrite == 0){
     return;
   }
-  
+  //int16_t newbuff[100000];
   int16_t* newbuff = new int16_t[numberToWrite*2];
   for(int i = 0; i < 2*numberToWrite ;i++){
     newbuff[i] = 0;
@@ -129,11 +141,19 @@ void Flaudio::playStep(){
     printf("Writing %d\n", newbuff[2*i]);
     }*/
 
-  snd_pcm_delay(handle, &delay);
+  //snd_pcm_delay(handle, &delay);
   //printf("Delay is %ld frames\n", delay);
   
-  snd_pcm_writei(handle, newbuff, numberToWrite);
-
+  int written = snd_pcm_writei(handle, newbuff, numberToWrite);
+  if(written < 0){
+    
+    int u = snd_pcm_recover(handle, written, 1);
+    if(u < 0){
+      printf("Recover failed\n");
+      exit(0);
+    }
+  }
+  
   delete[] newbuff;
 }
 

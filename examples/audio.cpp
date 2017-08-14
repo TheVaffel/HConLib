@@ -8,7 +8,8 @@ using namespace std;
 
 int main(){
   Flaudio fl;
-  int numSamples = fl.getSampleRate();
+  int sampleRate = fl.getSampleRate();
+  int numSamples = 1*sampleRate;
   
   int samplesPerStep = fl.getSamplesPerStep();
   int16_t* samples = new int16_t[samplesPerStep];
@@ -20,7 +21,7 @@ int main(){
   for(int j = 0; j < numSamples/samplesPerStep; j++){
     
     for(int i = 0; i < samplesPerStep; i++){
-      samples[i] = (int16_t)(maxVol*sin(freq*(j*samplesPerStep + i)/numSamples*2*M_PI));
+      samples[i] = (int16_t)(maxVol*sin(freq*(j*samplesPerStep + i)/sampleRate*2*M_PI));
     }
     
     fl.enqueueToChannel(samples, samplesPerStep, 0);

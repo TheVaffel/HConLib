@@ -1,72 +1,62 @@
 #ifndef INCLUDED_WINVAL
 #define INCLUDED_WINVAL
 
-#include "X11/Xlib.h"
-#include "X11/Xutil.h"
-#include "X11/keysym.h"
+#include <xcb/xcb.h>
+#include <xcb/xcb_image.h>
+#include <xkbcommon/xkbcommon-x11.h>
+#include <cstdlib>
 
 #include <string> //std::string
+#include <string.h> //strlen
 
-#ifdef WINVAL_VULKAN
-class Winval;
-#include "Winvulk.h"
-#endif //WINVAL_VULKAN
+#define WK_SPACE XKB_KEY_space
+#define WK_ESC XKB_KEY_Escape
 
-#define WK_SPACE XK_space
-#define WK_ESC XK_Escape
+#define WK_0 XKB_KEY_0                            
+#define WK_1 XKB_KEY_1                            
+#define WK_2 XKB_KEY_2                            
+#define WK_3 XKB_KEY_3 
+#define WK_4 XKB_KEY_4 
+#define WK_5 XKB_KEY_5 
+#define WK_6 XKB_KEY_6 
+#define WK_7 XKB_KEY_7 
+#define WK_8 XKB_KEY_8 
+#define WK_9 XKB_KEY_9
 
-#define WK_0 XK_0                            
-#define WK_1 XK_1                            
-#define WK_2 XK_2                            
-#define WK_3 XK_3 
-#define WK_4 XK_4 
-#define WK_5 XK_5 
-#define WK_6 XK_6 
-#define WK_7 XK_7 
-#define WK_8 XK_8 
-#define WK_9 XK_9
+#define WK_A XKB_KEY_a 
+#define WK_B XKB_KEY_b 
+#define WK_C XKB_KEY_c 
+#define WK_D XKB_KEY_d 
+#define WK_E XKB_KEY_e 
+#define WK_F XKB_KEY_f 
+#define WK_G XKB_KEY_g 
+#define WK_H XKB_KEY_h 
+#define WK_I XKB_KEY_i 
+#define WK_J XKB_KEY_j 
+#define WK_K XKB_KEY_k 
+#define WK_L XKB_KEY_l 
+#define WK_M XKB_KEY_m 
+#define WK_N XKB_KEY_n 
+#define WK_O XKB_KEY_o 
+#define WK_P XKB_KEY_p 
+#define WK_Q XKB_KEY_q 
+#define WK_R XKB_KEY_r 
+#define WK_S XKB_KEY_s 
+#define WK_T XKB_KEY_t 
+#define WK_U XKB_KEY_u 
+#define WK_V XKB_KEY_v 
+#define WK_W XKB_KEY_w 
+#define WK_X XKB_KEY_x 
+#define WK_Y XKB_KEY_y 
+#define WK_Z XKB_KEY_z
 
-#define WK_A XK_a 
-#define WK_B XK_b 
-#define WK_C XK_c 
-#define WK_D XK_d 
-#define WK_E XK_e 
-#define WK_F XK_f 
-#define WK_G XK_g 
-#define WK_H XK_h 
-#define WK_I XK_i 
-#define WK_J XK_j 
-#define WK_K XK_k 
-#define WK_L XK_l 
-#define WK_M XK_m 
-#define WK_N XK_n 
-#define WK_O XK_o 
-#define WK_P XK_p 
-#define WK_Q XK_q 
-#define WK_R XK_r 
-#define WK_S XK_s 
-#define WK_T XK_t 
-#define WK_U XK_u 
-#define WK_V XK_v 
-#define WK_W XK_w 
-#define WK_X XK_x 
-#define WK_Y XK_y 
-#define WK_Z XK_z
-
-#define WK_LEFT XK_Left
-#define WK_RIGHT XK_Right
-#define WK_DOWN XK_Down
-#define WK_UP XK_Up
+#define WK_LEFT XKB_KEY_Left
+#define WK_RIGHT XKB_KEY_Right
+#define WK_DOWN XKB_KEY_Down
+#define WK_UP XKB_KEY_Up
 
 class Winval{
   int w, h;
-  Display *dsp;
-  int screenNum;
-  GC gc;
-  Window win;
-  Window focusWindow;
-  char* pixelData;
-  XImage *image;
   
   bool isDown[65536];
   int keysyms;
@@ -76,274 +66,44 @@ class Winval{
   int pointerX, pointerY;
   bool mouseButtonPressed;
 
-  KeySym *ks;
-
-#ifdef WINVAL_VULKAN
-  winvulk_vulkan_state vk_state;
-#endif
+  xcb_connection_t* connection;
+  xcb_screen_t* screen;
+  xcb_window_t window;
+  xcb_pixmap_t pmap;
+  xcb_gcontext_t graphics_context;
+  xcb_format_t* fmt;
   
+  xkb_state * kstate;
+
  public:
-  Winval(int w, int h, char** pointer);
+  
+  Winval(int w, int h);
   Winval();
   ~Winval();
 
   std::string window_title;
 
-  void handleEventProperly(XEvent& e);
+  void handleEventProperly(xcb_generic_event_t *);
+  //void handleEventProperly(XEvent& e);
 
   void flushEvents();
 
-  void getPointerPosition(int& x, int& y);
+  void getPointerPosition(int* x, int* y);
   bool isMouseButtonPressed();
   bool isKeyPressed(int i);
   int waitForKey();  
-  XEvent getNextEvent();
+  //XEvent getNextEvent();
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
-  void waitForButtonPress(int& x, int& y);
+  void waitForButtonPress(int* x, int* y);
   void drawBuffer(char* p, int w, int h);
   void drawBuffer(unsigned char* p, int w, int h);
-	void enableAutoRepeat(bool enable);
-	const char* getTitle();
+  void enableAutoRepeat(bool enable);
+  const char* getTitle() const;
   void setTitle(const char* window_name);
-  Window getWindow();
-  Display* getDisplay();
+  int getWidth() const;
+  int getHeight() const;
+  xcb_window_t getWindow() const;
+  xcb_connection_t* getConnection() const;
 };
 
 #endif // INCLUDED_WINVAL
-
-#ifdef WINVAL_IMPLEMENTATION
-
-#ifdef WINVAL_VULKAN
-
-#define WINVAL_VULKAN_IMPLEMENTATION
-#include "Winvulk.h"
-
-#endif //WINVAL_VULKAN
-
-
-#define WINVAL_KEYMAP_OFFSET 8
-Winval::Winval(){
-
-}
-
-Winval::Winval(int w, int h, char** p = 0){
-  dsp = XOpenDisplay(NULL);
-  if(!dsp) return;
-
-  
-  screenNum = DefaultScreen(dsp);
-
-  int Black = BlackPixel(dsp, screenNum);
-  
-  win = XCreateSimpleWindow(dsp,
-			    DefaultRootWindow(dsp),
-			    50, 50,
-			    w, h,
-			    0, Black,
-			    Black);
-
-  long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-  XSelectInput(dsp, win, eventMask);
-
-  XMapWindow(dsp, win);
-
-  XEvent e;
-
-  ks = XGetKeyboardMapping(dsp, WINVAL_KEYMAP_OFFSET, 256 - WINVAL_KEYMAP_OFFSET, &keysyms);
-  for(int i = 0; i < 256; i++){
-    isDown[i] = false;
-  }
-  
-  pointerX = pointerY = 0;
-  mouseButtonPressed = false;
-
-  do{
-    XNextEvent(dsp, &e);
-  }while(e.type != MapNotify);
-
-  gc = XCreateGC(dsp, win,
-		    0,
-		    NULL );
-  image = 0;
-  if(p){
-    *p = new char[4*w*h];
-    pixelData = *p;
-    Visual* visual = XDefaultVisual(dsp, screenNum);
-
-    image = XCreateImage(dsp, visual, 24, ZPixmap,
-		       0, *p, w, h, 8, 0);
-
-    for(int i = 0; i < 4*w*h; i++){
-      (*p)[i] = 0;
-    }
-    XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
-  }
-
-  autoRepeat = false;
-  
-#ifdef WINVAL_VULKAN
-  winvulk_init_vulkan(&vk_state, this);
-#endif
-  
-}
-
-Winval::~Winval(){
-#ifdef WINVAL_VULKAN
-  winvulk_destroy_vulkan(&vk_state);
-#endif
-  
-  if(image)
-    XDestroyImage(image);
-  if(win)
-    XDestroyWindow(dsp, win);
-  XCloseDisplay(dsp);
-}
-
-int Winval::waitForKey(){
-  XEvent e;
-  do{
-    XNextEvent(dsp, &e);
-    handleEventProperly(e);
-   }while(e.type != KeyPress);
-  return e.xkey.keycode;
-}
-
-void Winval::waitForButtonPress(int& x, int& y){
-  XEvent e;
-  do {
-    XNextEvent(dsp, &e);
-    handleEventProperly(e);
-  }while(e.type != ButtonPress);
-
-  x = e.xbutton.x, y = e.xbutton.y;
-  return;
-  
-}
-
-void Winval::handleEventProperly(XEvent& e){
-  int index;
-  int key;
-  switch(e.type){
-  case Expose:
-    if(!image)
-      break;
-    XPutImage(dsp, win, gc, image, 0, 0, 0, 0, w, h);
-    XFlush(dsp);
-    break;
-  case KeyPress:
-    index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
-    key = ks[index*keysyms];
-    if(key < 1<<16)
-      isDown[key] = true;
-    break;
-  case KeyRelease:
-    index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
-    key = ks[index*keysyms];
-    if(key < 1<<16){
-      bool pressDown = false;
-      if(!autoRepeat){
-	if(XEventsQueued(dsp, QueuedAlready)){
-	  
-	  XEvent nextEvent;
-	  XPeekEvent(dsp, &nextEvent);
-	  if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
-	     e.xkey.time == nextEvent.xkey.time){
-	    XNextEvent(dsp, &nextEvent);
-	    pressDown = true;
-	  }
-	}
-      }
-      isDown[key] = pressDown;
-    }
-    break;
-  case MotionNotify:
-    pointerX = e.xmotion.x, pointerY = e.xmotion.y;
-    break;
-  case ButtonRelease:
-    mouseButtonPressed = false;
-    break;
-  case ButtonPress:
-    mouseButtonPressed = true;
-    break;
-  }
-}
-
-void Winval::getPointerPosition(int& x, int& y){
-  x = pointerX; y = pointerY;
-}
-
-bool Winval::isMouseButtonPressed(){
-  return mouseButtonPressed;
-}
-
-bool Winval::isKeyPressed(int i){
-  return isDown[i];
-}
-
-void Winval::flushEvents(){
-  int num = XEventsQueued(dsp, QueuedAfterFlush);
-  XEvent e2;
-  while(num--){
-    XNextEvent(dsp, &e2);
-
-    handleEventProperly(e2);
-  }
-}
-
-XEvent Winval::getNextEvent(){
-  XEvent e;
-  XNextEvent(dsp, &e);
-  return e;
-}
-
-void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
-  XEvent e;
-  do {
-    XNextEvent(dsp, &e);
-    handleEventProperly(e);
-    if(e.type == ButtonRelease){
-      valid = false;
-      return;
-    }
-  }while(e.type != MotionNotify);
-
-  x = e.xmotion.x, y = e.xmotion.y;
-  valid = true;
-  return;
-}
-
-void Winval::drawBuffer(char* buffer, int w, int h){
-  XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, buffer, w, h, 32, 0);
-  XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
-  XFlush(dsp);
-  //XDestroyImage(im);
-}
-
-void Winval::drawBuffer(unsigned char* buffer, int w, int h){
-  drawBuffer((char*)buffer, w, h);
-}
-
-void Winval::setTitle(const char* window_name){
-  XStoreName(dsp, win, window_name);
-  window_title = window_name;
-}
-
-void Winval::enableAutoRepeat(bool enable){
-  autoRepeat = enable;
-}
-
-const char* Winval::getTitle(){
-  return window_title.c_str();
-}
-
-Window Winval::getWindow(){
-  return win;
-}
-
-Display* Winval::getDisplay(){
-  return dsp;
-}
-
-#endif // WINVAL_IMPLEMENTATION
-
-

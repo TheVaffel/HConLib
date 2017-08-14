@@ -17,8 +17,8 @@ add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 
 find_library( XCB_LIBS NAMES xcb xcb-image xkbcommon-x11 xkbcommon oeuathnt)
 if(XCB_LIBS)
-	#Winval_XCB
-	add_library(Winval_XCB STATIC ${srcDir}/Winval_XCB.cpp)
+	#Winval
+	add_library(Winval STATIC ${srcDir}/Winval.cpp)
 
 	find_library( VULKAN_LIBS NAMES vulkan)
 	
@@ -29,13 +29,13 @@ if(XCB_LIBS)
 			#Wingine
 			add_library(Wingine STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp)
 		else()
-			message("glslang is not initialized, Wingine not built")
+			message(">>>glslang is not initialized, Wingine not built")
 		endif()
 	else()
-		message("Vulkan not found, Wingine not built")
+		message(">>>Vulkan not found, Wingine not built")
 	endif()
 
 else()
-	message("Not all required XCB libraries found, Winval not built")
+	message(">>>Not all required XCB libraries found, Winval not built")
 endif()
 

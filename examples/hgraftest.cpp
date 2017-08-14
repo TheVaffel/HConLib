@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <iostream>
-#include "Winval_XCB.h"
+#include "Winval.h"
 #include "HGraf.h"
 
 using namespace std;

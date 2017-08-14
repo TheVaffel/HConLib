@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <Winval_XCB.h>
+#include <Winval.h>
 
 #include <unistd.h>
 #include <iostream>

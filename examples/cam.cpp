@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <Winval_XCB.h>
+#include <Winval.h>
 #include <webcam.h>
 
 using namespace std;

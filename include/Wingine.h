@@ -5,7 +5,7 @@
 #ifndef INCLUDED_WINGINE
 #define INCLUDED_WINGINE
 
-#include <Winval_XCB.h>
+#include <Winval.h>
 #include <external/vulkan/SPIRV/GlslangToSpv.h>
 #include <unistd.h>
 

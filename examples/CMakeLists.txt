@@ -51,6 +51,17 @@ if(WINVAL_LIB)
 	add_executable(cam cam.cpp)
 	target_link_libraries(cam Winval_XCB ${xcb_libs})
   
+	find_library(TURBO_JPEG_LIB NAMES turbojpeg)
+	if(TURBO_JPEG_LIB)
+		message(">>>Found turbojpeg, compiling cam.cpp with turbo support")
+		target_compile_definitions(cam PRIVATE USE_TURBOJPEG)
+		target_link_libraries(cam turbojpeg)
+	else()
+		message(">>>Did not find turbojpeg, compiling cam.cpp without it")
+	endif()
+
+
+
 	find_library(WINGINE_LIB NAMES Wingine PATHS ${HConLibRoot}/lib NO_DEFAULT_PATH)
 	if(WINGINE_LIB)
 		#vulkan_test
@@ -58,7 +69,7 @@ if(WINVAL_LIB)
 		target_link_libraries(vulkan_test ${wingine_libs})
 	endif()
 else()
-	message("Found no Winval library")
+	message(">>>Found no Winval library, not building Winval dependent binaries")
 endif()
 
 #flatalg

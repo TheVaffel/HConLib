@@ -7,6 +7,7 @@ Utility libraries for C++
 * webcam - webcam (duh)
 * Winval - Window system
 * Wingine - Vulkan wrapper dreaming of becoming its own graphics engine some day
+* Flaudio - Audio engine
 
 ## Requirements
 
@@ -25,6 +26,9 @@ The rest concerns KhronoGroup's GLSL-SPIRV translator
 * pthread
 * c++11
 
+#### For Flaudio
+
+* asound
 
 ## Build
 

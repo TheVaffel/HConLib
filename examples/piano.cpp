@@ -1,6 +1,5 @@
-#define WINVAL_IMPLEMENTATION
-#include <Winval/Winval.h>
-#include <Flaudio/Flaudio.h>
+#include <Winval.h>
+#include <Flaudio.h>
 
 #define _USE_MATH_DEFINES
 #include <cmath>

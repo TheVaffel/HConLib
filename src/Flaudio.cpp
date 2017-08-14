@@ -1,65 +1,7 @@
-
-/* Use the newer ALSA API */
-#define ALSA_PCM_NEW_HW_PARAMS_API
-
-#include <alsa/asoundlib.h>
-#include <queue>
-#include <vector>
+#include <Flaudio.h>
 #include <unistd.h>
 
-class Flaudio{
-  struct Segment{
-    int16_t* samples;
-    int numSamples;
-    bool isStereo;
-    int currSample;
-    bool repeat;
-    
-    Segment(int size, bool repeatQ, bool stereo = false){
-      numSamples = size;
-      samples = new int16_t[size];
-      isStereo = stereo;
-      currSample = 0;
-      repeat = repeatQ;
-    }
-
-    ~Segment(){
-      if(samples){
-	delete[] samples;
-      }
-    }
-  };
-  
-  std::vector<std::queue<Segment*> > channels;
-  
-  snd_pcm_uframes_t frames_per_period;
-  unsigned int samplerate;
-  
-  snd_pcm_t *handle;
-  snd_pcm_hw_params_t *params;
-
-  int total_buffer_size;
-  
-public:
-
-  Flaudio(unsigned int samplerate);
-  ~Flaudio();
-
-  void writeBuffer(int16_t*buffer, int num);
-  void playStep();
-
-  int getSampleRate();
-  int getSamplesPerStep();
-  int getNumChannels();
-  bool isChannelEmpty(int u);
-
-  void enqueueToChannel(int16_t* buffer, int length, int channel, bool repeat);
-  int enqueueToSuitableChannel(int16_t* buffer, int length, bool repeat);
-  void endSegmentInChannel(int channel);
-};
-
-
-Flaudio::Flaudio(unsigned int rate = 44100){
+Flaudio::Flaudio(unsigned int rate){
   samplerate = rate;
 
   channels = std::vector<std::queue<Segment*> >(1);
@@ -218,14 +160,14 @@ void Flaudio::endSegmentInChannel(int u){
   
 }
 
-void Flaudio::enqueueToChannel(int16_t* buffer, int length, int channel, bool repeating = false){
+void Flaudio::enqueueToChannel(int16_t* buffer, int length, int channel, bool repeating){
   Segment* s = new Segment(length, repeating);
   memcpy(s->samples, buffer, length*2);
   
   channels[channel].push(s);
 }
 
-int Flaudio::enqueueToSuitableChannel(int16_t* buffer, int length, bool repeating = false){
+int Flaudio::enqueueToSuitableChannel(int16_t* buffer, int length, bool repeating){
   
   for(int i = 0; i < channels.size(); i++){
     if(channels[i].size()==0){

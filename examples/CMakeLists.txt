@@ -11,7 +11,7 @@ set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${HConLibRoot}/build)
 set(xcb_libs xcb xcb-image xkbcommon-x11 xkbcommon)
 set(vulkan_libs )
 
-set(winval_libs Winval_XCB ${xcb_libs})
+set(winval_libs Winval ${xcb_libs})
 set(wingine_libs FlatAlg ${vulkan_libs} Wingine glslang  OSDependent pthread SPIRV SPVRemapper OGLCompiler HLSL vulkan  ${winval_libs})
 
 include_directories(${HConLibRoot}/include)
@@ -25,15 +25,25 @@ target_link_libraries(algtest FlatAlg)
 add_executable(lie lie.cpp)
 target_link_libraries(lie FlatAlg)
 
-find_library(WINVAL_LIB NAMES Winval_XCB PATHS ${HConLibRoot}/lib NO_DEFAULT_PATH)
+find_library(FLAUDIO_LIB NAMES Flaudio PATHS ${HConLibRoot}/lib NO_DEFAULT_PATH)
+
+if(FLAUDIO_LIB)
+  #audio
+  add_executable(audio audio.cpp)
+  target_link_libraries(audio Flaudio asound)
+else()
+  message(">>>Did not find Flaudio, audio not built")
+endif()
+
+find_library(WINVAL_LIB NAMES Winval PATHS ${HConLibRoot}/lib NO_DEFAULT_PATH)
 if(WINVAL_LIB)
 	#winval_test
 	add_executable(winval_test winval_test.cpp)
 	target_link_libraries(winval_test HGraf FlatAlg ${winval_libs})
 
-	#cartoonifycam
-	add_executable(cartoonifycam cartoonifycam.cpp)
-	target_link_libraries(cartoonifycam ${winval_libs})
+	#piano
+	add_executable(piano piano.cpp)
+	target_link_libraries(piano Flaudio asound ${winval_libs})
 
 	#linetest
 	add_executable(linetest linetest.cpp)
@@ -49,7 +59,11 @@ if(WINVAL_LIB)
 	
 	#cam
 	add_executable(cam cam.cpp)
-	target_link_libraries(cam Winval_XCB ${xcb_libs})
+	target_link_libraries(cam Winval ${xcb_libs})
+
+	#cartoonifycam
+	add_executable(cartoonifycam cartoonifycam.cpp)
+	target_link_libraries(cartoonifycam ${winval_libs})
   
 	find_library(TURBO_JPEG_LIB NAMES turbojpeg)
 	if(TURBO_JPEG_LIB)
@@ -62,7 +76,6 @@ if(WINVAL_LIB)
 	else()
 		message(">>>Did not find turbojpeg, compiling cam.cpp without it")
 	endif()
-
 
 
 	find_library(WINGINE_LIB NAMES Wingine PATHS ${HConLibRoot}/lib NO_DEFAULT_PATH)

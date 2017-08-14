@@ -15,7 +15,14 @@ add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 
-find_library( XCB_LIBS NAMES xcb xcb-image xkbcommon-x11 xkbcommon oeuathnt)
+find_library(ALSA_LIB NAMES asound)
+if(ALSA_LIB)
+  #Flaudio
+  add_library(Flaudio STATIC ${srcDir}/Flaudio.cpp)
+else()
+  message(">>>Library asound not found, not building Flaudio")
+endif()
+find_library( XCB_LIBS NAMES xcb xcb-image xkbcommon-x11 xkbcommon)
 if(XCB_LIBS)
 	#Winval
 	add_library(Winval STATIC ${srcDir}/Winval.cpp)

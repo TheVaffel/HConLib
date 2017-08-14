@@ -22,7 +22,13 @@ if(ALSA_LIB)
 else()
   message(">>>Library asound not found, not building Flaudio")
 endif()
-find_library( XCB_LIBS NAMES xcb xcb-image xkbcommon-x11 xkbcommon)
+find_library( XCB_LIB NAMES xcb)
+find_library( XCB_IMAGE_LIB NAMES xcb-image)
+find_library( XKB_LIB NAMES xkbcommon)
+find_library( XKB_11_LIB NAMES xkbcommon-x11)
+
+set(XCB_LIBS XCB_LIB AND XCB_IMAGE_LIB AND XKB_LIB AND XKB_11_LIB)
+
 if(XCB_LIBS)
 	#Winval
 	add_library(Winval STATIC ${srcDir}/Winval.cpp)

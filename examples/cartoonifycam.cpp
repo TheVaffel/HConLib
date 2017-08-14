@@ -5,7 +5,7 @@
 
 int main(){
 	const int w = 1280, h = 720;
-	webcam_init(w, h, 1, WEBCAM_MODE_BAYER);
+	webcam_init(w, h, 0);
 
 	Winval win(w, h);
 

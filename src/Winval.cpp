@@ -37,6 +37,8 @@ Winval::Winval(int width, int height){
 
   w = width;
   h = height;
+
+  memset(isDown, 0, sizeof(isDown));
   
   /* Magic code that will send notification when window is destroyed */
   xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");

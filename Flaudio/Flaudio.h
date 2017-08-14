@@ -5,6 +5,7 @@
 #include <alsa/asoundlib.h>
 #include <queue>
 #include <vector>
+#include <unistd.h>
 
 class Flaudio{
   struct Segment{
@@ -134,12 +135,14 @@ void Flaudio::writeBuffer(int16_t* buffer, int num){
 }
 
 void Flaudio::playStep(){
+
   long int delay;
   snd_pcm_delay(handle, &delay);
-  if(delay > 3*frames_per_period/2){
-    return;
-  }
   
+  while(delay > 3*frames_per_period/2){
+    usleep(1000); //Sleep 1 ms at a time  
+    snd_pcm_delay(handle, &delay);
+  }
   //int numberToWrite = frames_per_period - (total_buffer_size - av);
   //printf("NumberToWrite = %d, computed from %ld, %d and %d\n", numberToWrite, frames_per_period, total_buffer_size, av);
 

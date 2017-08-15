@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.4)
 project(HConLib_examples)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++11 -g)
 
 set(HConLibRoot ${CMAKE_HOME_DIRECTORY}/..)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
@@ -59,11 +59,11 @@ if(WINVAL_LIB)
 	
 	#cam
 	add_executable(cam cam.cpp)
-	target_link_libraries(cam Winval ${xcb_libs})
+	target_link_libraries(cam HCam ${winval_libs})
 
 	#cartoonifycam
 	add_executable(cartoonifycam cartoonifycam.cpp)
-	target_link_libraries(cartoonifycam ${winval_libs})
+	target_link_libraries(cartoonifycam HCam ${winval_libs})
   
 	find_library(TURBO_JPEG_LIB NAMES turbojpeg)
 	if(TURBO_JPEG_LIB)

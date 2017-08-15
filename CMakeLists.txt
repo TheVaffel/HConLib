@@ -3,7 +3,7 @@ project(HConLib)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++11 -g)
 set(includeDir ${CMAKE_HOME_DIRECTORY}/include)
 set(srcDir ${CMAKE_HOME_DIRECTORY}/src)
 
@@ -14,6 +14,9 @@ add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
+
+#HCam
+add_library(HCam STATIC ${srcDir}/HCam.cpp)
 
 find_library(ALSA_LIB NAMES asound)
 if(ALSA_LIB)

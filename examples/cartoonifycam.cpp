@@ -1,11 +1,11 @@
 #include <Winval.h>
 #include "cartoonify.h"
 
-#include <webcam.h>
+#include <HCam.h>
 
 int main(){
 	const int w = 1280, h = 720;
-	webcam_init(w, h, 0);
+	HCam cam(w, h);
 
 	Winval win(w, h);
 
@@ -13,7 +13,7 @@ int main(){
 	unsigned char* cartoon = new unsigned char[w*h*4];
 
 	while(true){
-		webcam_capture_image(buffer);
+		cam.capture_image(buffer);
 		cartoonify(buffer, cartoon, w, h);
 		win.drawBuffer(cartoon, w, h);
 		win.flushEvents();
@@ -21,6 +21,6 @@ int main(){
 			break;
 		}
 	}
-	webcam_close();
+	cam.close();
 }
 

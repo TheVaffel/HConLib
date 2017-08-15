@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include <Winval.h>
-#include <webcam.h>
+#include <HCam.h>
 
 using namespace std;
 
@@ -9,12 +9,12 @@ int w = 640, h = 480;
 
 int main(){
   Winval win(w, h);
-  webcam_init(w, h, 0);
+  HCam cam(w, h, "/dev/video0", HCAM_MODE_YUYV, false); //Last three arguments are optional
   int n;
   unsigned char buffer[w*h*4];
   
   while(true){
-    webcam_capture_image(buffer);
+    cam.capture_image(buffer);
     win.drawBuffer(buffer, w, h);
     //win.waitForKey();
     win.flushEvents();

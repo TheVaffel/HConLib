@@ -2,12 +2,12 @@
 Utility libraries for C++
 
 ## Included components
-* FlatAlg - linear algebra
-* HGraf - graphics utility functions
-* webcam - webcam (duh)
+* FlatAlg - Linear algebra
+* HGraf - Graphics utility functions
+* HCam - Webcam interface
 * Winval - Window system
 * Wingine - Vulkan wrapper dreaming of becoming its own graphics engine some day
-* Flaudio - Audio engine
+* Flaudio - Audio engine-ish
 
 ## Requirements
 

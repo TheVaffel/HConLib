@@ -5,177 +5,135 @@ Winval::Winval(){
 
 }
 
-Winval::Winval(int width, int height){
-  int screens;
-  xcb_screen_iterator_t iter;
-  connection = xcb_connect(NULL, &screens);
-  const xcb_setup_t *setup = xcb_get_setup(connection);
-  iter = xcb_setup_roots_iterator(setup);
-  while(screens-- > 0) xcb_screen_next(&iter);
-  
-  screen = iter.data;
-
-  window = xcb_generate_id(connection);
-
-  uint32_t mask, values[2];
-  mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-  values[0] = screen->black_pixel;
-  values[1] = XCB_EVENT_MASK_EXPOSURE       | XCB_EVENT_MASK_BUTTON_PRESS   |
-              XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |
-              XCB_EVENT_MASK_KEY_PRESS      | XCB_EVENT_MASK_KEY_RELEASE;
-
-  xcb_create_window(connection,
-		    XCB_COPY_FROM_PARENT,
-		    window,
-		    screen->root,
-		    50, 50,
-		    width, height,
-		    1,
-		    XCB_WINDOW_CLASS_INPUT_OUTPUT,
-		    screen->root_visual,
-		    mask, values);
-
-  w = width;
-  h = height;
-
-  memset(isDown, 0, sizeof(isDown));
-  
-  /* Magic code that will send notification when window is destroyed */
-  xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-  xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie, 0);
-
-  xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16, "WM_DELETE_WINDOW");
-  xcb_intern_atom_reply_t* atom_wm_delete_window = xcb_intern_atom_reply(connection, cookie2, 0);
-
-  xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1,
-		      &(*atom_wm_delete_window).atom);
-  free(reply);
-  
-  xcb_map_window(connection, window);
+Winval::Winval(int w, int h){
+  dsp = XOpenDisplay(NULL);
+  if(!dsp) return;
 
   
-  pmap = xcb_generate_id(connection);
-  xcb_create_pixmap(connection, 24, pmap, window, w, h);
+  screenNum = DefaultScreen(dsp);
+
+  int Black = BlackPixel(dsp, screenNum);
   
-  mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND;
-  values[0] = screen->black_pixel;
-  values[1] = 0xFFFFFFFF;
-  graphics_context = xcb_generate_id(connection);
-  xcb_create_gc(connection, graphics_context, pmap, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND,
-		values);
+  win = XCreateSimpleWindow(dsp,
+			    DefaultRootWindow(dsp),
+			    50, 50,
+			    w, h,
+			    0, Black,
+			    Black);
+
+  long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
+  XSelectInput(dsp, win, eventMask);
+
+  XMapWindow(dsp, win);
+
+  XEvent e;
+
+  ks = XGetKeyboardMapping(dsp, WINVAL_KEYMAP_OFFSET, 256 - WINVAL_KEYMAP_OFFSET, &keysyms);
+  for(int i = 0; i < 256; i++){
+    isDown[i] = false;
+  }
   
-  xcb_copy_area(connection, pmap, window, graphics_context,
-		0, 0, 0, 0,
-		w, h);
-  xcb_flush(connection);
+  pointerX = pointerY = 0;
+  mouseButtonPressed = false;
 
+  do{
+    XNextEvent(dsp, &e);
+  }while(e.type != MapNotify);
+
+  gc = XCreateGC(dsp, win,
+		    0,
+		    NULL );
+  image = 0;
+
+  autoRepeat = false;
+
+  width = w;
+  height = h;
   
-  fmt = xcb_setup_pixmap_formats(setup);
-  xcb_format_t *fmtend = fmt + xcb_setup_pixmap_formats_length(setup);
-  for(; fmt != fmtend; ++fmt)
-    if((fmt->depth == 24) && (fmt->bits_per_pixel == 32)) {
-      //printf("fmt %p has pad %d depth %d, bpp %d\n",
-      //fmt,fmt->scanline_pad, depth,bpp);
-      break;
-    }
-
-  xkb_context * xbcontext;
-  xbcontext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-  if(!xbcontext) printf("Could not create xkb_context\n");
-  xkb_x11_setup_xkb_extension(connection,
-			      XKB_X11_MIN_MAJOR_XKB_VERSION,
-			      XKB_X11_MIN_MINOR_XKB_VERSION,
-			      XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
-			      NULL,
-			      NULL,
-			      NULL,
-			      NULL);
-
-  xkb_keymap* keymap;
-
-  int keyboard_id = xkb_x11_get_core_keyboard_device_id(connection);
-
-  if(keyboard_id == -1) printf("Could not get xkb_keyboard id\n");
-
-  keymap = xkb_x11_keymap_new_from_device(xbcontext, connection, keyboard_id,
-					  XKB_KEYMAP_COMPILE_NO_FLAGS);
-  if(!keymap) printf("Could not get xkb_keyboard map\n");
-
-  kstate = xkb_x11_state_new_from_device(keymap, connection, keyboard_id);
-
-  if(!kstate) printf("Could not initialize xkb_state\n");
-
 }
 
 Winval::~Winval(){
-  xcb_free_pixmap(connection, pmap);
-  xcb_disconnect(connection);
-
+#ifdef WINVAL_VULKAN
+  winvulk_destroy_vulkan(&vk_state);
+#endif
+  
+  if(image)
+    XDestroyImage(image);
+  if(win)
+    XDestroyWindow(dsp, win);
+  XCloseDisplay(dsp);
 }
 
 int Winval::waitForKey(){
-  xcb_generic_event_t* event;
+  XEvent e;
   do{
-    event = xcb_wait_for_event(connection);
-    handleEventProperly(event);
-   }while(event->response_type != XCB_KEY_PRESS);
+    XNextEvent(dsp, &e);
+    handleEventProperly(e);
+   }while(e.type != KeyPress);
+  return e.xkey.keycode;
+}
+
+void Winval::waitForButtonPress(int& x, int& y){
+  XEvent e;
+  do {
+    XNextEvent(dsp, &e);
+    handleEventProperly(e);
+  }while(e.type != ButtonPress);
+
+  x = e.xbutton.x, y = e.xbutton.y;
+  return;
   
-  return xkb_state_key_get_one_sym(kstate, ((xcb_key_press_event_t*)event)->detail);
 }
 
-void Winval::waitForButtonPress(int* x, int* y){
-  xcb_generic_event_t* event;
-  do{
-    event = xcb_wait_for_event(connection);
-    handleEventProperly(event);
-  }while(event->response_type != XCB_BUTTON_PRESS);
-
-  *x = ((xcb_button_press_event_t*)event)->event_x;
-  *y = ((xcb_button_press_event_t*)event)->event_y;
-}
-
-void Winval::handleEventProperly(xcb_generic_event_t* event){
-  xcb_expose_event_t* ee;
-  switch(event->response_type){
-  case XCB_EXPOSE:
-    ee = (xcb_expose_event_t*)event;
-    xcb_copy_area(connection, pmap, window,  graphics_context,
-		  ee->x, ee->y, ee->x, ee->y, ee->width, ee->height);
-    xcb_flush(connection);
+void Winval::handleEventProperly(XEvent& e){
+  int index;
+  int key;
+  switch(e.type){
+  case Expose:
+    if(!image)
+      break;
+    XPutImage(dsp, win, gc, image, 0, 0, 0, 0, width, height);
+    XFlush(dsp);
     break;
-  case XCB_KEY_PRESS:
-
-    xcb_keysym_t keysym;
-    xcb_keycode_t keycode;
-    keycode = ((xcb_key_press_event_t*)event)->detail;
-    keysym = xkb_state_key_get_one_sym(kstate, keycode);
-    //printf("Pressed key %x!\n", keysym);
-    isDown[keysym] = true;
+  case KeyPress:
+    index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
+    key = ks[index*keysyms];
+    if(key < 1<<16)
+      isDown[key] = true;
     break;
-
-  case XCB_KEY_RELEASE:
-    keycode = ((xcb_key_press_event_t*)event)->detail;
-    keysym = xkb_state_key_get_one_sym(kstate, keycode);
-    //printf("Pressed key %x!\n", keysym);
-    isDown[keysym] = false;
+  case KeyRelease:
+    index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
+    key = ks[index*keysyms];
+    if(key < 1<<16){
+      bool pressDown = false;
+      if(!autoRepeat){
+	if(XEventsQueued(dsp, QueuedAlready)){
+	  
+	  XEvent nextEvent;
+	  XPeekEvent(dsp, &nextEvent);
+	  if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
+	     e.xkey.time == nextEvent.xkey.time){
+	    XNextEvent(dsp, &nextEvent);
+	    pressDown = true;
+	  }
+	}
+      }
+      isDown[key] = pressDown;
+    }
     break;
-  case XCB_BUTTON_PRESS:
-    //printf("Pressed some button!\n");
-    mouseButtonPressed = true;
+  case MotionNotify:
+    pointerX = e.xmotion.x, pointerY = e.xmotion.y;
     break;
-
-  case XCB_BUTTON_RELEASE:
+  case ButtonRelease:
     mouseButtonPressed = false;
     break;
-
-  case XCB_MOTION_NOTIFY:
-    pointerX = ((xcb_motion_notify_event_t*)event)->event_x;
-    pointerY = ((xcb_motion_notify_event_t*)event)->event_y;
+  case ButtonPress:
+    mouseButtonPressed = true;
     break;
   }
 }
 
-void Winval::getPointerPosition(int* x, int* y){
+void Winval::getPointerPosition(int* x, int*y){
   *x = pointerX; *y = pointerY;
 }
 
@@ -188,55 +146,50 @@ bool Winval::isKeyPressed(int i){
 }
 
 void Winval::flushEvents(){
-  xcb_generic_event_t* event;
-  while((event = xcb_poll_for_event(connection))){
-    handleEventProperly(event);
+  int num = XEventsQueued(dsp, QueuedAfterFlush);
+  XEvent e2;
+  while(num--){
+    XNextEvent(dsp, &e2);
+
+    handleEventProperly(e2);
   }
 }
 
+XEvent Winval::getNextEvent(){
+  XEvent e;
+  XNextEvent(dsp, &e);
+  return e;
+}
+
+void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
+  XEvent e;
+  do {
+    XNextEvent(dsp, &e);
+    handleEventProperly(e);
+    if(e.type == ButtonRelease){
+      valid = false;
+      return;
+    }
+  }while(e.type != MotionNotify);
+
+  x = e.xmotion.x, y = e.xmotion.y;
+  valid = true;
+  return;
+}
 
 void Winval::drawBuffer(char* buffer, int w, int h){
-  xcb_image_t * image = xcb_image_create(w, h,
-					 XCB_IMAGE_FORMAT_Z_PIXMAP,
-					 fmt->scanline_pad,
-					 fmt->depth,
-					 fmt->bits_per_pixel,
-					 0,
-					 (xcb_image_order_t)xcb_get_setup(connection)->image_byte_order,
-					 XCB_IMAGE_ORDER_LSB_FIRST,
-					 (unsigned char*)buffer,
-					 w*h*4,
-					 (unsigned char*)buffer);
-
-
-  
-  if(image == NULL){
-    printf("Cannot create image\n");
-  }
-  xcb_image_put(connection, pmap, graphics_context, image, 0, 0, 0);
-  xcb_copy_area(connection, pmap, window, graphics_context, 0, 0, 0, 0, w, h);
-  
-  xcb_flush(connection);
-  
-  image->base = 0; //Ensure buffer is not deleted
-  xcb_image_destroy(image);
-
+  XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, buffer, w, h, 32, 0);
+  XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
+  XFlush(dsp);
+  //XDestroyImage(im);
 }
+
 void Winval::drawBuffer(unsigned char* buffer, int w, int h){
   drawBuffer((char*)buffer, w, h);
 }
 
-
 void Winval::setTitle(const char* window_name){
-  xcb_change_property(connection, 
-		      XCB_PROP_MODE_REPLACE, 
-		      window, 
-		      XCB_ATOM_WM_NAME, 
-		      XCB_ATOM_STRING, 
-		      8, 
-		      strlen(window_name), 
-		      window_name); 
-  xcb_flush(connection); 
+  XStoreName(dsp, win, window_name);
   window_title = window_name;
 }
 
@@ -248,18 +201,18 @@ const char* Winval::getTitle() const{
   return window_title.c_str();
 }
 
-int Winval::getWidth() const{
-  return w;
+Window Winval::getWindow() const{
+  return win;
 }
 
-int Winval::getHeight() const{
-  return h;
+Display* Winval::getDisplay() const{
+  return dsp;
 }
 
-xcb_window_t Winval::getWindow() const{
-  return window;
+int Winval::getWidth() const {
+  return width;
 }
 
-xcb_connection_t* Winval::getConnection() const{
-  return connection;
+int Winval::getHeight() const {
+  return height;
 }

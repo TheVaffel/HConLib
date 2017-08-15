@@ -87,8 +87,9 @@ uint Wingine::get_memory_type_index( uint type_bits, VkFlags requirements_mask){
 
 VkResult Wingine::init_instance(const  Winval* win){
   instance_extension_names.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-  instance_extension_names.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
-
+  //instance_extension_names.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+  instance_extension_names.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+  
 #ifdef DEBUG
   instance_extension_names.push_back("VK_EXT_debug_report");
   instance_layer_names.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -268,13 +269,13 @@ VkResult Wingine::init_command_buffers(){
 }
 
 VkResult Wingine::init_surface(const Winval* win){
-  VkXcbSurfaceCreateInfoKHR surface_info = {};
-  surface_info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+  VkXlibSurfaceCreateInfoKHR surface_info = {};
+  surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
   surface_info.pNext = NULL;
   surface_info.window = win->getWindow();
-  surface_info.connection = win->getConnection();
+  surface_info.dpy = win->getDisplay();
 
-  VkResult res = vkCreateXcbSurfaceKHR(instance, &surface_info, NULL, &surface);
+  VkResult res = vkCreateXlibSurfaceKHR(instance, &surface_info, NULL, &surface);
   if(res != VK_SUCCESS){
     printf("Could not create surface\n");
     exit(0);

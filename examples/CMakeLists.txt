@@ -8,7 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 
 set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${HConLibRoot}/build)
 
-set(xcb_libs xcb xcb-image xkbcommon-x11 xkbcommon)
+set(xcb_libs X11)
 set(vulkan_libs )
 
 set(winval_libs Winval ${xcb_libs})

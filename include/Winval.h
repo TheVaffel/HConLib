@@ -1,62 +1,67 @@
 #ifndef INCLUDED_WINVAL
 #define INCLUDED_WINVAL
 
-#include <xcb/xcb.h>
-#include <xcb/xcb_image.h>
-#include <xkbcommon/xkbcommon-x11.h>
-#include <cstdlib>
+#include "X11/Xlib.h"
+#include "X11/Xutil.h"
+#include "X11/keysym.h"
 
 #include <string> //std::string
-#include <string.h> //strlen
 
-#define WK_SPACE XKB_KEY_space
-#define WK_ESC XKB_KEY_Escape
+#define WK_SPACE XK_space
+#define WK_ESC XK_Escape
 
-#define WK_0 XKB_KEY_0                            
-#define WK_1 XKB_KEY_1                            
-#define WK_2 XKB_KEY_2                            
-#define WK_3 XKB_KEY_3 
-#define WK_4 XKB_KEY_4 
-#define WK_5 XKB_KEY_5 
-#define WK_6 XKB_KEY_6 
-#define WK_7 XKB_KEY_7 
-#define WK_8 XKB_KEY_8 
-#define WK_9 XKB_KEY_9
+#define WK_0 XK_0                            
+#define WK_1 XK_1                            
+#define WK_2 XK_2                            
+#define WK_3 XK_3 
+#define WK_4 XK_4 
+#define WK_5 XK_5 
+#define WK_6 XK_6 
+#define WK_7 XK_7 
+#define WK_8 XK_8 
+#define WK_9 XK_9
 
-#define WK_A XKB_KEY_a 
-#define WK_B XKB_KEY_b 
-#define WK_C XKB_KEY_c 
-#define WK_D XKB_KEY_d 
-#define WK_E XKB_KEY_e 
-#define WK_F XKB_KEY_f 
-#define WK_G XKB_KEY_g 
-#define WK_H XKB_KEY_h 
-#define WK_I XKB_KEY_i 
-#define WK_J XKB_KEY_j 
-#define WK_K XKB_KEY_k 
-#define WK_L XKB_KEY_l 
-#define WK_M XKB_KEY_m 
-#define WK_N XKB_KEY_n 
-#define WK_O XKB_KEY_o 
-#define WK_P XKB_KEY_p 
-#define WK_Q XKB_KEY_q 
-#define WK_R XKB_KEY_r 
-#define WK_S XKB_KEY_s 
-#define WK_T XKB_KEY_t 
-#define WK_U XKB_KEY_u 
-#define WK_V XKB_KEY_v 
-#define WK_W XKB_KEY_w 
-#define WK_X XKB_KEY_x 
-#define WK_Y XKB_KEY_y 
-#define WK_Z XKB_KEY_z
+#define WK_A XK_a 
+#define WK_B XK_b 
+#define WK_C XK_c 
+#define WK_D XK_d 
+#define WK_E XK_e 
+#define WK_F XK_f 
+#define WK_G XK_g 
+#define WK_H XK_h 
+#define WK_I XK_i 
+#define WK_J XK_j 
+#define WK_K XK_k 
+#define WK_L XK_l 
+#define WK_M XK_m 
+#define WK_N XK_n 
+#define WK_O XK_o 
+#define WK_P XK_p 
+#define WK_Q XK_q 
+#define WK_R XK_r 
+#define WK_S XK_s 
+#define WK_T XK_t 
+#define WK_U XK_u 
+#define WK_V XK_v 
+#define WK_W XK_w 
+#define WK_X XK_x 
+#define WK_Y XK_y 
+#define WK_Z XK_z
 
-#define WK_LEFT XKB_KEY_Left
-#define WK_RIGHT XKB_KEY_Right
-#define WK_DOWN XKB_KEY_Down
-#define WK_UP XKB_KEY_Up
+#define WK_LEFT XK_Left
+#define WK_RIGHT XK_Right
+#define WK_DOWN XK_Down
+#define WK_UP XK_Up
 
 class Winval{
-  int w, h;
+  int width, height;
+  Display *dsp;
+  int screenNum;
+  GC gc;
+  Window win;
+  Window focusWindow;
+  char* pixelData;
+  XImage *image;
   
   bool isDown[65536];
   int keysyms;
@@ -66,25 +71,16 @@ class Winval{
   int pointerX, pointerY;
   bool mouseButtonPressed;
 
-  xcb_connection_t* connection;
-  xcb_screen_t* screen;
-  xcb_window_t window;
-  xcb_pixmap_t pmap;
-  xcb_gcontext_t graphics_context;
-  xcb_format_t* fmt;
+  KeySym *ks;
   
-  xkb_state * kstate;
-
  public:
-  
   Winval(int w, int h);
   Winval();
   ~Winval();
 
   std::string window_title;
 
-  void handleEventProperly(xcb_generic_event_t *);
-  //void handleEventProperly(XEvent& e);
+  void handleEventProperly(XEvent& e);
 
   void flushEvents();
 
@@ -92,18 +88,18 @@ class Winval{
   bool isMouseButtonPressed();
   bool isKeyPressed(int i);
   int waitForKey();  
-  //XEvent getNextEvent();
+  XEvent getNextEvent();
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
-  void waitForButtonPress(int* x, int* y);
+  void waitForButtonPress(int& x, int& y);
   void drawBuffer(char* p, int w, int h);
   void drawBuffer(unsigned char* p, int w, int h);
   void enableAutoRepeat(bool enable);
   const char* getTitle() const;
   void setTitle(const char* window_name);
+  Window getWindow() const;
+  Display* getDisplay() const;
   int getWidth() const;
   int getHeight() const;
-  xcb_window_t getWindow() const;
-  xcb_connection_t* getConnection() const;
 };
 
 #endif // INCLUDED_WINVAL

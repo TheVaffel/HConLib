@@ -54,7 +54,6 @@ Winval::Winval(int width, int height){
   xcb_map_window(connection, window);
 
   
-#ifndef WINVAL_VULKAN
   pmap = xcb_generate_id(connection);
   xcb_create_pixmap(connection, 24, pmap, window, w, h);
   
@@ -79,7 +78,6 @@ Winval::Winval(int width, int height){
       //fmt,fmt->scanline_pad, depth,bpp);
       break;
     }
-#endif
 
   xkb_context * xbcontext;
   xbcontext = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -107,11 +105,6 @@ Winval::Winval(int width, int height){
 
   if(!kstate) printf("Could not initialize xkb_state\n");
 
-  
-
-#ifdef WINVAL_VULKAN
-  wingine.initVulkan(this);
-#endif
 }
 
 Winval::~Winval(){

@@ -70,6 +70,7 @@ int Winval::waitForKey(){
     XNextEvent(dsp, &e);
     handleEventProperly(e);
    }while(e.type != KeyPress);
+  
   return e.xkey.keycode;
 }
 
@@ -129,6 +130,10 @@ void Winval::handleEventProperly(XEvent& e){
     break;
   case ButtonPress:
     mouseButtonPressed = true;
+    break;
+
+  case MappingNotify:
+    ks = XGetKeyboardMapping(dsp, WINVAL_KEYMAP_OFFSET, 256 - WINVAL_KEYMAP_OFFSET, &keysyms);
     break;
   }
 }

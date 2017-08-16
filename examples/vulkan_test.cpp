@@ -76,5 +76,10 @@ int main(){
     }
   }
 
+  wg.destroyBuffer(vertexBuffer);
+  wg.destroyBuffer(colorBuffer);
+  wg.destroyBuffer(indexBuffer);
+  wg.destroyBuffer(colorBuffer2);
+  
   return 0;
 }

@@ -203,6 +203,7 @@ class Wingine{
 
   WingineBuffer createBuffer(uint, uint);
   VkResult setBuffer(const WingineBuffer&, const void*, uint);
+  void destroyBuffer(const WingineBuffer&);
 
   WingineUniform createUniform(uint size);
   void setUniform(const WingineUniform&, void*, uint);

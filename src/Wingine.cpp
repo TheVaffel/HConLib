@@ -907,6 +907,8 @@ void Wingine::destroy_depth_buffer(){
 void Wingine::destroy_uniform_buffer(){
   vkDestroyBuffer(device, uniform_buffer, NULL);
   vkFreeMemory(device, uniform_memory, NULL);
+
+  destroyBuffer(ModelTransformUniform);
 }
 
 void Wingine::destroy_descriptor_set_layouts(){
@@ -1012,6 +1014,11 @@ WingineBuffer Wingine::createBuffer( uint usage, uint size){
   }
 
   return wBuffer;
+}
+
+void Wingine::destroyBuffer(const WingineBuffer& buffer){
+  vkDestroyBuffer(device, buffer.buffer, NULL);
+  vkFreeMemory(device, buffer.memory, NULL);
 }
 
 VkResult Wingine::setBuffer( const WingineBuffer& buffer, const void* data, uint size){

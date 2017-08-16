@@ -13,7 +13,7 @@ int main(){
   int n;
   unsigned char buffer[w*h*4];
   
-  while(true){
+  while(win.isOpen()){
     cam.capture_image(buffer);
     win.drawBuffer(buffer, w, h);
     //win.waitForKey();

@@ -72,7 +72,9 @@ class Winval{
   bool mouseButtonPressed;
 
   KeySym *ks;
-  
+  Atom wm_delete_window;
+
+  int getKeySym(int keycode);
  public:
   Winval(int w, int h);
   Winval();
@@ -87,8 +89,7 @@ class Winval{
   void getPointerPosition(int* x, int* y);
   bool isMouseButtonPressed();
   bool isKeyPressed(int i);
-  int waitForKey();  
-  XEvent getNextEvent();
+  int waitForKey(); 
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
   void waitForButtonPress(int& x, int& y);
   void drawBuffer(char* p, int w, int h);
@@ -100,6 +101,7 @@ class Winval{
   Display* getDisplay() const;
   int getWidth() const;
   int getHeight() const;
+  bool isOpen() const;
 };
 
 #endif // INCLUDED_WINVAL

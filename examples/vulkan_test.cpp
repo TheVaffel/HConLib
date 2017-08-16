@@ -51,7 +51,7 @@ int main(){
 		Vector3(0, 1, 0));
   
   wg.setCamera(cam);
-  while(1){
+  while(win.isOpen()){
     cam.setPosition(camPos + 0.2*camPos*sin(0.01*count));
     wg.setCamera(cam);
     model = rotation*model;
@@ -71,7 +71,9 @@ int main(){
     }
     start_time = current_time;
     
-    win.waitForKey();
+    if(win.waitForKey() == WK_ESC){
+      break;
+    }
   }
 
   return 0;

@@ -49,41 +49,53 @@ Winval::Winval(int w, int h){
 
   width = w;
   height = h;
-  
+
+  wm_delete_window = XInternAtom(dsp, "WM_DELETE_WINDOW", False);
+  XSetWMProtocols(dsp, win, &wm_delete_window, 1);
 }
 
 Winval::~Winval(){
-#ifdef WINVAL_VULKAN
-  winvulk_destroy_vulkan(&vk_state);
-#endif
+  flushEvents();
+  
+  if(!isOpen())
+    return;
   
   if(image)
     XDestroyImage(image);
   if(win)
     XDestroyWindow(dsp, win);
-  XCloseDisplay(dsp);
+}
+
+int Winval::getKeySym(int keyCode){
+  int index = keyCode - WINVAL_KEYMAP_OFFSET;
+  int key = ks[index*keysyms];
+  return key < 1<<16 ? key : 0;
 }
 
 int Winval::waitForKey(){
+  if(!isOpen())
+    return 0;
+  
   XEvent e;
   do{
     XNextEvent(dsp, &e);
     handleEventProperly(e);
-   }while(e.type != KeyPress);
+  }while(e.type != KeyPress && isOpen());
   
-  return e.xkey.keycode;
+  return getKeySym(e.xkey.keycode);
 }
 
 void Winval::waitForButtonPress(int& x, int& y){
+  if(!isOpen())
+    return;
+  
   XEvent e;
   do {
     XNextEvent(dsp, &e);
     handleEventProperly(e);
-  }while(e.type != ButtonPress);
+  }while(e.type != ButtonPress && isOpen());
 
   x = e.xbutton.x, y = e.xbutton.y;
-  return;
-  
 }
 
 void Winval::handleEventProperly(XEvent& e){
@@ -135,6 +147,13 @@ void Winval::handleEventProperly(XEvent& e){
   case MappingNotify:
     ks = XGetKeyboardMapping(dsp, WINVAL_KEYMAP_OFFSET, 256 - WINVAL_KEYMAP_OFFSET, &keysyms);
     break;
+
+  case ClientMessage:
+    if((Atom)e.xclient.data.l[0] == wm_delete_window){
+      XCloseDisplay(dsp);
+      dsp = 0;
+    }
+    break;
   }
 }
 
@@ -151,19 +170,16 @@ bool Winval::isKeyPressed(int i){
 }
 
 void Winval::flushEvents(){
+  if(!isOpen())
+    return;
+  
   int num = XEventsQueued(dsp, QueuedAfterFlush);
   XEvent e2;
-  while(num--){
+  while(num-- && isOpen()){
     XNextEvent(dsp, &e2);
 
     handleEventProperly(e2);
   }
-}
-
-XEvent Winval::getNextEvent(){
-  XEvent e;
-  XNextEvent(dsp, &e);
-  return e;
 }
 
 void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
@@ -175,7 +191,7 @@ void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
       valid = false;
       return;
     }
-  }while(e.type != MotionNotify);
+  }while(e.type != MotionNotify && isOpen());
 
   x = e.xmotion.x, y = e.xmotion.y;
   valid = true;
@@ -183,6 +199,8 @@ void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
 }
 
 void Winval::drawBuffer(char* buffer, int w, int h){
+  if(!isOpen())
+    return;
   XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, buffer, w, h, 32, 0);
   XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
   XFlush(dsp);
@@ -194,6 +212,8 @@ void Winval::drawBuffer(unsigned char* buffer, int w, int h){
 }
 
 void Winval::setTitle(const char* window_name){
+  if(!isOpen())
+    return;
   XStoreName(dsp, win, window_name);
   window_title = window_name;
 }
@@ -220,4 +240,8 @@ int Winval::getWidth() const {
 
 int Winval::getHeight() const {
   return height;
+}
+
+bool Winval::isOpen() const {
+  return dsp;
 }

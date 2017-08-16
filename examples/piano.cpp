@@ -50,7 +50,7 @@ int main(){
 
   win.enableAutoRepeat(true);
   int it = 0;
-  while(true){
+  while(win.isOpen()){
     it++;
     win.flushEvents();
     //cout<<"Flushed events "<<it<<endl;

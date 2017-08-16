@@ -28,7 +28,7 @@ int main(){
   Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05);
   int i = 0;
   LineCube lc(1, 1, 1);
-  while(true){
+  while(win.isOpen()){
     r = r*rr;
     m = Matrix4(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-3 + 1.5*cos(i*0.07)));
     m = m*r;

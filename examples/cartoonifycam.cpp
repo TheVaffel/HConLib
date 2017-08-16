@@ -12,7 +12,7 @@ int main(){
 	unsigned char* buffer = new unsigned char[w*h*4];
 	unsigned char* cartoon = new unsigned char[w*h*4];
 
-	while(true){
+	while(win.isOpen()){
 		cam.capture_image(buffer);
 		cartoonify(buffer, cartoon, w, h);
 		win.drawBuffer(cartoon, w, h);

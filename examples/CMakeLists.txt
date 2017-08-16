@@ -8,10 +8,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)
 
 set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${HConLibRoot}/build)
 
-set(xcb_libs X11)
+set(x_libs X11)
 set(vulkan_libs )
 
-set(winval_libs Winval ${xcb_libs})
+set(winval_libs Winval ${x_libs})
 set(wingine_libs FlatAlg ${vulkan_libs} Wingine glslang  OSDependent pthread SPIRV SPVRemapper OGLCompiler HLSL vulkan  ${winval_libs})
 
 include_directories(${HConLibRoot}/include)
@@ -53,9 +53,9 @@ if(WINVAL_LIB)
 	add_executable(hgraftest hgraftest.cpp)
 	target_link_libraries(hgraftest HGraf FlatAlg ${winval_libs})
 
-	#xcb_example
-	add_executable(xcb_example xcb_example.cpp)
-	target_link_libraries(xcb_example ${winval_libs})
+	#colors
+	add_executable(colors colors.cpp)
+	target_link_libraries(colors ${winval_libs})
 	
 	#cam
 	add_executable(cam cam.cpp)

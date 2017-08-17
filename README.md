@@ -15,7 +15,7 @@ Utility libraries for C++
 
 #### For Winval
 
-* XCB (install script included)
+* X11
 
 #### For Wingine
 
@@ -50,11 +50,11 @@ You would write something like
 
 to compile with FlatAlg etc. Some libraries require further linking, like
 
-`g++ winval_test.cpp -o winval_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l xcb -l xcb-image -l xkbcommon-x11 -l xkbcommon`
+`g++ winval_test.cpp -o winval_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l X11`
 
 and
 
-`g++ wingine_test.cpp -o wingine_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l Wingine -l xcb -l xcb-image -l xkbcommon-x11 -l xkbcommon -l glslang -l OSDependent -l pthread -l SPIRV -l SPVRemapper -l OGLCompiler -l HLSL -l vulkan -std=c++11`
+`g++ wingine_test.cpp -o wingine_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l Wingine -l X11 -l glslang -l OSDependent -l pthread -l SPIRV -l SPVRemapper -l OGLCompiler -l HLSL -l vulkan -std=c++11`
 
 You can always see the CMakeLists.txt in the example folders to see what libraries are linked with
 

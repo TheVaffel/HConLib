@@ -11,7 +11,7 @@ int main(){
 
   Canvas vas(w, h);
 
-  CamParam par(w, h, M_PI/2, 0.1);
+  CamParam par(w, h, F_PI/2, 0.1f);
   for(int i = 0; i < w*h; i++){
     vas[i] = 0;
   }

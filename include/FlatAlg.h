@@ -13,6 +13,8 @@
 
 #include <string>
 
+#define F_PI 3.141592653589793f
+
 struct Point2{
 public:
   union{

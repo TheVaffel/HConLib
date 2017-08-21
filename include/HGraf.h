@@ -3,8 +3,6 @@
 #ifndef INCLUDED_HGRAF
 #define INCLUDED_HGRAF
 #include "FlatAlg.h"
-#define _USE_MATH_DEFINES
-#include <cmath>
 
 typedef Point3 Color;
 

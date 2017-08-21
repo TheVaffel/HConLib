@@ -1,23 +1,20 @@
 #include "Winval.h"
 #include "HGraf.h"
-#include <unistd.h>
 #include <iostream>
 
 using namespace std;
 
-//Winval win;
-
 int main(){
   int h = 600;
   int w = 800;
-  
-  char* p = new char[h*w*4];
-  
+
+  unsigned char* p = new unsigned char[h*w*4];
+
   for(int i = 0; i< h*w*4; i++){
     p[i] = 0xFF;
   }
 
-  
+
   Winval win(w,h );
   win.setTitle("This is a test application");
   win.drawBuffer(p, w, h);

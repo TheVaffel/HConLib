@@ -1,4 +1,18 @@
+#include <cmath>
 #include <HGraf.h>
+#include <algorithm>
+
+static int msb(int a){
+  #ifdef WIN32
+    int i = 31;
+    while((a&(1<<i)) == 0 && i > 0){
+      i--;
+    }
+    return i;
+  #else //WIN32
+    return 31 - __builtin_clz(a);
+  #endif //WIN32
+}
 
 Canvas::Canvas(int nw, int nh){
   w = nw; h = nh;
@@ -39,7 +53,7 @@ void Canvas::clear(int c = 0x000000){
   }
 }
 
-CamParam::CamParam(int w, int h, double fovh = M_PI/2, float nplane = 0.01){
+CamParam::CamParam(int w, int h, double fovh = F_PI/2, float nplane = 0.01){
   screenWidth = w;
   screenHeight = h;
   invtanfovhover2 = 1.f/tan(fovh/2);
@@ -341,9 +355,9 @@ namespace hg{
 
     if((a = std::abs(right*vector[1])) < (b = std::abs(down*vector[0]))){
       endPoints[0][0] = point[0] + right;
-      endPoints[0][1] = point[1] + right*vector[1]/vector[0];
+      endPoints[0][1] = point[1] + (int)(right*vector[1]/vector[0]);
     }else if(a > b){
-      endPoints[0][0] = point[0] + down*vector[0]/vector[1];
+      endPoints[0][0] = point[0] + (int)(down*vector[0]/vector[1]);
       endPoints[0][1] = point[1] + down;
     }else{
       endPoints[0][0] = point[0] + right;
@@ -352,9 +366,9 @@ namespace hg{
 
     if((a = std::abs(left*vector[1])) < (b = std::abs(up*vector[0]))){
       endPoints[1][0] = point[0] + left;
-      endPoints[1][1] = point[1] + left*vector[1]/vector[0];
+      endPoints[1][1] = point[1] + (int)(left*vector[1]/vector[0]);
     }else if(a > b){
-      endPoints[1][0] = point[0] + up*vector[0]/vector[1];
+      endPoints[1][0] = point[0] + (int)(up*vector[0]/vector[1]);
       endPoints[1][1] = point[1] + up;
     }else{
       endPoints[1][0] = point[0] + left;
@@ -392,14 +406,14 @@ namespace hg{
     int di[2] = {pe[0] - ps[0], pe[1] - ps[1]};
     if(std::abs(di[0]) > 2*canvas.getWidth() || std::abs(di[1]) > 2*canvas.getHeight()){
       if(std::abs(ps[0]) > canvas.getWidth() || std::abs(ps[1] > canvas.getHeight())){
-	int msb_wh = 32 - std::min(__builtin_clz(canvas.getWidth()), __builtin_clz(canvas.getHeight()));
-	int msb_ps = 32 - std::max(__builtin_clz(ps[0]), __builtin_clz(ps[1])); //Most significant bit of ps
+	int msb_wh = std::max(msb(canvas.getWidth()), msb(canvas.getHeight()));
+	int msb_ps = std::min(msb(ps[0]), msb(ps[1])); //Most significant bit of ps
 	int shift = msb_ps - msb_wh - 1;
 	if(shift > 0){
 	  ps[0] = (ps[0]<0?-( ((int)std::abs(ps[0] - pe[0]))>>shift) : (ps[0] + pe[0])>>shift) + pe[0];
 	  ps[1] = (ps[1]<0?-( ((int)std::abs(ps[1] - pe[1]))>>shift) : (ps[1] + pe[1])>>shift) + pe[1];
 	}
-	int msb_pe = 32 - std::max(__builtin_clz(pe[0]), __builtin_clz(pe[1]));
+	int msb_pe = std::min(msb(pe[0]), msb(pe[1]));
 	shift = msb_pe - msb_wh - 1;
 	if(shift > 0){
 	  pe[0] = (pe[0]<0?-( ((int)std::abs(pe[0] - ps[0]))>>shift) : (pe[0] + ps[0])>>shift) + ps[0];

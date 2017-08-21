@@ -1,7 +1,18 @@
-#include <unistd.h>
+#include "HGraf.h"
 #include <iostream>
 #include "Winval.h"
-#include "HGraf.h"
+#include <cmath>
+
+#ifdef WIN32
+void sleepMilliseconds(int m){
+  Sleep(m);
+}
+#else //WIN32
+#include <unistd.h>
+void sleepMilliseconds(int m){
+  usleep(m*1000)
+}
+#endif //WIN32
 
 using namespace std;
 
@@ -25,21 +36,19 @@ int main(){
   }*/
   Matrix4 m(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-5));
   Matrix4 r;
-  Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05);
+  Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05f);
   int i = 0;
   LineCube lc(1, 1, 1);
-  while(win.isOpen()){
+  while(win.isOpen() && !win.isKeyPressed(WK_ESC)){
     r = r*rr;
-    m = Matrix4(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-3 + 1.5*cos(i*0.07)));
+    m = Matrix4(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-3 + 1.5f*cos(i*0.07f)));
     m = m*r;
     hg::clearCanvas(vas);
     hg::drawLineModel(vas, par, lc, m, 0xFF0000);
     win.drawBuffer(vas.getData(), w, h);
-    usleep(20000);
+    sleepMilliseconds(20);
     ++i;
   }
-
-  win.drawBuffer(vas.getData(), w, h);
   //win.waitForKey();
   return 0;
 }

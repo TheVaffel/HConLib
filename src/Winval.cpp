@@ -1,5 +1,183 @@
 #include <Winval.h>
 
+#ifdef WIN32
+Winval::Winval(int w, int h){
+  const char* AppTitle = "Winval";
+  wc.style=CS_HREDRAW | CS_VREDRAW;
+  wc.lpfnWndProc=WindowProc;
+  wc.cbClsExtra=0;
+  wc.cbWndExtra=0;
+  wc.hInstance=GetModuleHandle(0);
+  wc.hIcon=LoadIcon(NULL,IDI_WINLOGO);
+  wc.hCursor=LoadCursor(NULL,IDC_ARROW);
+  wc.hbrBackground=(HBRUSH)COLOR_WINDOWFRAME;
+  wc.lpszMenuName=NULL;
+  wc.lpszClassName=AppTitle;
+
+  if (!RegisterClass(&wc))
+    exit(0);
+  hwnd = CreateWindow(AppTitle,AppTitle,
+    WS_OVERLAPPEDWINDOW,
+    CW_USEDEFAULT,CW_USEDEFAULT,w,h,
+    NULL,NULL,0,NULL);
+    width = w;
+    height = h;
+
+  windowOpen = true;
+  if (!hwnd)
+    exit(0);
+  /*std::cout<<"Starting to fill out BMI"<<std::endl;
+  memset(&bmi, 0, sizeof(bmi));
+  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bmi.bmiHeader.biWidth = w;
+  bmi.bmiHeader.biHeight = h;
+  bmi.bmiHeader.biPlanes = 1;
+  bmi.bmiHeader.biBitCount = 32;
+  bmi.bmiHeader.biCompression = BI_RGB;
+  HDC hDesktopDC = GetDC(GetDesktopWindow());
+  HBITMAP hDib = CreateDIBSection(hDesktopDC, &bmi, DIB_RGB_COLORS, (void**)&pixelData, 0,0);*/
+  pixelData = new COLORREF[w*h];
+  hdc = GetDC(hwnd);
+  if(pixelData == 0)
+    exit(0);
+
+  /*hDibDC = CreateCompatibleDC(hDesktopDC);
+  HGDIOBJ hOldObj = SelectObject(hDibDC, hDib);
+  if(pointer != 0)
+    memcpy(((void*)pixelData), *pointer, w*h*4);
+  ReleaseDC(GetDesktopWindow(), hDesktopDC);*/
+
+  ShowWindow(hwnd,10);
+  UpdateWindow(hwnd);
+}
+
+Winval::~Winval(){
+  //I don't know the Windows API that well, but...
+}
+
+void Winval::handleEventProperly(MSG& msg){
+  TranslateMessage(&msg);
+  DispatchMessage(&msg);
+  switch(msg.message){
+    case WM_PAINT: {
+      HBITMAP bitmap = CreateBitmap(width, height, 1, 8*4, (void*)pixelData);
+      HDC src = CreateCompatibleDC(hdc);
+      SelectObject(src, bitmap);
+
+      BitBlt(hdc, 0, 0, width, height, src, 0, 0, SRCCOPY);
+      DeleteDC(src);
+      /*PAINTSTRUCT paint;
+      HDC hWndDC = BeginPaint(hwnd, &paint);
+      BitBlt(hWndDC, 0, 0, w, h, hDibDC, 0, 0, SRCCOPY);
+      EndPaint(hwnd, &paint);*/
+      break;
+    }
+    case WM_LBUTTONDOWN: {
+      mouseButtonPressed = true;
+      break;
+    }
+    case WM_LBUTTONUP: {
+      mouseButtonPressed = false;
+      break;
+    }
+    case WM_KEYDOWN: {
+      isDown[msg.wParam] = true;
+      break;
+    }
+    case WM_KEYUP: {
+      isDown[msg.wParam] = false;
+      break;
+    }
+    case WM_MOUSEMOVE: {
+      pointerX = LOWORD(msg.lParam), pointerY = HIWORD(msg.lParam);
+      break;
+    }
+    case WM_DESTROY: {
+      PostQuitMessage(0);
+      windowOpen = false;
+      break;
+    }
+  }
+}
+
+void Winval::flushEvents(){
+  while(PeekMessage(&msg, hwnd, 0, 0,PM_NOREMOVE)){
+    GetMessage(&msg, hwnd, 0, 0);
+    handleEventProperly(msg);
+  }
+}
+
+void Winval::getPointerPosition(int* x, int* y){
+  *x = pointerX; *y = pointerY;
+}
+
+bool Winval::isMouseButtonPressed(){
+  return mouseButtonPressed;
+}
+
+bool Winval::isKeyPressed(int i){
+  return isDown[i];
+}
+
+void Winval::setTitle(const char* window_name){
+  SetWindowText(hwnd, window_name);
+  window_title = window_name;
+}
+
+int Winval::waitForKey(){
+  while(GetMessage(&msg, hwnd,0, 0)){
+    handleEventProperly(msg);
+    if(msg.message == WM_KEYDOWN)
+      break;
+  }
+
+  return msg.wParam;
+}
+
+void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
+  flushEvents();
+  valid = mouseButtonPressed;
+  x = pointerX;
+  y = pointerY;
+
+  return;
+}
+void Winval::waitForButtonPress(int& x, int& y){
+  while(GetMessage(&msg, hwnd,0, 0)){
+    handleEventProperly(msg);
+    if(msg.message == WM_LBUTTONDOWN){
+      break;
+    }
+  }
+}
+
+void Winval::drawBuffer(unsigned char* p, int w, int h){
+  memcpy((void*)pixelData, (void*)p, w*h*4);
+
+  HBITMAP bitmap = CreateBitmap(w, h, 1, 8*4, (void*)pixelData);
+  HDC src = CreateCompatibleDC(hdc);
+  SelectObject(src, bitmap);
+
+  BitBlt(hdc, 0, 0, w, h, src, 0, 0, SRCCOPY);
+  DeleteDC(src);
+
+  /*PAINTSTRUCT paint;
+  HDC hWndDC = BeginPaint(hwnd, &paint);
+  BitBlt(hWndDC, 0, 0, w, h, hDibDC, 0, 0, SRCCOPY);
+  EndPaint(hwnd, &paint);*/
+}
+
+bool Winval::isOpen(){
+  flushEvents();
+  return windowOpen;
+}
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam){
+  return DefWindowProc(hwnd, msg, wparam, lparam);
+}
+
+#else //WIN32
+
 #define WINVAL_KEYMAP_OFFSET 8
 Winval::Winval(){
 
@@ -242,6 +420,9 @@ int Winval::getHeight() const {
   return height;
 }
 
-bool Winval::isOpen() const {
+bool Winval::isOpen() {
+  flushEvents();
   return dsp;
 }
+
+#endif //WIN32

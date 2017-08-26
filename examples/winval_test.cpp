@@ -22,14 +22,14 @@ int main(){
   int x, y;
   int bound[2][2] = {{0, 0}, {959, 539}};
   int point[2] = {958, 539};
-  float vec[2] = {-0.972254, 0.233926};
+  float vec[2] = {-0.972254f, 0.233926f};
   int res[2][2];
 
   hg::getBoundaryIntersections(point, vec, bound, res);
   cout<<"Got res "<<res[0][0]<<", "<<res[0][1]<<" and "<<res[1][0]<<", "<<res[1][1]<<endl;
- 
+
   hg::LineIterator li(959, 539, 0, 539);
-	
+
   /*while(!li.isFinished()){
     cout<<li[0]<<", "<<li[1]<<endl;
     li++;
@@ -48,8 +48,8 @@ int main(){
     win.getPointerPosition(&x, &y);
     cout<<"Mouse is at "<<x<<", "<<y<<endl;
   }
-  
+
   return 0;
 
-  
+
 }

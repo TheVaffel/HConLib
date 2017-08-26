@@ -12,10 +12,12 @@ Utility libraries for C++
 ## Requirements
 
 * `cmake`
+* `g++` (Linux)
+* Visual Studio build tools (Windows)
 
 #### For Winval
 
-* X11
+* X11 (Linux)
 
 #### For Wingine
 
@@ -32,17 +34,15 @@ The rest concerns KhronoGroup's GLSL-SPIRV translator
 
 ## Build
 
-* Run `build.sh` script in root folder
-
-#### For Winval
-
-* Might need to install xcb libraries, run the `install_xcb.sh` before `build.sh`
+* Run `build.sh` (Linux) or `build.bat` (Windows) in root folder
 
 #### For Wingine
 
-* Run `initialize_glslang.sh` and make sure Winval builds before running `build.sh`
+* Run `initialize_glslang.sh` and make sure Winval builds before running the build script
 
 ## General Use
+
+#### Linux
 
 You would write something like
 
@@ -56,11 +56,15 @@ and
 
 `g++ wingine_test.cpp -o wingine_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l Wingine -l X11 -l glslang -l OSDependent -l pthread -l SPIRV -l SPVRemapper -l OGLCompiler -l HLSL -l vulkan -std=c++11`
 
-You can always see the CMakeLists.txt in the example folders to see what libraries are linked with
+You can always see the CMakeLists.txt in the example folder to see what libraries are linked into the mix
+
+#### Windows
+
+The above should work if  `g++` is installed. Equivalents with Visual Studio's compiler (`cl`) would probably work too. Building with `cmake` and `msbuild` might be easier anyway. But I don't judge.
 
 ## Examples
 
-* Compile examples by going to examples and run `compile_with_cmake.sh`
+* Compile examples by going to examples and run `compile_with_cmake.sh` in Linux or `compile_with_cmake.bat` in Windows
 * Expects the Vulkan shared library to be in default linker search path if building with Wingine
 * Supports turbojpeg for image decompression with webcam (see example/CMakeLists.txt to see how it is used)
 

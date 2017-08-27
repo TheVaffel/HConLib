@@ -30,7 +30,8 @@ The rest concerns KhronoGroup's GLSL-SPIRV translator
 
 #### For Flaudio
 
-* asound
+* asound (Linux)
+* A sane mind, as you could actually hurt your hearing with this. Take care
 
 ## Build
 

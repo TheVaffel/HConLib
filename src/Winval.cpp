@@ -172,6 +172,10 @@ bool Winval::isOpen(){
   return windowOpen;
 }
 
+void Winval::enableAutoRepeat(bool en){
+  autoRepeat = en;
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam){
   return DefWindowProc(hwnd, msg, wparam, lparam);
 }

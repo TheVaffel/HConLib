@@ -23,6 +23,7 @@ Utility libraries for C++
 
 * Winval
 * Vulkan
+
 The rest concerns KhronoGroup's GLSL-SPIRV translator
 * glslang (install script included, requires `git`)
 * pthread

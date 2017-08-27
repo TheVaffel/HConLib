@@ -1,8 +1,20 @@
 
+#ifndef INCLUDED_FLAUDIO
+#define INCLUDED_FLAUDIO
+
+#ifdef WIN32
+
+#include <windows.h>
+#include <Audioclient.h>
+#include <mmdeviceapi.h>
+
+#else //WIN32
 /* Use the newer ALSA API */
 #define ALSA_PCM_NEW_HW_PARAMS_API
-
 #include <alsa/asoundlib.h>
+
+#endif //WIN32
+
 #include <queue>
 #include <vector>
 
@@ -13,7 +25,7 @@ class Flaudio{
     bool isStereo;
     int currSample;
     bool repeat;
-    
+
     Segment(int size, bool repeatQ, bool stereo = false){
       numSamples = size;
       samples = new int16_t[size];
@@ -28,17 +40,26 @@ class Flaudio{
       }
     }
   };
-  
+
   std::vector<std::queue<Segment*> > channels;
-  
-  snd_pcm_uframes_t frames_per_period;
+
   unsigned int samplerate;
-  
+
+#ifdef WIN32
+
+  WAVEFORMATEX* format;
+  IMMDevice* device;
+  IAudioClient * audioClient;
+  IAudioRenderClient * renderClient;
+
+#else //WIN32
   snd_pcm_t *handle;
   snd_pcm_hw_params_t *params;
+#endif //WIN32
 
-  int total_buffer_size;
-  
+  unsigned int total_buffer_size;
+  unsigned int frames_per_period;
+
 public:
 
   Flaudio(unsigned int samplerate = 44100);
@@ -57,4 +78,4 @@ public:
   void endSegmentInChannel(int channel);
 };
 
-
+#endif //INCLUDED_FLAUDIO

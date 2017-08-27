@@ -25,8 +25,13 @@ else()
 message(">>>Building on Windows, not building HCam")
 endif()
 
-find_library(ALSA_LIB NAMES asound)
-if(ALSA_LIB)
+if(!WIN32)
+  find_library(FLAUDIO_LIB NAMES asound)
+else()
+  set(FLAUDIO_LIB TRUE)
+endif()
+
+if(FLAUDIO_LIB)
   #Flaudio
   add_library(Flaudio STATIC ${srcDir}/Flaudio.cpp)
 else()

@@ -1,3 +1,6 @@
+#undef min
+#undef max
+
 #include <cmath>
 #include <algorithm>
 
@@ -7,8 +10,8 @@ void cartoonify(unsigned char* buffer, unsigned char* result, int w, int h){
 			((int*)buffer)[i*w + j] = (buffer[4*(i*w + j)] + 3*buffer[4*(i*w+j)] + 2*buffer[4*(i*w + j)])/6;
 		}
 	}
-	for(int i = 0; i < h; i++){
-		for(int j = 0; j < w; j++){
+	for(int i = 1; i < h-1; i++){
+		for(int j = 1; j < w-1; j++){
 			int sumx = ((int*)buffer)[(i -1)*w + (j-1)] + 2*((int*)buffer)[(i)*w + (j-1)] + ((int*)buffer)[(i +1)*w + (j-1)]
 				- ((int*)buffer)[(i -1)*w + (j+1)] - 2*((int*)buffer)[(i)*w + (j+1)] - ((int*)buffer)[(i + 1)*w + (j+1)]; 
 

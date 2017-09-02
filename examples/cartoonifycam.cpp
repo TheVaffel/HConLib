@@ -4,8 +4,8 @@
 #include <HCam.h>
 
 int main(){
-	const int w = 1280, h = 720;
-	HCam cam(w, h);
+	const int w = 640, h = 480;
+	HCam cam(w, h, "/dev/video1");
 
 	Winval win(w, h);
 
@@ -21,6 +21,4 @@ int main(){
 			break;
 		}
 	}
-	cam.close();
 }
-

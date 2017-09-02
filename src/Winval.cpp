@@ -160,7 +160,8 @@ void Winval::drawBuffer(unsigned char* p, int w, int h){
 
   BitBlt(hdc, 0, 0, w, h, src, 0, 0, SRCCOPY);
   DeleteDC(src);
-
+  
+  DeleteObject(bitmap);
   /*PAINTSTRUCT paint;
   HDC hWndDC = BeginPaint(hwnd, &paint);
   BitBlt(hWndDC, 0, 0, w, h, hDibDC, 0, 0, SRCCOPY);

@@ -18,12 +18,8 @@ add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 
-if(!WIN32)
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)
-else()
-message(">>>Building on Windows, not building HCam")
-endif()
 
 if(!WIN32)
   find_library(FLAUDIO_LIB NAMES asound)

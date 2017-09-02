@@ -1,5 +1,221 @@
 #include <HCam.h>
 
+#ifndef USE_TURBOJPEG
+#define STB_IMAGE_IMPLEMENTATION
+#include "external/stb_image.h"
+#endif
+
+#ifdef WIN32
+#undef assert
+#define assert(hr) if(FAILED(hr)){printf("Failed at line %d\n", __LINE__); exit(1);}
+
+//#import "qedit.dll" raw_interfaces_only named_guids
+#pragma comment(lib, "strmiids.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
+
+EXTERN_C const CLSID CLSID_NullRenderer;
+EXTERN_C const CLSID CLSID_SampleGrabber;
+
+
+HCam::HCam(int w, int h, const char* name, int mode, bool upDown) {
+	upsideDown = upDown;
+	width = w;
+	height = h;
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	assert(hr);
+
+	hr = CoCreateInstance(CLSID_FilterGraph, NULL,
+		CLSCTX_INPROC_SERVER, IID_IGraphBuilder,
+		(void**)&graph);
+	assert(hr);
+
+	hr = CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL,
+		CLSCTX_INPROC_SERVER, IID_ICaptureGraphBuilder2,
+		(void **)&builder);
+	assert(hr);
+
+	hr = builder->SetFiltergraph(graph);
+	assert(hr);
+
+	hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL,
+		CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&deviceEnum));
+	assert(hr);
+
+	hr = deviceEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &enumMonik, 0);
+	assert(hr);
+
+	int deviceIndex;
+	int nameLength = strlen(name);
+	if (name[nameLength - 1] >= '0' && name[nameLength - 1] <= '9') {
+		deviceIndex = name[nameLength - 1] - '0';
+	}
+	else {
+		printf("Could not get device number, falling back to device 0\n");
+		deviceIndex = 0;
+	}
+
+	for (int i = 0; i < deviceIndex + 1; i++) {
+		hr = enumMonik->Next(1, &moniker, NULL);
+		if (FAILED(hr)) {
+			printf("Could not get right device\n");
+			exit(0);
+		}
+	}
+
+	hr = moniker->BindToStorage(0, 0, IID_PPV_ARGS(&propBag));
+	assert(hr);
+
+	VARIANT var;
+	VariantInit(&var);
+	hr = propBag->Read(L"FriendlyName", &var, 0);
+	printf("Using capture device %ls\n", var.bstrVal);
+	VariantClear(&var);
+
+	hr = moniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&capFilter);
+	assert(hr);
+
+	hr = graph->AddFilter(capFilter, L"Capture Filter");
+	assert(hr);
+
+	hr = CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER,
+		IID_PPV_ARGS(&sampleGrabberFilter));
+	assert(hr);
+
+	hr = sampleGrabberFilter->QueryInterface(DexterLib::IID_ISampleGrabber, (void**)&sampleGrabber);
+	assert(hr);
+
+	hr = sampleGrabber->SetBufferSamples(TRUE);
+	assert(hr);
+
+	ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
+	mt.majortype = MEDIATYPE_Video;
+	mt.subtype = MEDIASUBTYPE_RGB32;
+	hr = sampleGrabber->SetMediaType((DexterLib::_AMMediaType*)&mt);
+	assert(hr);
+
+	hr = graph->AddFilter(sampleGrabberFilter, L"SampleGrab");
+	assert(hr);
+
+	hr = CoCreateInstance(CLSID_NullRenderer, NULL,
+		CLSCTX_INPROC_SERVER,
+		IID_PPV_ARGS(&nullRenderer));
+	assert(hr);
+
+	hr = graph->AddFilter(nullRenderer, L"NullRenderer");
+	assert(hr);
+
+	hr = builder->RenderStream(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video,
+		capFilter, sampleGrabberFilter, nullRenderer);
+	assert(hr);
+
+	hr = graph->QueryInterface(IID_IMediaControl,
+		(void**)&mediaControl);
+	assert(hr);
+
+	while (1) {
+		hr = mediaControl->Run();
+
+		if (hr == S_OK) break;
+		if (hr == S_FALSE) continue;
+
+		printf("Got error in running media control\n");
+		assert(false);
+	}
+	while (1) {
+		hr = sampleGrabber->GetCurrentBuffer(&bufferSize, NULL);
+		if (hr != S_OK && hr != VFW_E_WRONG_STATE) {
+			printf("Cannot get buffer size\n");
+			exit(0);
+		}
+		if (bufferSize != 0)
+			break;
+	}
+
+	hr = sampleGrabber->GetConnectedMediaType((DexterLib::_AMMediaType*)&mt);
+	assert(hr);
+
+	if ((mt.formattype == FORMAT_VideoInfo) &&
+		(mt.cbFormat >= sizeof(VIDEOINFOHEADER)) &&
+		(mt.pbFormat != NULL)) {
+		VIDEOINFOHEADER *vih = (VIDEOINFOHEADER*)mt.pbFormat;
+		printf("Chosen resolution is %d x %d\n", vih->bmiHeader.biWidth,
+			vih->bmiHeader.biHeight);
+	}
+	else {
+		printf("Got wrong media format\n");
+		exit(0);
+	}
+}
+
+HCam::~HCam() {
+	mediaControl->Stop();
+
+	if (mt.cbFormat != 0) {
+		CoTaskMemFree((PVOID)mt.pbFormat);
+		mt.cbFormat = 0;
+		mt.pbFormat = NULL;
+	}
+	if (mt.pUnk != NULL) {
+		mt.pUnk->Release();
+		mt.pUnk = NULL;
+	}
+
+	deviceEnum->Release();
+	enumMonik->Release();
+	moniker->Release();
+	propBag->Release();
+	graph->Release();
+	builder->Release();
+	capFilter->Release();
+	sampleGrabberFilter->Release();
+	nullRenderer->Release();
+	mediaControl->Release();
+}
+
+int HCam::capture_image(unsigned char* rgb_buffer) {
+	HRESULT hr;
+	while (1) {
+		hr = sampleGrabber->GetCurrentBuffer(&bufferSize, (long*)rgb_buffer);
+		if (hr == S_OK) {
+			break;
+		}
+		else if (hr == VFW_E_WRONG_STATE) {
+			printf("Wrong state?\n");
+		}
+	}
+
+	if (!upsideDown) {
+		for (int i = 0; i < height / 2; i++) {
+			uint32_t* fp = ((uint32_t*)rgb_buffer) + i*width;
+			uint32_t* sp = ((uint32_t*)rgb_buffer) + (height - 1 - i)*width;
+			for (int j = 0; j < width; j++) {
+				uint32_t temp = *fp;
+				*(fp++) = *sp;
+				*(sp++) = temp;
+			}
+		}
+	}
+	else {
+		for (int i = 0; i < width / 2; i++) {
+			uint32_t* fp = ((uint32_t*)rgb_buffer) + i;
+			uint32_t* sp = ((uint32_t*)rgb_buffer) + width - 1 - i;
+			for (int j = 0; j < height; j++) {
+				uint32_t temp = *fp;
+				*(fp++) = *sp;
+				*(sp++) = temp;
+			}
+		}
+	}
+
+	return 0;
+}
+
+#undef assert
+
+#else //WIN32
+
 HCam::HCam(int w, int h, const char* name, int mode, bool upsideDown){
   init_full_name(w, h, name, mode, upsideDown);
 }
@@ -429,3 +645,4 @@ void HCam::close(){
   
   ::close(fd);
 }
+#endif //WIN32

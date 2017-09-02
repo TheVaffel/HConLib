@@ -6,6 +6,12 @@
 #endif
 
 #ifdef WIN32
+
+/*
+* Huge thanks to tedburke at Github for this implementation
+* https://github.com/tedburke/CommandCam
+* Not entirely copied, although heavily inspired
+*/
 #undef assert
 #define assert(hr) if(FAILED(hr)){printf("Failed at line %d\n", __LINE__); exit(1);}
 
@@ -256,12 +262,12 @@ void HCam::start_capture(){
     if (-1 == xioctl(fd, VIDIOC_QBUF, &buf))
       errno_exit("VIDIOC_QBUF", __LINE__);
   }
-  
+
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == xioctl(fd, VIDIOC_STREAMON, &type))
     errno_exit("VIDIOC_STREAMON", __LINE__);
 }
- 
+
 int HCam::init_mmap()
 {
   struct v4l2_requestbuffers req;
@@ -317,7 +323,7 @@ int HCam::init_mmap()
     if (MAP_FAILED == webcam_buffers[numBuffers].start)
       errno_exit("mmap", __LINE__);
   }
- 
+
   return 0;
 }
 
@@ -345,7 +351,7 @@ void HCam::YUVtoRGB(int width, int height, unsigned char *src, unsigned char *ds
   pyinc *= increment;
   puinc *= increment;
   pvinc *= increment;
-  
+
 
   for (line = 0; line < height; line++){
     for (column = 0; column < width; column++) {
@@ -363,7 +369,7 @@ void HCam::YUVtoRGB(int width, int height, unsigned char *src, unsigned char *ds
       }
     }
   }
-  
+
 }
 
 void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *dst) // Assumes 12-bit pixels
@@ -374,7 +380,7 @@ void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *
   unsigned short *col = (unsigned short*)src;
   unsigned short mx = 0;
   //int tr = 0, tg = 0, tb = 0, tg2 = 0;
-    
+
   for(int i = 1; i < h-1; i++){
     int write_row = upsideDown?h -i - 1: i;
     for(int j = 1; j < w-1; j++){
@@ -404,7 +410,7 @@ void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *
       }
 
       int write_column = upsideDown? w-j-1 : j;
-      
+
       //Since we get 12 bits for every channel
       dst[4*(write_row*w + write_column) + 2] = b>>4, 255;
       dst[4*(write_row*w + write_column) + 1] = g>>4;
@@ -413,10 +419,10 @@ void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *
   }
 }
 
- 
+
 int HCam::capture_image(unsigned char* rgb_buffer)
 {
-  
+
   fd_set fds;
   struct timeval tv;
   int r = 1;
@@ -425,25 +431,25 @@ int HCam::capture_image(unsigned char* rgb_buffer)
   struct v4l2_buffer buf;
   unsigned int i;
 
-  
+
 
   memset(&buf, 0, sizeof(buf));
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
-  
+
 
   {
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
     r = 0;
-      
+
     tv.tv_sec = 2;
     tv.tv_usec = 0;
-      
+
     xioctl(fd, VIDIOC_DQBUF, &buf);
     tv.tv_sec = 0;
     r = select(fd + 1, &fds, NULL, NULL, &tv);
-      
+
     while(r == 1){
       xioctl(fd, VIDIOC_QBUF, &buf);
 
@@ -472,19 +478,19 @@ int HCam::capture_image(unsigned char* rgb_buffer)
   assert(buf.index < numBuffers);
 
   if(inputMode == HCAM_MODE_YUYV) {
-    
+
     YUVtoRGB(width, height, (unsigned char*)webcam_buffers[buf.index].start, rgb_buffer);
-    
+
   }else if(inputMode == HCAM_MODE_BAYER){
-    
+
     BayerToRGB(width, height, (unsigned char*)webcam_buffers[buf.index].start, rgb_buffer);
-    
+
   }else if(inputMode == HCAM_MODE_JPEG){
 
     int w, h, c;
 #ifdef USE_TURBOJPEG
     int jpg_subsamples;
-      
+
     tjDecompressHeader2(decompressor,
 			(unsigned char*)webcam_buffers[buf.index].start,
 			buf.length,
@@ -502,18 +508,18 @@ int HCam::capture_image(unsigned char* rgb_buffer)
 		  TJPF_BGRA,
 		  TJFLAG_FASTDCT);
 #else
-    
+
     unsigned char* temp  = stbi_load_from_memory((unsigned char*)webcam_buffers[buf.index].start, buf.length, &w, &h, &c, 4);
     if(temp){
       memcpy(rgb_buffer, temp, w*h*4); //Hopefully, the compiler optimizes this away
       stbi_image_free(temp);
     }
-      
+
 #endif
   }
   if(-1 == xioctl(fd, VIDIOC_QBUF, &buf))
     errno_exit("VIDIOC_QBUF", __LINE__);
-  
+
   return 0;
 }
 
@@ -521,7 +527,7 @@ void HCam::init_full_name(int w, int h, const char* deviceName, int mode, bool u
   memcpy(webcamName, deviceName, strlen(deviceName));
   inputMode = mode;
   upsideDown = upDown;
-  
+
   struct stat st;
 
   width = w;
@@ -578,12 +584,12 @@ void HCam::init_full_name(int w, int h, const char* deviceName, int mode, bool u
 
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  
+
   fmt.fmt.pix.width       = width;
-  fmt.fmt.pix.height      = height; 
+  fmt.fmt.pix.height      = height;
   fmt.fmt.pix.pixelformat = formats[mode];
   fmt.fmt.pix.field       = V4L2_FIELD_ANY;
-    
+
   if (-1 == xioctl(fd, VIDIOC_S_FMT, &fmt))
     errno_exit("VIDIOC_S_FMT", __LINE__);
 
@@ -609,7 +615,7 @@ void HCam::init_full_name(int w, int h, const char* deviceName, int mode, bool u
   }
 
   //printf("Width is %d and height is %d\n", width, height);
-  
+
   /* Buggy driver paranoia. */
   min = fmt.fmt.pix.width * 2;
   if (fmt.fmt.pix.bytesperline < min)
@@ -642,7 +648,7 @@ void HCam::close(){
     if (-1 == munmap(webcam_buffers[i].start, webcam_buffers[i].length))
       errno_exit("munmap", __LINE__);
   free(webcam_buffers);
-  
+
   ::close(fd);
 }
 #endif //WIN32

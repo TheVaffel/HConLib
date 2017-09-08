@@ -1,12 +1,26 @@
 #include <Wingine.h>
 #include <external/glsl_util.h>
 
+#include <cstdlib> // exit
+
+#ifdef WIN32
+//Windows...
+#undef min
+#undef max
+//Really, Windows??
+#undef near
+#undef far
+#endif //WIN32
+
+#include <algorithm> //std::min, std::max
+
 #include <FlatAlg.h>
 
 
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
-  projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
   view = Matrix4(FLATALG_MATRIX_IDENTITY);
+  projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
+
   altered = true;
 }
 
@@ -41,6 +55,17 @@ Wingine::~Wingine(){
   destroy_vulkan();
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object,
+    size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData ) {
+
+    printf("[");
+    printf( pLayerPrefix );
+    printf( "] " );
+    printf( pMessage );
+    printf( "\n" );
+    return VK_FALSE;
+}
+
 void Wingine::printError(VkResult res){
   if(res == VK_ERROR_OUT_OF_HOST_MEMORY){
     printf("Host memory\n");
@@ -70,8 +95,8 @@ void Wingine::printError(VkResult res){
 #define GET_DEVICE_PROC_ADDR(device, entry)		\
   (PFN_vk##entry)vkGetDeviceProcAddr(dev, "vk" #entry);
 
-uint Wingine::get_memory_type_index( uint type_bits, VkFlags requirements_mask){
-  for(uint i = 0; i < device_memory_props.memoryTypeCount; i++){
+uint32_t Wingine::get_memory_type_index( uint32_t type_bits, VkFlags requirements_mask){
+  for(uint32_t i = 0; i < device_memory_props.memoryTypeCount; i++){
     if((type_bits & 1) == 1){
       if((device_memory_props.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask){
 	return i;
@@ -86,10 +111,16 @@ uint Wingine::get_memory_type_index( uint type_bits, VkFlags requirements_mask){
 }
 
 VkResult Wingine::init_instance(const  Winval* win){
+  VkResult res;
+
   instance_extension_names.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
   //instance_extension_names.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+#ifdef WIN32
+  instance_extension_names.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#else //WIN32
   instance_extension_names.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-  
+#endif //WIN32
+
 #ifdef DEBUG
   instance_extension_names.push_back("VK_EXT_debug_report");
   instance_layer_names.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -114,15 +145,40 @@ VkResult Wingine::init_instance(const  Winval* win){
   inst_info.enabledLayerCount = instance_layer_names.size();
   inst_info.ppEnabledLayerNames = instance_layer_names.size()? instance_layer_names.data(): NULL;
 
-  VkResult res;
 
   res = vkCreateInstance(&inst_info, NULL, &instance);
 
   if( res == VK_ERROR_INCOMPATIBLE_DRIVER){
     printf("Cannot find a compatible Vulkan ICD\n");
     exit(-1);
+  }else if(res != VK_SUCCESS){
+    printf("Could not create instance\n");
+    exit(-1);
   }
-  
+
+  #ifdef DEBUG
+    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
+    vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
+    if(!vkCreateDebugReportCallbackEXT){
+      printf("Did not find callback\n");
+    }
+
+    VkDebugReportCallbackCreateInfoEXT callbackCreateInfo = {};
+    callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+    callbackCreateInfo.flags =  VK_DEBUG_REPORT_ERROR_BIT_EXT |
+                                VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                                VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+    callbackCreateInfo.pfnCallback = &debugCallback;
+    callbackCreateInfo.pUserData = NULL;
+
+    VkDebugReportCallbackEXT callback;
+
+    res = vkCreateDebugReportCallbackEXT(instance, &callbackCreateInfo, NULL, &callback);
+    if(res != VK_SUCCESS){
+      printf("Could not create debug callback\n");
+    }
+  #endif
+
   width = win->getWidth();
   height = win->getHeight();
 
@@ -131,32 +187,36 @@ VkResult Wingine::init_instance(const  Winval* win){
 
 VkResult Wingine::find_device(){
   unsigned int device_count;
-  
+
   VkResult res;
   vkEnumeratePhysicalDevices(instance, &device_count, NULL);
   VkPhysicalDevice* pDevs = new VkPhysicalDevice[device_count];
   res = vkEnumeratePhysicalDevices(instance, &device_count, pDevs);
   printf("Number of devices: %d\n", device_count);
 
-    
+
   bool foundDevice = 0;
-  
-  for(uint i = 0; i < device_count; i++){
+
+  for(uint32_t i = 0; i < device_count; i++){
     vkGetPhysicalDeviceProperties(pDevs[i], &device_props);
     vkGetPhysicalDeviceMemoryProperties(pDevs[i], &device_memory_props);
     printf("Device %i: %s\n", i, device_props.deviceName);
-    
+
     vkGetPhysicalDeviceQueueFamilyProperties(pDevs[i], &queue_family_count, NULL);
     queue_props = new VkQueueFamilyProperties[queue_family_count];
     vkGetPhysicalDeviceQueueFamilyProperties(pDevs[i], &queue_family_count, queue_props);
 
-    for(uint j = 0; j < queue_family_count; j++){
-      if(queue_props[j].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+    for(uint32_t j = 0; j < queue_family_count; j++){
+      VkBool32 supportsPresent;
+      vkGetPhysicalDeviceSurfaceSupportKHR(pDevs[i], j, surface, &supportsPresent);
+      if(supportsPresent && queue_props[j].queueFlags & VK_QUEUE_GRAPHICS_BIT){
         physical_device = pDevs[i];
-	foundDevice = 1;
-	break;
+      	foundDevice = 1;
+      	break;
       }
     }
+
+    delete[] pDevs;
 
     if(foundDevice)
       break;
@@ -173,14 +233,14 @@ VkResult Wingine::find_device(){
 VkResult Wingine::init_device(){
 
   VkBool32 *pSupportsPresent = new VkBool32[queue_family_count];
-  for(uint i = 0 ; i < queue_family_count; i++){
+  for(uint32_t i = 0 ; i < queue_family_count; i++){
     vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &pSupportsPresent[i]);
   }
 
   graphics_queue_family_index = UINT32_MAX;
   present_queue_family_index = UINT32_MAX;
-  
-  for(uint i = 0; i < queue_family_count; i++){
+
+  for(uint32_t i = 0; i < queue_family_count; i++){
     if((queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
       if(graphics_queue_family_index == UINT32_MAX) graphics_queue_family_index = i;
 
@@ -193,7 +253,7 @@ VkResult Wingine::init_device(){
   }
 
   if(present_queue_family_index == UINT32_MAX){
-    for(uint i = 0; i < queue_family_count; i++){
+    for(uint32_t i = 0; i < queue_family_count; i++){
       if(pSupportsPresent[i] == VK_TRUE){
 	present_queue_family_index = i;
 	break;
@@ -207,17 +267,20 @@ VkResult Wingine::init_device(){
   }
 
   delete[] pSupportsPresent;
-  
-  
+
+
   device_extension_names.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  
+
   VkDeviceQueueCreateInfo queue_info = {};
-  float queue_priorities[1] = {0.0f};
+  float queue_priorities[1] = {1.0f};
   queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
   queue_info.pNext = NULL;
   queue_info.queueCount = 1;
   queue_info.pQueuePriorities = queue_priorities;
-  queue_info.queueFamilyIndex = graphics_queue_family_index;
+  queue_info.queueFamilyIndex = present_queue_family_index;
+
+  VkPhysicalDeviceFeatures features = {};
+  features.shaderClipDistance = VK_TRUE;
 
   VkDeviceCreateInfo device_info = {};
   device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -228,7 +291,7 @@ VkResult Wingine::init_device(){
   device_info.ppEnabledExtensionNames = device_extension_names.data();
   device_info.enabledLayerCount = 0;
   device_info.ppEnabledLayerNames = NULL;
-  device_info.pEnabledFeatures = NULL;
+  device_info.pEnabledFeatures = &features;
 
   VkResult res = vkCreateDevice(physical_device, &device_info, NULL, &device);
 
@@ -243,14 +306,14 @@ VkResult Wingine::init_command_buffers(){
   VkCommandPoolCreateInfo cmd_pool_info = {};
   cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   cmd_pool_info.pNext = NULL;
-  cmd_pool_info.queueFamilyIndex = graphics_queue_family_index;
+  cmd_pool_info.queueFamilyIndex = present_queue_family_index;
   cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
   VkResult res = vkCreateCommandPool(device, &cmd_pool_info, NULL, &cmd_pool);
   if(res != VK_SUCCESS){
     printf("Failed to create command buffer pool \n");
   }
-  
+
   VkCommandBufferAllocateInfo cmd_alloc = {};
   cmd_alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmd_alloc.pNext = NULL;
@@ -259,7 +322,8 @@ VkResult Wingine::init_command_buffers(){
   cmd_alloc.commandBufferCount = 1;
 
   res = vkAllocateCommandBuffers(device, &cmd_alloc, &cmd_buffer);
-  
+  vkResetCommandBuffer(cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
   if(res != VK_SUCCESS){
     printf("Failed to allocate command buffer\n");
     exit(0);
@@ -269,6 +333,14 @@ VkResult Wingine::init_command_buffers(){
 }
 
 VkResult Wingine::init_surface(const Winval* win){
+#ifdef WIN32
+  VkWin32SurfaceCreateInfoKHR surface_info = {};
+  surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  surface_info.hinstance = win->getInstance();
+  surface_info.hwnd = win->getHWND();
+
+  VkResult res = vkCreateWin32SurfaceKHR(instance, &surface_info, NULL, &surface);
+#else //WIN32
   VkXlibSurfaceCreateInfoKHR surface_info = {};
   surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
   surface_info.pNext = NULL;
@@ -276,6 +348,8 @@ VkResult Wingine::init_surface(const Winval* win){
   surface_info.dpy = win->getDisplay();
 
   VkResult res = vkCreateXlibSurfaceKHR(instance, &surface_info, NULL, &surface);
+#endif //WIN32
+
   if(res != VK_SUCCESS){
     printf("Could not create surface\n");
     exit(0);
@@ -297,13 +371,13 @@ VkResult Wingine::init_device_queue(){
 
 VkResult Wingine::init_swapchain(){
 
-  uint formatCount;
+  uint32_t formatCount;
   VkResult res = vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &formatCount, NULL);
   if(res != VK_SUCCESS){
     printf("Could not get format count\n");
     exit(0);
   }
-  
+
   VkSurfaceFormatKHR* formats = new VkSurfaceFormatKHR[formatCount];
   res = vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &formatCount, formats);
 
@@ -312,13 +386,14 @@ VkResult Wingine::init_swapchain(){
     exit(0);
   }
 
+  VkColorSpaceKHR colorSpace;
+
   if(formatCount == 1 &&  formats[0].format == VK_FORMAT_UNDEFINED){
-    format = VK_FORMAT_B8G8R8A8_UNORM;
-  } else if (formatCount > 1){
+    format = VK_FORMAT_B8G8R8_UNORM;
+    colorSpace = formats[0].colorSpace;
+  } else{
     format = formats[0].format;
-  }else{
-    printf("Did not get any format\n");
-    exit(0);
+    colorSpace = formats[0].colorSpace;
   }
 
   delete[] formats;
@@ -331,23 +406,10 @@ VkResult Wingine::init_swapchain(){
     exit(0);
   }
 
-  uint presentModeCount;
-  res = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &presentModeCount, NULL);
-  if(res != VK_SUCCESS){
-    printf("Could not get present mode count\n");
-  }
-  
-  VkPresentModeKHR*presentModes = new VkPresentModeKHR[presentModeCount];
-  res = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &presentModeCount, presentModes);
-  if(res != VK_SUCCESS){
-    printf("Could not get present modes\n");
-    exit(0);
-  }
 
   VkExtent2D swapchainExtent;
 
-  if(caps.currentExtent.width == 0xFFFFFFFF){
-
+  if(caps.currentExtent.width == -1){ //Set extent to window width and height
     swapchainExtent.width = width;
     swapchainExtent.height = height;
 
@@ -356,14 +418,18 @@ VkResult Wingine::init_swapchain(){
 
     swapchainExtent.width = std::min(width, caps.maxImageExtent.width);
     swapchainExtent.height = std::min(height, caps.maxImageExtent.height);
-
   }else{
     swapchainExtent = caps.currentExtent;
+    width = swapchainExtent.width;
+    height = swapchainExtent.height; //Reevaluate target extent
   }
 
-  VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-  uint numSwaps = caps.minImageCount;
+  uint32_t numSwaps = 2;
+  if(numSwaps < caps.minImageCount){
+    numSwaps = caps.minImageCount;
+  }else if(caps.maxImageCount != 0 && numSwaps > caps.maxImageCount){
+    numSwaps = caps.maxImageCount;
+  }
 
   VkSurfaceTransformFlagBitsKHR preTransform;
   if(caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR){
@@ -372,6 +438,30 @@ VkResult Wingine::init_swapchain(){
     preTransform = caps.currentTransform;
   }
 
+  uint32_t presentModeCount;
+  res = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &presentModeCount, NULL);
+  if(res != VK_SUCCESS){
+    printf("Could not get present mode count\n");
+  }
+
+  VkPresentModeKHR*presentModes = new VkPresentModeKHR[presentModeCount];
+  res = vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &presentModeCount, presentModes);
+  if(res != VK_SUCCESS){
+    printf("Could not get present modes\n");
+    exit(0);
+  }
+
+
+  VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+  for(uint32_t i = 0; i < presentModeCount; i++){
+    if(presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR){
+      swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+      break;
+    }
+  }
+
+  delete [] presentModes;
+
   VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
   VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4] = {
     VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
@@ -379,15 +469,15 @@ VkResult Wingine::init_swapchain(){
     VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
     VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
   };
-  
-  for(uint i = 0; i < sizeof(compositeAlphaFlags); i++){
+
+  for(uint32_t i = 0; i < sizeof(compositeAlphaFlags)/sizeof(VkCompositeAlphaFlagBitsKHR); i++){
     if(caps.supportedCompositeAlpha & compositeAlphaFlags[i]){
       compositeAlpha = compositeAlphaFlags[i];
       break;
     }
   }
 
-  uint queueFamilyIndices[2] = {graphics_queue_family_index, present_queue_family_index};
+  uint32_t queueFamilyIndices[2] = {graphics_queue_family_index, present_queue_family_index};
 
   VkSwapchainCreateInfoKHR swapchain_ci = {};
   swapchain_ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -395,20 +485,19 @@ VkResult Wingine::init_swapchain(){
   swapchain_ci.surface = surface;
   swapchain_ci.minImageCount = numSwaps;
   swapchain_ci.imageFormat = format;
-  swapchain_ci.imageExtent.width = swapchainExtent.width;
-  swapchain_ci.imageExtent.height = swapchainExtent.height;
+  swapchain_ci.imageExtent = swapchainExtent;
   swapchain_ci.preTransform = preTransform;
   swapchain_ci.compositeAlpha = compositeAlpha;
   swapchain_ci.imageArrayLayers = 1;
   swapchain_ci.presentMode = swapchainPresentMode;
   swapchain_ci.oldSwapchain = VK_NULL_HANDLE;
   swapchain_ci.clipped = true;
-  swapchain_ci.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+  swapchain_ci.imageColorSpace = colorSpace;
   swapchain_ci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   swapchain_ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
   swapchain_ci.queueFamilyIndexCount = 0;
   swapchain_ci.pQueueFamilyIndices = NULL;
-  
+
   if(graphics_queue_family_index != present_queue_family_index){
     swapchain_ci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
     swapchain_ci.queueFamilyIndexCount = 2;
@@ -426,23 +515,17 @@ VkResult Wingine::init_swapchain(){
 
   res = vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, NULL);
 
-  VkImage* swapchainImages = new VkImage[swapchain_image_count];
+  swapchain_images = new VkImage[swapchain_image_count];
 
-  res = vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, swapchainImages);
+  res = vkGetSwapchainImagesKHR(device, swapchain, &swapchain_image_count, swapchain_images);
 
   if(res != VK_SUCCESS){
     printf("Failed to get swapchain images\n");
     exit(0);
   }
 
-  swapchain_images = new VkImage[swapchain_image_count];
-  for(uint i = 0; i < swapchain_image_count; i++){
-    swapchain_images[i] = swapchainImages[i];
-  }
-  delete[] swapchainImages;
-
   swapchain_image_views = new VkImageView[swapchain_image_count];
-  for(uint i = 0; i < swapchain_image_count; i++){
+  for(uint32_t i = 0; i < swapchain_image_count; i++){
     VkImageViewCreateInfo color_image_view = {};
     color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     color_image_view.pNext = NULL;
@@ -525,7 +608,6 @@ VkResult Wingine::init_depth_buffer(){
   view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
   view_info.flags = 0;
 
-  VkMemoryRequirements mem_reqs;
   depth_buffer_format = depth_format;
 
   VkResult res = vkCreateImage(device, &image_info, NULL, &depth_buffer_image);
@@ -534,6 +616,7 @@ VkResult Wingine::init_depth_buffer(){
     exit(0);
   }
 
+  VkMemoryRequirements mem_reqs = {};
   vkGetImageMemoryRequirements(device, depth_buffer_image, &mem_reqs);
   mem_alloc.allocationSize = mem_reqs.size;
 
@@ -559,11 +642,11 @@ VkResult Wingine::init_depth_buffer(){
   }
 
   return res;
-  
+
 }
 
 void Wingine::init_uniform_buffer(){
-  Matrix4 projection = flatalg::projection(45.f/180.0f*M_PI, 9.0f/16.0f, 0.1f, 100.0f);
+  Matrix4 projection = flatalg::projection(45.f/180.0f*F_PI, 9.0f/16.0f, 0.1f, 100.0f);
 
   Matrix4 view = flatalg::lookAt(Vector3(-5, 3, -10),
 				 Vector3(0, 0, 0),
@@ -681,7 +764,7 @@ VkResult Wingine::init_descriptor_set(){
   return res;
 }
 
-VkResult Wingine::init_render_pass(){
+VkResult Wingine::init_render_passes(){
   VkAttachmentDescription attachments[2];
   attachments[0].format = format;
   attachments[0].samples = NUM_SAMPLES;
@@ -696,7 +779,7 @@ VkResult Wingine::init_render_pass(){
   attachments[1].format = depth_buffer_format;
   attachments[1].samples = NUM_SAMPLES;
   attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-  attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -733,7 +816,16 @@ VkResult Wingine::init_render_pass(){
   rp_info.dependencyCount = 0;
   rp_info.pDependencies = NULL;
 
-  VkResult res = vkCreateRenderPass(device, &rp_info, NULL, &render_pass);
+  VkResult res = vkCreateRenderPass(device, &rp_info, NULL, &render_pass_generic);
+  if(res != VK_SUCCESS){
+    printf("Creating generic render pass\n");
+    exit(0);
+  }
+
+  attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+  res = vkCreateRenderPass(device, &rp_info, NULL, &render_pass_clear);
   if(res != VK_SUCCESS){
     printf("Could not create render pass\n");
     exit(0);
@@ -832,21 +924,20 @@ VkResult Wingine::init_shaders(){
 VkResult Wingine::init_framebuffers(){
   VkImageView attachments[2];
   attachments[1] = depth_buffer_view;
-  
+
   VkFramebufferCreateInfo fb_info = {};
   fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   fb_info.pNext = NULL;
-  fb_info.renderPass = render_pass;
+  fb_info.renderPass = render_pass_generic;
   fb_info.attachmentCount = 2;
   fb_info.pAttachments = attachments;
   fb_info.width = width;
   fb_info.height = height;
   fb_info.layers = 1;
-
   framebuffers = new VkFramebuffer[swapchain_image_count];
 
   VkResult res;
-  for(uint i = 0 ; i < swapchain_image_count; i++){
+  for(uint32_t i = 0 ; i < swapchain_image_count; i++){
     attachments[0] = swapchain_image_views[i];
     res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffers[i]);
     if(res != VK_SUCCESS){
@@ -887,14 +978,14 @@ void Wingine::destroy_command_buffers(){
 }
 
 void Wingine::destroy_swapchain(){
-  for(uint i = 0; i < swapchain_image_count;i++){
+  for(uint32_t i = 0; i < swapchain_image_count;i++){
     vkDestroyImageView(device, swapchain_image_views[i], NULL);
   }
-  
+
   delete[] swapchain_image_views;
   delete[] swapchain_images;
   vkDestroySwapchainKHR(device, swapchain, NULL);
-  
+
   vkDestroySurfaceKHR(instance, surface, NULL);
 }
 
@@ -917,11 +1008,12 @@ void Wingine::destroy_descriptor_set_layouts(){
 }
 
 void Wingine::destroy_descriptor_set(){
-  vkDestroyDescriptorPool(device, descriptor_pool, NULL); 
+  vkDestroyDescriptorPool(device, descriptor_pool, NULL);
 }
 
-void Wingine::destroy_render_pass(){
-  vkDestroyRenderPass(device, render_pass, NULL);
+void Wingine::destroy_render_passes(){
+  vkDestroyRenderPass(device, render_pass_generic, NULL);
+  vkDestroyRenderPass(device, render_pass_clear, NULL);
 }
 
 void Wingine::destroy_shaders(){
@@ -930,7 +1022,7 @@ void Wingine::destroy_shaders(){
 }
 
 void Wingine::destroy_framebuffers(){
-  for(uint i = 0; i < swapchain_image_count; i++){
+  for(uint32_t i = 0; i < swapchain_image_count; i++){
     vkDestroyFramebuffer(device, framebuffers[i], NULL);
   }
 
@@ -945,30 +1037,13 @@ void Wingine::destroy_pipeline_cache(){
   vkDestroyPipelineCache(device, pipeline_cache, NULL);
 }
 
-/*void Wingine::updateMVP(const Matrix4& nmvp){
-  unsigned char *pData;
-  
-  VkMemoryRequirements mem_reqs;
-  vkGetBufferMemoryRequirements(device, uniform_buffer, &mem_reqs);
-  
-  VkResult res = vkMapMemory(device, uniform_memory, 0, mem_reqs.size, 0, (void**)&pData);
-  if(res != VK_SUCCESS){
-  printf("Could not map memory\n");
-  exit(0);
-  }
-
-  memcpy(pData, &nmvp, sizeof(nmvp));
-
-  vkUnmapMemory(device, uniform_memory);
-  }*/
-
 void Wingine::setCamera(WingineCamera& camera){
   Matrix4 VPC = camera.getRenderMatrix();
   setBuffer(VPCUniform, (void*)&VPC, 4*4*sizeof(float));
 }
 
 
-WingineBuffer Wingine::createBuffer( uint usage, uint size){
+WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
   WingineBuffer wBuffer;
 
   VkBufferCreateInfo buf_info = {};
@@ -1021,7 +1096,7 @@ void Wingine::destroyBuffer(const WingineBuffer& buffer){
   vkFreeMemory(device, buffer.memory, NULL);
 }
 
-VkResult Wingine::setBuffer( const WingineBuffer& buffer, const void* data, uint size){
+VkResult Wingine::setBuffer( const WingineBuffer& buffer, const void* data, uint32_t size){
   void * map;
   VkResult res;
 
@@ -1038,7 +1113,7 @@ VkResult Wingine::setBuffer( const WingineBuffer& buffer, const void* data, uint
   return res;
 }
 
-WingineUniform Wingine::createUniform(uint size){
+WingineUniform Wingine::createUniform(uint32_t size){
   WingineUniform uniform;
   uniform.buffer = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, size);
   uniform.bufferInfo.buffer = uniform.buffer.buffer;
@@ -1048,19 +1123,19 @@ WingineUniform Wingine::createUniform(uint size){
   return uniform;
 }
 
-void Wingine::setUniform(const WingineUniform& uniform, void* data, uint size){
+void Wingine::setUniform(const WingineUniform& uniform, void* data, uint32_t size){
   setBuffer(uniform.buffer, data, size);
 }
 
 void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
-  
+
   memset(setup->dynamicStateEnables, 0, sizeof(setup->dynamicStateEnables));
   setup->dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
   setup->dynamicState.pNext = NULL;
   setup->dynamicState.flags = 0;
   setup->dynamicState.pDynamicStates = setup->dynamicStateEnables;
   setup->dynamicState.dynamicStateCount = 0;
-  
+
   setup->vi_bindings[0].binding = 0;
   setup->vi_bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
   setup->vi_bindings[0].stride = 4*sizeof(float);
@@ -1085,7 +1160,7 @@ void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
   setup->vi.vertexBindingDescriptionCount = 2;
   setup->vi.pVertexBindingDescriptions = setup->vi_bindings;
   setup->vi.vertexAttributeDescriptionCount = 2;
-  setup->vi.pVertexAttributeDescriptions = setup->vi_attribs; 
+  setup->vi.pVertexAttributeDescriptions = setup->vi_attribs;
 
   setup->ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
   setup->ia.pNext = NULL;
@@ -1186,7 +1261,7 @@ void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
   setup->createInfo.pDepthStencilState = &setup->ds;
   setup->createInfo.pStages = shaderStages;
   setup->createInfo.stageCount = 2;
-  setup->createInfo.renderPass = render_pass;
+  setup->createInfo.renderPass = render_pass_generic;
   setup->createInfo.subpass = 0;
 }
 
@@ -1221,23 +1296,23 @@ void Wingine::create_pipeline_color_renderer_single_buffer( VkPipeline* pipeline
 
 void Wingine::initVulkan(const Winval* win){
   init_instance( win);
-  find_device();
   init_surface( win);
+  find_device();
   init_device();
   init_device_queue();
-  init_swapchain();
   init_command_buffers();
+  init_swapchain();
   init_depth_buffer();
   init_uniform_buffer();
   init_descriptor_set_layouts();
-  
-  init_render_pass();
+
+  init_render_passes();
   init_shaders();
   init_framebuffers();
   init_descriptor_pool();
   init_descriptor_set();
   init_pipeline_cache();
-  
+
   create_pipeline_color_renderer( &color_pipeline);
 }
 
@@ -1246,7 +1321,7 @@ void Wingine::destroy_vulkan(){
   destroy_pipeline_cache();
   destroy_framebuffers();
   destroy_shaders();
-  destroy_render_pass();
+  destroy_render_passes();
   destroy_descriptor_set();
   destroy_descriptor_set_layouts();
   destroy_uniform_buffer();
@@ -1257,8 +1332,7 @@ void Wingine::destroy_vulkan(){
   destroy_instance();
 }
 
-void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model){
-
+void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model, bool shouldClear){
   setBuffer(ModelTransformUniform, &model, 4*4*sizeof(float));
 
   VkCommandBufferBeginInfo cmd_buf_info = {};
@@ -1266,22 +1340,6 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   cmd_buf_info.pNext = NULL;
   cmd_buf_info.flags = 0;
   cmd_buf_info.pInheritanceInfo = NULL;
-
-  VkClearValue clear_values[2];
-  clear_values[0].color.float32[0] = 0.2f;
-  clear_values[0].color.float32[1] = 0.2f;
-  clear_values[0].color.float32[2] = 0.2f;
-  clear_values[0].color.float32[3] = 0.2f;
-  clear_values[1].depthStencil.depth = 1.0;
-  clear_values[1].depthStencil.stencil = 0;
-  
-  VkClearAttachment clearAttachments[2];
-  clearAttachments[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  clearAttachments[0].colorAttachment = 0;
-  clearAttachments[0].clearValue = clear_values[0];
-
-  clearAttachments[1].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-  clearAttachments[1].clearValue = clear_values[1];
 
   VkRect2D screenRect;
   screenRect.extent.width = width;
@@ -1293,6 +1351,14 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   clearRect.rect = screenRect;
   clearRect.baseArrayLayer = 0;
   clearRect.layerCount = 1;
+
+  VkClearValue clear_values[2];
+  clear_values[0].color.float32[0] = 0.2f;
+  clear_values[0].color.float32[1] = 0.2f;
+  clear_values[0].color.float32[2] = 0.2f;
+  clear_values[0].color.float32[3] = 0.2f;
+  clear_values[1].depthStencil.depth = 1.0;
+  clear_values[1].depthStencil.stencil = 0;
 
   vkResetCommandBuffer(cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
   VkResult res = vkBeginCommandBuffer(cmd_buffer, &cmd_buf_info);
@@ -1314,7 +1380,6 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
     printf("Could not create semaphore\n");
     exit(0);
   }
-  
   res = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE,
 			      &current_buffer);
 
@@ -1326,14 +1391,21 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   VkRenderPassBeginInfo rp_begin = {};
   rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   rp_begin.pNext = NULL;
-  rp_begin.renderPass = render_pass;
+  if(shouldClear){
+    rp_begin.renderPass = render_pass_clear;
+    rp_begin.clearValueCount = 2;
+    rp_begin.pClearValues = clear_values;
+    //printf("Initiated clearing\n");
+  }else{
+    rp_begin.renderPass = render_pass_generic;
+    rp_begin.clearValueCount = 0;
+    rp_begin.pClearValues = NULL;
+  }
   rp_begin.framebuffer = framebuffers[current_buffer];
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
   rp_begin.renderArea.extent.width = width;
   rp_begin.renderArea.extent.height = height;
-  rp_begin.clearValueCount = 2;
-  rp_begin.pClearValues = clear_values;
 
   VkBuffer vertexBuffers[] = {vertexBuffer.buffer, colorBuffer.buffer};
 
@@ -1346,13 +1418,6 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
 			 vertexBuffers,
 			 offsets);
   vkCmdBindIndexBuffer(cmd_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  vkCmdClearAttachments(cmd_buffer,
-  			2,
-  			clearAttachments,
-  			1,
-  			&clearRect);
-			
 
   viewport.height = (float)height;
   viewport.width = (float)width;
@@ -1393,13 +1458,11 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   submit_info[0].pCommandBuffers = cmd_bufs;
   submit_info[0].signalSemaphoreCount = 0;
   submit_info[0].pSignalSemaphores = NULL;
-    
   res = vkQueueSubmit(graphics_queue, 1, submit_info, drawFence);
   if(res != VK_SUCCESS){
     printf("Could not submit to graphics queue\n");
     exit(0);
   }
-
   VkPresentInfoKHR present;
   present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
   present.pNext = NULL;
@@ -1420,7 +1483,6 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   }
 
   res = vkQueuePresentKHR(present_queue, &present);
-
   if(res != VK_SUCCESS){
     printf("Could not queue present\n");
     exit(0);
@@ -1431,7 +1493,6 @@ void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBu
   vkDestroySemaphore(device, imageAcquiredSemaphore, NULL);
 }
 
-void Wingine::renderColor(const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model){
-  render_generic(color_pipeline, vertexBuffer, colorBuffer, indexBuffer, model);
+void Wingine::renderColor(const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model, bool shouldClear){
+  render_generic(color_pipeline, vertexBuffer, colorBuffer, indexBuffer, model, shouldClear);
 }
-

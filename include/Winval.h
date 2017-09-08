@@ -115,8 +115,9 @@ class Winval{
 #ifdef WIN32
   COLORREF* pixelData;
 
-  WNDCLASS wc;
+  WNDCLASSEX wc;
   HWND hwnd;
+  HINSTANCE hinstance;
   MSG msg;
   HDC hdc;
 
@@ -171,7 +172,8 @@ class Winval{
   bool isOpen();
 
 #ifdef WIN32
-
+  HINSTANCE getInstance() const;
+  HWND getHWND() const;
 #else //WIN32
   Window getWindow() const;
   Display* getDisplay() const;

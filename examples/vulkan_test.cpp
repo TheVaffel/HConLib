@@ -24,10 +24,10 @@ static const uint32_t _test_indices[] =
   };
 
 int main(){
-  
+
   Winval win(1280, 720);
   Wingine wg(win);
-  Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01);
+  Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01f);
   Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
 
   WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
@@ -44,7 +44,7 @@ int main(){
   
   clock_t start_time = clock();
   int count = 0;
-  WingineCamera cam(M_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
+  WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
   Vector3 camPos(-5, 3, -10);
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
@@ -52,20 +52,20 @@ int main(){
   
   wg.setCamera(cam);
   while(win.isOpen()){
-    cam.setPosition(camPos + 0.2*camPos*sin(0.01*count));
+    cam.setPosition(camPos + 0.5f*camPos*sin(0.05f*count));
     wg.setCamera(cam);
     model = rotation*model;
     //Matrix4 usableMvp = ~mvp;
     //updateMVP(usableMvp);
-    wg.renderColor(vertexBuffer, count%2 == 0?colorBuffer:colorBuffer2, indexBuffer, model);
-    
-    cout<<count%2<<endl;
+    //WingineBuffer* currBuff = (count%2 == 0)?&colorBuffer:&colorBuffer2;
+    WingineBuffer* currBuff = &colorBuffer;
+    wg.renderColor(vertexBuffer, *currBuff, indexBuffer, model, true);
     count++;
     
     clock_t current_time = clock();
 
     long long int diff = current_time - start_time;
-    long long w = 1000000/60 - 1000000*diff/CLOCKS_PER_SEC;
+    long long w = 1000/60 - 1000*diff/CLOCKS_PER_SEC;
     if(w > 0){
       usleep(1000000/60 - 1000000*diff/CLOCKS_PER_SEC);
     }

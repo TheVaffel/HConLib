@@ -2,24 +2,26 @@
 
 #ifdef WIN32
 Winval::Winval(int w, int h){
+  hinstance = GetModuleHandle(0);
   const char* AppTitle = "Winval";
-  wc.style=CS_HREDRAW | CS_VREDRAW;
+  wc.cbSize = sizeof(wc);
+  wc.style= CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
   wc.lpfnWndProc=WindowProc;
   wc.cbClsExtra=0;
   wc.cbWndExtra=0;
-  wc.hInstance=GetModuleHandle(0);
+  wc.hInstance=hinstance;
   wc.hIcon=LoadIcon(NULL,IDI_WINLOGO);
   wc.hCursor=LoadCursor(NULL,IDC_ARROW);
   wc.hbrBackground=(HBRUSH)COLOR_WINDOWFRAME;
   wc.lpszMenuName=NULL;
   wc.lpszClassName=AppTitle;
 
-  if (!RegisterClass(&wc))
+  if (!RegisterClassEx(&wc))
     exit(0);
   hwnd = CreateWindow(AppTitle,AppTitle,
-    WS_OVERLAPPEDWINDOW,
+    WS_OVERLAPPEDWINDOW | WS_VISIBLE,
     CW_USEDEFAULT,CW_USEDEFAULT,w,h,
-    NULL,NULL,0,NULL);
+    NULL,NULL,hinstance,NULL);
     width = w;
     height = h;
 
@@ -37,7 +39,9 @@ Winval::Winval(int w, int h){
   HDC hDesktopDC = GetDC(GetDesktopWindow());
   HBITMAP hDib = CreateDIBSection(hDesktopDC, &bmi, DIB_RGB_COLORS, (void**)&pixelData, 0,0);*/
   pixelData = new COLORREF[w*h];
+
   hdc = GetDC(hwnd);
+
   if(pixelData == 0)
     exit(0);
 
@@ -119,7 +123,7 @@ bool Winval::isKeyPressed(int i){
   return isDown[i];
 }
 
-void Winval::setTitle(const char* window_name){
+void Winval::setTitle(const char* window_name) {
   SetWindowText(hwnd, window_name);
   window_title = window_name;
 }
@@ -179,6 +183,26 @@ void Winval::enableAutoRepeat(bool en){
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam){
   return DefWindowProc(hwnd, msg, wparam, lparam);
+}
+
+HINSTANCE Winval::getInstance() const {
+  return hinstance;
+}
+
+HWND Winval::getHWND() const {
+  return hwnd;
+}
+
+const char* Winval::getTitle() const{
+  return window_title.c_str();
+}
+
+int Winval::getWidth() const {
+  return width;
+}
+
+int Winval::getHeight() const {
+  return height;
 }
 
 #else //WIN32

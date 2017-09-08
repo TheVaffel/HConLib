@@ -3,6 +3,18 @@ project(HConLib)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
 
+#set(DEBUG True)
+
+if(WIN32)
+  if(DEBUG)
+    set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib/Debug)
+  else()
+    set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib/Release)
+  endif()
+else()
+  set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib)
+endif()
+
 add_definitions(-std=c++11)
 if(!WIN32)
   add_definitions(-g)
@@ -44,11 +56,14 @@ if(WINVAL_LIB)
 	#Winval
 	add_library(Winval STATIC ${srcDir}/Winval.cpp)
 
-	find_library( VULKAN_LIBS NAMES vulkan)
+  if(WIN32)
+	 find_library( VULKAN_LIBS NAMES vulkan-1 HINTS $ENV{VULKAN_SDK}/lib32)
+  else()
+    find_library(VULKAN_LIBS NAMES vulkan)
+  endif()
 
 	if(VULKAN_LIBS)
-		find_library(GLSLANG_LIBS NAMES glslang PATHS ${CMAKE_HOME_DIRECTORY}/lib NO_DEFAULT_PATH) #Could search for the rest of the glslang archives too, but takes this as indicator
-
+		find_library(GLSLANG_LIBS NAMES glslang PATHS ${lib_search_dir} NO_DEFAULT_PATH) #Could search for the rest of the glslang archives too, but takes this as indicator
 		if(GLSLANG_LIBS)
 			#Wingine
 			add_library(Wingine STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp)

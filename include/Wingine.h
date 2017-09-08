@@ -7,20 +7,22 @@
 
 #include <Winval.h>
 #include <external/vulkan/SPIRV/GlslangToSpv.h>
-#include <unistd.h>
 
 #include <FlatAlg.h>
 
+#ifdef WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#else //WIN32
 #define VK_USE_PLATFORM_XLIB_KHR
+#endif //WIN32
+
 #include "external/vulkan/vulkan.h"
 
 #include <stdio.h> // printf
 #include <vector> //vector
-#include <cstdlib> // exit
-#include <algorithm> //min, max
 
 #include <ctime>
-#include <unistd.h>
+//#include <unistd.h>
 
 #define DEBUG
 
@@ -93,11 +95,11 @@ class WingineCamera{
   Matrix4 projection, view, total;
   bool altered;
  public:
-  
-  WingineCamera(float horizontalFOVRadians = 45.f/180.f*M_PI, float invAspect = 9.0f/16.0f, float near = 0.1f, float far = 100.0f);
+
+  WingineCamera(float horizontalFOVRadians = 45.f/180.f*F_PI, float invAspect = 9.0f/16.0f, float near = 0.1f, float far = 100.0f);
 
   void setPosition(const Vector3& v);
-  
+
   void setLookAt(const Vector3& pos,
 		 const Vector3& target,
 		 const Vector3& up);
@@ -113,18 +115,18 @@ class Wingine{
   VkPhysicalDeviceProperties device_props;
   VkPhysicalDeviceMemoryProperties device_memory_props;
   VkDevice device;
-  
-  uint current_buffer;
-  uint queue_family_count;
-  uint graphics_queue_family_index;
-  uint present_queue_family_index;
+
+  uint32_t current_buffer;
+  uint32_t queue_family_count;
+  uint32_t graphics_queue_family_index;
+  uint32_t present_queue_family_index;
   VkCommandPool cmd_pool;
   VkCommandBuffer cmd_buffer;
   VkSurfaceKHR surface;
   VkFormat format;
   VkQueueFamilyProperties* queue_props;
   VkSwapchainKHR swapchain;
-  uint swapchain_image_count;
+  uint32_t swapchain_image_count;
   VkImage*swapchain_images;
   VkImageView* swapchain_image_views;
 
@@ -135,21 +137,22 @@ class Wingine{
   VkImage depth_buffer_image;
   VkDeviceMemory depth_buffer_memory;
   VkImageView depth_buffer_view;
-  
-  uint width;
-  uint height;
+
+  uint32_t width;
+  uint32_t height;
 
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_memory;
   VkDescriptorBufferInfo uniform_buffer_info;
-  
+
   VkDescriptorSetLayout* desc_layout;
   VkPipelineLayout pipeline_layout;
 
   VkDescriptorPool descriptor_pool;
   VkDescriptorSet* descriptor_set;
 
-  VkRenderPass render_pass;
+  VkRenderPass render_pass_generic;
+  VkRenderPass render_pass_clear;
 
   VkFramebuffer* framebuffers;
 
@@ -183,7 +186,7 @@ class Wingine{
   VkResult init_descriptor_set_layouts();
   VkResult init_descriptor_pool();
   VkResult init_descriptor_set();
-  VkResult init_render_pass();
+  VkResult init_render_passes();
   VkResult init_shaders();
   VkResult init_framebuffers();
   VkResult init_pipeline_cache();
@@ -197,7 +200,7 @@ class Wingine{
   void destroy_uniform_buffer();
   void destroy_descriptor_set_layouts();
   void destroy_descriptor_set();
-  void destroy_render_pass();
+  void destroy_render_passes();
   void destroy_shaders();
   void destroy_framebuffers();
   void destroy_pipeline_cache();
@@ -206,7 +209,7 @@ class Wingine{
   VkResult init_global_extension_properties();
   VkResult init_global_layer_properties();
 
-  uint get_memory_type_index(uint, VkFlags);
+  uint32_t get_memory_type_index(uint32_t, VkFlags);
 
   void destroy_vulkan();
 
@@ -216,19 +219,19 @@ class Wingine{
   void pipeline_setup_color_renderer( WinginePipelineSetup* setup);
   void create_pipeline_color_renderer_single_buffer(VkPipeline*);
   void create_pipeline_color_renderer(VkPipeline*);
-  
+
   void updateMVP(const Matrix4&);
-  void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
+  void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
 
  public:
 
-  WingineBuffer createBuffer(uint, uint);
-  VkResult setBuffer(const WingineBuffer&, const void*, uint);
+  WingineBuffer createBuffer(uint32_t, uint32_t);
+  VkResult setBuffer(const WingineBuffer&, const void*, uint32_t);
   void destroyBuffer(const WingineBuffer&);
 
   //A single uniform. Basically just a lump of data to be accessed from shaders
-  WingineUniform createUniform(uint size);
-  void setUniform(const WingineUniform&, void*, uint);
+  WingineUniform createUniform(uint32_t size);
+  void setUniform(const WingineUniform&, void*, uint32_t);
   void destroyUniform(const WingineUniform&);
   
   //A set of uniforms (to better utilize Vulkan's descriptor set abstraction) that "belong together"
@@ -243,6 +246,7 @@ class Wingine{
   
   void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
   void render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear);
+
   void setCamera(WingineCamera& camera);
   void initVulkan(const Winval*);
 

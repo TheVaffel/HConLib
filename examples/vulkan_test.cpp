@@ -2,6 +2,17 @@
 #include <Wingine.h>
 #include <iostream>
 
+#ifdef WIN32
+void sleepMilliseconds(int u){
+  Sleep(u);
+}
+#else //WIN32
+#include <unistd.h>
+void sleepMilliseconds(int u){
+  usleep(u * 1000);
+}
+#endif //WIN32
+
 using namespace std;
 
 static const float _test_vertices[] =
@@ -61,16 +72,16 @@ int main(){
     WingineBuffer* currBuff = &colorBuffer;
     wg.renderColor(vertexBuffer, *currBuff, indexBuffer, model, true);
     count++;
-    
+
     clock_t current_time = clock();
 
     long long int diff = current_time - start_time;
     long long w = 1000/60 - 1000*diff/CLOCKS_PER_SEC;
     if(w > 0){
-      usleep(1000000/60 - 1000000*diff/CLOCKS_PER_SEC);
+      sleepMilliseconds((int32_t)w);
     }
     start_time = current_time;
-    
+
     if(win.waitForKey() == WK_ESC){
       break;
     }

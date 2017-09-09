@@ -23,12 +23,41 @@ static const uint32_t _test_indices[] =
     0, 2, 1
   };
 
+const char *vertShaderText =
+  "#version 400\n"
+  "#extension GL_ARB_separate_shader_objects : enable\n"
+  "#extension GL_ARB_shading_language_420pack : enable\n"
+  "layout (std140, binding = 0) uniform bufferVals {\n"
+  "    mat4 mvp;\n"
+  "} myBufferVals;\n"
+  "layout (location = 0) in vec4 pos;\n"
+  "layout (location = 1) in vec4 inColor;\n"
+  "layout (location = 0) out vec4 outColor;\n"
+  "out gl_PerVertex { \n"
+  "    vec4 gl_Position;\n"
+  "};\n"
+  "void main() {\n"
+  "   outColor = inColor;\n"
+  "   gl_Position = myBufferVals.mvp * pos;\n"
+  "}\n";
+
+const char *fragShaderText =
+  "#version 400\n"
+  "#extension GL_ARB_separate_shader_objects : enable\n"
+  "#extension GL_ARB_shading_language_420pack : enable\n"
+  "layout (location = 0) in vec4 color;\n"
+  "layout (location = 0) out vec4 outColor;\n"
+  "void main() {\n"
+  "  outColor = color;\n"
+  "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
+  "}\n";
+
 int main(){
   
   Winval win(1280, 720);
   Wingine wg(win);
   Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01);
-  Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
+  //Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
 
   WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
   wg.setBuffer( vertexBuffer, _test_vertices, 3*4*sizeof(float));
@@ -41,6 +70,22 @@ int main(){
 
   WingineBuffer colorBuffer2 = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
   wg.setBuffer( colorBuffer2, _test_colors2, 3*4*sizeof(float));
+
+
+  VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
+  WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
+  WingineUniformSet cameraSet = wg.createUniformSet(1, &cameraUniform, bits, "Camera");
+  
+  WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
+  WingineBuffer vertexAttribs2[2] = {vertexBuffer, colorBuffer2};
+
+  WingineShader vertexShader = wg.createShader(vertShaderText, 1, &cameraSet, VK_SHADER_STAGE_VERTEX_BIT);
+  WingineShader fragmentShader = wg.createShader(fragShaderText, 0, NULL, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  WingineShader shaders[2] = {vertexShader, fragmentShader};
+  
+  WinginePipeline pipeline = wg.createPipeline(2, shaders, 2);
+
   
   clock_t start_time = clock();
   int count = 0;
@@ -49,17 +94,21 @@ int main(){
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
+
   
   wg.setCamera(cam);
   while(win.isOpen()){
-    cam.setPosition(camPos + 0.2*camPos*sin(0.01*count));
-    wg.setCamera(cam);
+    cam.setPosition(camPos + 0.2*camPos*sin(0.1*count));
+    /*wg.setCamera(cam);
     model = rotation*model;
     //Matrix4 usableMvp = ~mvp;
     //updateMVP(usableMvp);
-    wg.renderColor(vertexBuffer, count%2 == 0?colorBuffer:colorBuffer2, indexBuffer, model);
-    
-    cout<<count%2<<endl;
+    wg.renderColor(vertexBuffer, count%2 == 0?colorBuffer:colorBuffer2, indexBuffer, model);*/
+
+    Matrix4 cMatrix = cam.getRenderMatrix();
+    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
+    wg.render(count%2 != 3?vertexAttribs:vertexAttribs2, indexBuffer, pipeline, 1);
+    //cout<<count%2<<endl;
     count++;
     
     clock_t current_time = clock();
@@ -71,11 +120,22 @@ int main(){
     }
     start_time = current_time;
     
-    if(win.waitForKey() == WK_ESC){
+    /*if(win.waitForKey() == WK_ESC){
+      break;
+      }*/
+
+    win.flushEvents();
+    if(win.isKeyPressed(WK_ESC)){
       break;
     }
   }
 
+  wg.destroyPipeline(pipeline);
+  wg.destroyShader(vertexShader);
+  wg.destroyShader(fragmentShader);
+  wg.destroyUniformSet(cameraSet);
+  wg.destroyUniform(cameraUniform);
+  
   wg.destroyBuffer(vertexBuffer);
   wg.destroyBuffer(colorBuffer);
   wg.destroyBuffer(indexBuffer);

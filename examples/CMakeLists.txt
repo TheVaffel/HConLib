@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.4)
 project(HConLib_examples)
 
-add_definitions(-std=c++11 -g)
+add_definitions(-std=c++11 -Wall -g)
 
 set(HConLibRoot ${CMAKE_HOME_DIRECTORY}/..)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/bin)

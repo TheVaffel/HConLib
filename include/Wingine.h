@@ -31,8 +31,9 @@
 #define NUM_VIEWPORTS 1
 #define NUM_SCISSORS NUM_VIEWPORTS
 
-#define MAX_VERTEX_ATTRIBUTES 10
 #define MAX_COLOR_ATTACHMENTS 4
+#define MAX_VERTEX_ATTRIBUTES 10
+#define DESCRIPTOR_POOL_SIZE 10
 
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
@@ -42,18 +43,37 @@ struct WingineBuffer{
   VkDeviceMemory memory;
 };
 
-
 struct WingineUniform{
   WingineBuffer buffer;
   VkDescriptorBufferInfo bufferInfo;
+};
+
+struct WingineUniformSet{
+  VkDescriptorSet descriptorSet;
+  VkDescriptorSetLayout descriptorSetLayout;
+  const char* name;
+};
+
+struct WingineShader{
+  VkPipelineShaderStageCreateInfo shader;
+  WingineUniformSet* uniformSets;
+  int numUniformSets;
+};
+
+struct WinginePipeline{
+  VkPipeline pipeline;
+  VkDescriptorSet* descriptorSets;
+  int numDescriptorSets;
+  VkPipelineLayout pipelineLayout;
+  int numVertexAttribs;
 };
 
 struct WinginePipelineSetup{
   VkGraphicsPipelineCreateInfo createInfo;
   VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
   VkPipelineDynamicStateCreateInfo dynamicState;
-  VkVertexInputBindingDescription vi_bindings[MAX_VERTEX_ATTRIBUTES];
-  VkVertexInputAttributeDescription vi_attribs[MAX_VERTEX_ATTRIBUTES];
+  VkVertexInputBindingDescription* vi_bindings;
+  VkVertexInputAttributeDescription* vi_attribs;
   VkPipelineVertexInputStateCreateInfo vi;
   VkPipelineInputAssemblyStateCreateInfo ia;
   VkPipelineRasterizationStateCreateInfo rs;
@@ -62,8 +82,8 @@ struct WinginePipelineSetup{
   VkPipelineViewportStateCreateInfo vp;
   VkPipelineDepthStencilStateCreateInfo ds;
   VkPipelineMultisampleStateCreateInfo ms;
+  int numShaders;
 };
-
 
 class WingineCamera{
   const Matrix4 clip = {1.f, 0.f, 0.f, 0.f,
@@ -192,6 +212,7 @@ class Wingine{
 
   void printError(VkResult res);
 
+  void pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexAttribs);
   void pipeline_setup_color_renderer( WinginePipelineSetup* setup);
   void create_pipeline_color_renderer_single_buffer(VkPipeline*);
   void create_pipeline_color_renderer(VkPipeline*);
@@ -205,10 +226,23 @@ class Wingine{
   VkResult setBuffer(const WingineBuffer&, const void*, uint);
   void destroyBuffer(const WingineBuffer&);
 
+  //A single uniform. Basically just a lump of data to be accessed from shaders
   WingineUniform createUniform(uint size);
   void setUniform(const WingineUniform&, void*, uint);
+  void destroyUniform(const WingineUniform&);
+  
+  //A set of uniforms (to better utilize Vulkan's descriptor set abstraction) that "belong together"
+  WingineUniformSet createUniformSet(int numUniforms, WingineUniform* uniforms, VkShaderStageFlagBits* shaderStages, const char* name);
+  void destroyUniformSet(const WingineUniformSet& uniformSet);
+
+  WingineShader createShader(const char* shaderText, int numUniformSets, const WingineUniformSet* uniformSets, VkShaderStageFlagBits stageBit);
+  void destroyShader(WingineShader shader);
+
+  WinginePipeline createPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs);
+  void destroyPipeline(WinginePipeline pipeline);
   
   void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
+  void render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear);
   void setCamera(WingineCamera& camera);
   void initVulkan(const Winval*);
 

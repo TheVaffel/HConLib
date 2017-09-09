@@ -377,12 +377,10 @@ bool Winval::isKeyPressed(int i){
 }
 
 void Winval::flushEvents(){
-  if(!isOpen())
-    return;
   
   int num = XEventsQueued(dsp, QueuedAfterFlush);
   XEvent e2;
-  while(num-- && isOpen()){
+  while(num--){
     XNextEvent(dsp, &e2);
 
     handleEventProperly(e2);
@@ -405,17 +403,13 @@ void Winval::getButtonStateAndMotion(bool& valid, int& x, int& y){
   return;
 }
 
-void Winval::drawBuffer(char* buffer, int w, int h){
+void Winval::drawBuffer(unsigned char* buffer, int w, int h){
   if(!isOpen())
     return;
-  XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, buffer, w, h, 32, 0);
+  XImage* im = XCreateImage(dsp,XDefaultVisual(dsp, screenNum), 24, ZPixmap, 0, (char*)buffer, w, h, 32, 0);
   XPutImage(dsp, win, gc, im, 0, 0, 0, 0, w, h);
   XFlush(dsp);
   //XDestroyImage(im);
-}
-
-void Winval::drawBuffer(unsigned char* buffer, int w, int h){
-  drawBuffer((char*)buffer, w, h);
 }
 
 void Winval::setTitle(const char* window_name){

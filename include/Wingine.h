@@ -160,6 +160,9 @@ class Wingine{
   VkViewport viewport;
   VkRect2D scissor;
   VkPipelineCache pipeline_cache;
+#ifdef DEBUG
+  VkDebugReportCallbackEXT debugCallback;
+#endif //DEBUG
   
   WingineBuffer VPCUniform;
   WingineBuffer ModelTransformUniform;

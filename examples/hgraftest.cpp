@@ -10,7 +10,7 @@ void sleepMilliseconds(int m){
 #else //WIN32
 #include <unistd.h>
 void sleepMilliseconds(int m){
-  usleep(m*1000)
+  usleep(m*1000);
 }
 #endif //WIN32
 

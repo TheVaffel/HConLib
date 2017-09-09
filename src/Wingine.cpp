@@ -57,14 +57,11 @@ Wingine::~Wingine(){
   destroy_vulkan();
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object,
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunction(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object,
     size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData ) {
-
-    printf("[");
-    printf( pLayerPrefix );
-    printf( "] " );
-    printf( pMessage );
-    printf( "\n" );
+  
+    printf("[%s] %s\n", pLayerPrefix, pMessage);
+    
     return VK_FALSE;
 }
 
@@ -172,15 +169,15 @@ VkResult Wingine::init_instance(const  Winval* win){
     callbackCreateInfo.flags =  VK_DEBUG_REPORT_ERROR_BIT_EXT |
                                 VK_DEBUG_REPORT_WARNING_BIT_EXT |
                                 VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-    callbackCreateInfo.pfnCallback = &debugCallback;
+    callbackCreateInfo.pfnCallback = &debugCallbackFunction;
     callbackCreateInfo.pUserData = NULL;
 
-    VkDebugReportCallbackEXT callback;
-
-    res = vkCreateDebugReportCallbackEXT(instance, &callbackCreateInfo, NULL, &callback);
+    res = vkCreateDebugReportCallbackEXT(instance, &callbackCreateInfo, NULL, &debugCallback);
     if(res != VK_SUCCESS){
       printf("Could not create debug callback\n");
+      exit(0);
     }
+    
   #endif
 
   width = win->getWidth();
@@ -971,6 +968,13 @@ VkResult Wingine::init_pipeline_cache(){
 }
 
 void Wingine::destroy_instance(){
+#ifdef DEBUG
+  PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
+  vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
+  
+  vkDestroyDebugReportCallbackEXT(instance, debugCallback, NULL);
+#endif //DEBUG
+  
   vkDestroyInstance(instance, NULL);
 }
 
@@ -1344,171 +1348,6 @@ void Wingine::destroy_vulkan(){
   destroy_instance();
 }
 
-void Wingine::render_generic( VkPipeline pipeline, const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model, bool shouldClear){
-  setBuffer(ModelTransformUniform, &model, 4*4*sizeof(float));
-
-  VkCommandBufferBeginInfo cmd_buf_info = {};
-  cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmd_buf_info.pNext = NULL;
-  cmd_buf_info.flags = 0;
-  cmd_buf_info.pInheritanceInfo = NULL;
-
-  VkRect2D screenRect;
-  screenRect.extent.width = width;
-  screenRect.extent.height = height;
-  screenRect.offset.x = 0;
-  screenRect.offset.y = 0;
-
-  VkClearRect clearRect;
-  clearRect.rect = screenRect;
-  clearRect.baseArrayLayer = 0;
-  clearRect.layerCount = 1;
-
-  VkClearValue clear_values[2];
-  clear_values[0].color.float32[0] = 0.2f;
-  clear_values[0].color.float32[1] = 0.2f;
-  clear_values[0].color.float32[2] = 0.2f;
-  clear_values[0].color.float32[3] = 0.2f;
-  clear_values[1].depthStencil.depth = 1.0;
-  clear_values[1].depthStencil.stencil = 0;
-
-  vkResetCommandBuffer(cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-  VkResult res = vkBeginCommandBuffer(cmd_buffer, &cmd_buf_info);
-  if(res != VK_SUCCESS){
-    printf("Could not begin command buffer\n");
-    exit(0);
-  }
-
-  const VkDeviceSize offsets[2] = {0, 0};
-  
-  VkSemaphore imageAcquiredSemaphore;
-  VkSemaphoreCreateInfo imageAcquiredSemaphoreCreateInfo;
-  imageAcquiredSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-  imageAcquiredSemaphoreCreateInfo.pNext = NULL;
-  imageAcquiredSemaphoreCreateInfo.flags = 0;
-
-  res = vkCreateSemaphore(device, &imageAcquiredSemaphoreCreateInfo, NULL, &imageAcquiredSemaphore);
-  if(res != VK_SUCCESS){
-    printf("Could not create semaphore\n");
-    exit(0);
-  }
-  res = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE,
-			      &current_buffer);
-
-  if(res != VK_SUCCESS){
-    printf("Could not get next image from swapchain\n");
-    exit(0);
-  }
-
-  VkRenderPassBeginInfo rp_begin = {};
-  rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  rp_begin.pNext = NULL;
-  if(shouldClear){
-    rp_begin.renderPass = render_pass_clear;
-    rp_begin.clearValueCount = 2;
-    rp_begin.pClearValues = clear_values;
-    //printf("Initiated clearing\n");
-  }else{
-    rp_begin.renderPass = render_pass_generic;
-    rp_begin.clearValueCount = 0;
-    rp_begin.pClearValues = NULL;
-  }
-  rp_begin.framebuffer = framebuffers[current_buffer];
-  rp_begin.renderArea.offset.x = 0;
-  rp_begin.renderArea.offset.y = 0;
-  rp_begin.renderArea.extent.width = width;
-  rp_begin.renderArea.extent.height = height;
-
-  VkBuffer vertexBuffers[] = {vertexBuffer.buffer, colorBuffer.buffer};
-
-  vkCmdBeginRenderPass(cmd_buffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-  vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, NUM_DESCRIPTOR_SETS,
-			  descriptor_set, 0, NULL);
-  vkCmdBindVertexBuffers(cmd_buffer, 0,
-			 2,
-			 vertexBuffers,
-			 offsets);
-  vkCmdBindIndexBuffer(cmd_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  viewport.height = (float)height;
-  viewport.width = (float)width;
-  viewport.minDepth = (float)0.0f;
-  viewport.maxDepth = (float)1.0f;
-  viewport.x = 0;
-  viewport.y = 0;
-  vkCmdSetViewport(cmd_buffer, 0, NUM_VIEWPORTS, &viewport);
-
-  scissor.extent.width = width;
-  scissor.extent.height = height;
-  scissor.offset.x = 0;
-  scissor.offset.y = 0;
-  vkCmdSetScissor(cmd_buffer, 0, NUM_SCISSORS, &scissor);
-
-  //vkCmdDraw(cmd_buffer, 18, 1, 0, 0);
-  vkCmdDrawIndexed(cmd_buffer, 2*3, 1, 0, 0, 0);
-  vkCmdEndRenderPass(cmd_buffer);
-  res = vkEndCommandBuffer(cmd_buffer);
-
-  /* Queue the command buffer for execution */
-  const VkCommandBuffer cmd_bufs[] = {cmd_buffer};
-  VkFenceCreateInfo fenceInfo;
-  VkFence drawFence;
-  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceInfo.pNext = NULL;
-  fenceInfo.flags = 0;
-  vkCreateFence(device, &fenceInfo, NULL, &drawFence);
-
-  VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  VkSubmitInfo submit_info[1] = {};
-  submit_info[0].pNext = NULL;
-  submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info[0].waitSemaphoreCount = 1;
-  submit_info[0].pWaitSemaphores = &imageAcquiredSemaphore;
-  submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-  submit_info[0].commandBufferCount = 1;
-  submit_info[0].pCommandBuffers = cmd_bufs;
-  submit_info[0].signalSemaphoreCount = 0;
-  submit_info[0].pSignalSemaphores = NULL;
-  res = vkQueueSubmit(graphics_queue, 1, submit_info, drawFence);
-  if(res != VK_SUCCESS){
-    printf("Could not submit to graphics queue\n");
-    exit(0);
-  }
-  VkPresentInfoKHR present;
-  present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-  present.pNext = NULL;
-  present.swapchainCount = 1;
-  present.pSwapchains = &swapchain;
-  present.pImageIndices = &current_buffer;
-  present.pWaitSemaphores = NULL;
-  present.waitSemaphoreCount = 0;
-  present.pResults = NULL;
-
-  do {
-    res = vkWaitForFences(device, 1, &drawFence, VK_TRUE, FENCE_TIMEOUT);
-  } while (res == VK_TIMEOUT);
-
-  if(res != VK_SUCCESS){
-    printf("Drawing was not a success\n");
-    exit(0);
-  }
-
-  res = vkQueuePresentKHR(present_queue, &present);
-  if(res != VK_SUCCESS){
-    printf("Could not queue present\n");
-    exit(0);
-  }
-
-  vkDestroyFence(device, drawFence, NULL);
-
-  vkDestroySemaphore(device, imageAcquiredSemaphore, NULL);
-}
-
-void Wingine::renderColor(const WingineBuffer& vertexBuffer, const WingineBuffer& colorBuffer, const WingineBuffer& indexBuffer, const Matrix4& model, bool shouldClear){
-  render_generic(color_pipeline, vertexBuffer, colorBuffer, indexBuffer, model, shouldClear);
-}
-
 WingineUniformSet Wingine::createUniformSet( int numUniforms, WingineUniform* uniforms, VkShaderStageFlagBits* shaderStages, const char* name){
   WingineUniformSet uniformSet;
   uniformSet.name = name;
@@ -1693,6 +1532,13 @@ void Wingine::render(const WingineBuffer* vertexAttribs, const WingineBuffer& in
   screenRect.offset.x = 0;
   screenRect.offset.y = 0;
 
+  VkClearValue clear_values[2];
+  clear_values[0].color.float32[0] = 0.2f;
+  clear_values[0].color.float32[1] = 0.2f;
+  clear_values[0].color.float32[2] = 0.2f;
+  clear_values[0].color.float32[3] = 1.0f;
+  clear_values[1].depthStencil.depth = 1.0;
+  clear_values[1].depthStencil.stencil = 0;
 
   vkResetCommandBuffer(cmd_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
   VkResult res = vkBeginCommandBuffer(cmd_buffer, &cmd_buf_info);
@@ -1726,14 +1572,20 @@ void Wingine::render(const WingineBuffer* vertexAttribs, const WingineBuffer& in
   VkRenderPassBeginInfo rp_begin = {};
   rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   rp_begin.pNext = NULL;
-  rp_begin.renderPass = render_pass;
+  if(clear){
+    rp_begin.renderPass = render_pass_clear;
+    rp_begin.clearValueCount = 2;
+    rp_begin.pClearValues = clear_values;
+  }else{
+    rp_begin.renderPass = render_pass_generic;
+    rp_begin.clearValueCount = 0;
+    rp_begin.pClearValues = NULL;
+  }
   rp_begin.framebuffer = framebuffers[current_buffer];
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
   rp_begin.renderArea.extent.width = width;
   rp_begin.renderArea.extent.height = height;
-  rp_begin.clearValueCount = 0;
-  rp_begin.pClearValues = NULL;
 
   wgAssert(MAX_VERTEX_ATTRIBUTES >= pipeline.numVertexAttribs, "MAX_VERTEX_ATTRIBUTES high enough");
   
@@ -1751,38 +1603,6 @@ void Wingine::render(const WingineBuffer* vertexAttribs, const WingineBuffer& in
 			 vertexBuffers,
 			 offsets);
   vkCmdBindIndexBuffer(cmd_buffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  if(clear){
-      
-    VkClearValue clear_values[2];
-    clear_values[0].color.float32[0] = 0.0f;
-    clear_values[0].color.float32[1] = 0.0f;
-    clear_values[0].color.float32[2] = 0.0f;
-    clear_values[0].color.float32[3] = 1.0f;
-    clear_values[1].depthStencil.depth = 1.0;
-    clear_values[1].depthStencil.stencil = 0;
-  
-    VkClearAttachment clearAttachments[2];
-    clearAttachments[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    clearAttachments[0].colorAttachment = 0;
-    clearAttachments[0].clearValue = clear_values[0];
-
-    clearAttachments[1].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    clearAttachments[1].clearValue = clear_values[1];
-  
-    VkClearRect clearRect;
-    clearRect.rect = screenRect;
-    clearRect.baseArrayLayer = 0;
-    clearRect.layerCount = 1;
-
-  
-    vkCmdClearAttachments(cmd_buffer,
-			  2,
-			  clearAttachments,
-			  1,
-			  &clearRect);
-  }
-			
 
   viewport.height = (float)height;
   viewport.width = (float)width;

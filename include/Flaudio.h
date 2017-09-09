@@ -51,14 +51,15 @@ class Flaudio{
   IMMDevice* device;
   IAudioClient * audioClient;
   IAudioRenderClient * renderClient;
+  unsigned int frames_per_period;
 
 #else //WIN32
   snd_pcm_t *handle;
   snd_pcm_hw_params_t *params;
+  long unsigned int frames_per_period;
 #endif //WIN32
 
   unsigned int total_buffer_size;
-  unsigned int frames_per_period;
 
 public:
 

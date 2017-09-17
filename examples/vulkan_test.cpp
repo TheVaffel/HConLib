@@ -90,31 +90,67 @@ int main(){
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
   WingineBuffer vertexAttribs2[2] = {vertexBuffer, colorBuffer2};
 
-  WingineShader vertexShader = wg.createShader(vertShaderText, 1, &cameraSet, VK_SHADER_STAGE_VERTEX_BIT);
-  WingineShader fragmentShader = wg.createShader(fragShaderText, 0, NULL, VK_SHADER_STAGE_FRAGMENT_BIT);
+  WingineShader vertexShader = wg.createShader(vertShaderText, 1, /*&cameraSet,*/ VK_SHADER_STAGE_VERTEX_BIT);
+  WingineShader fragmentShader = wg.createShader(fragShaderText, 0, /*NULL,*/ VK_SHADER_STAGE_FRAGMENT_BIT);
 
   WingineShader shaders[2] = {vertexShader, fragmentShader};
-  
-  WinginePipeline pipeline = wg.createPipeline(2, shaders, 2);
 
+  WingineScene scene(wg);
+  scene.addPipeline(2, shaders, 2); //Num shaders, shaders, num vertex attribs
+  WingineRenderObject object1(2, vertexAttribs, indexBuffer, cameraSet); //Num vertex attribs, vertex attribs, index buffer, uniformset
+  WingineRenderObject object2(2, vertexAttribs2, indexBuffer, cameraSet);
+
+  scene.addObject(object1, 0);
+  scene.addObject(object2, 0);
+
+  wg.setScene(scene);
   
-  clock_t start_time = clock();
-  int count = 0;
   WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
   Vector3 camPos(-5, 3, -10);
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
+  
+  
+    
+  clock_t start_time = clock();
+  int count = 0;
 
+  while(win.isOpen()){
+    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count));
+    count++;
+    Matrix4 cMatrix = cam.getRenderMatrix();
+    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
+    wg.renderScene();
+    clock_t current_time = clock();
+    long long int diff = current_time - start_time;
+    long long w = 1000/60 - 1000*diff/CLOCKS_PER_SEC;
+    if(w > 0){
+      sleepMilliseconds((int32_t)w);
+    }
+    start_time = current_time;
+    win.flushEvents();
+    if(win.isKeyPressed(WK_ESC)){
+      break;
+    }
+  }
+  /*WinginePipeline pipeline = wg.createPipeline(2, shaders, 2);
   
   //wg.setCamera(cam);
   while(win.isOpen()){
-    cam.setPosition(camPos + 0.5f*camPos*sin(0.1*count));
-
+    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count));
     Matrix4 cMatrix = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
-    wg.render(count%2 == 0?vertexAttribs:vertexAttribs2, indexBuffer, pipeline, true);
+    wg.render(count%2 == 3?vertexAttribs:vertexAttribs2, indexBuffer, pipeline, true);
 
+    //wg.synchronizeDrawing();
+    
+    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count) + Vector3(3.3f, 0.0f, 0.0f));
+    cMatrix = cam.getRenderMatrix();
+    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
+    wg.render(count%2 < 3? vertexAttribs:vertexAttribs2, indexBuffer, pipeline, false);
+    wg.present();
+    
     count++;
 
     clock_t current_time = clock();
@@ -126,12 +162,17 @@ int main(){
     }
     start_time = current_time;
 
-    if(win.waitForKey() == WK_ESC){
+    //if(win.waitForKey() == WK_ESC){
+      //break;
+      //}
+
+    win.flushEvents();
+    if(win.isKeyPressed(WK_ESC)){
       break;
     }
-  }
+    }*/
 
-  wg.destroyPipeline(pipeline);
+  //wg.destroyPipeline(pipeline);
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
   wg.destroyUniformSet(cameraSet);

@@ -3,7 +3,7 @@ project(HConLib_examples)
 
 add_definitions(-std=c++11)
 
-if(!WIN32)
+if(NOT WIN32)
   add_definitions(-Wall -g)
 endif()
 

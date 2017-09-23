@@ -171,8 +171,7 @@ int main(){
       break;
     }
     }*/
-
-  //wg.destroyPipeline(pipeline);
+  
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
   wg.destroyUniformSet(cameraSet);

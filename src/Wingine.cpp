@@ -1063,6 +1063,7 @@ void Wingine::destroy_swapchain(){
   delete[] swapchain_image_views;
   delete[] swapchain_images;
 
+  vkWaitForFences(device, 1, &imageAcquiredFence, VK_TRUE, 1000000000ULL);
   vkDestroyFence(device, imageAcquiredFence, NULL);
 
   for(int i = 0; i < drawSemaphores.size(); i++){
@@ -1601,7 +1602,8 @@ WinginePipeline Wingine::createPipeline(int numShaders, WingineShader* shaders, 
 
   VkDescriptorSetLayout dsl;
   VkResult res = vkCreateDescriptorSetLayout(device, &descInfo, NULL, &dsl);
-
+  pipeline.descriptorSetLayout = dsl;
+  
   pipelineSetup.layoutCreateInfo.setLayoutCount = 1;
   pipelineSetup.layoutCreateInfo.pSetLayouts = &dsl;
   
@@ -1625,9 +1627,11 @@ WinginePipeline Wingine::createPipeline(int numShaders, WingineShader* shaders, 
 
 void Wingine::destroyPipeline(WinginePipeline pipeline){
   //delete[] pipeline.descriptorSets;
-
-  vkDestroyPipeline(device, pipeline.pipeline, NULL);
+  
   vkDestroyPipelineLayout(device, pipeline.pipelineLayout, NULL);
+  vkDestroyRenderPass(device, pipeline.compatibleRenderPass, NULL);
+  vkDestroyDescriptorSetLayout(device, pipeline.descriptorSetLayout, NULL);
+  vkDestroyPipeline(device, pipeline.pipeline, NULL);
 }
 
 
@@ -1958,6 +1962,12 @@ bool WingineRenderObject::isAltered(){
 
 WingineScene::WingineScene(Wingine& w){
   wg = &w;
+}
+
+WingineScene::~WingineScene(){
+  for(int i = 0; i < objectGroups.size(); i++){
+    wg->destroyPipeline(objectGroups[i].pipeline);
+  }
 }
 
 void WingineScene::addPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs){

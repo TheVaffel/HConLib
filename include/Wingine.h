@@ -138,7 +138,7 @@ class WingineRenderObject{
   
 };
 
-struct WingineObjectGroup{ // Collection of all objects (in a scene) that are rendered with the same pipeline++
+struct WingineObjectGroup{ // Collection of all objects (in a scene) that are rendered with the same pipeline
 private:
   const Wingine* wingine;
 public:
@@ -159,8 +159,10 @@ class WingineScene{
 public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
+  ~WingineScene();
   void addPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs);
   void addObject(const WingineRenderObject& obj, int pipelineInd);
+  
 };
 
 class WingineCamera{

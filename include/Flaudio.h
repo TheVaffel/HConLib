@@ -13,6 +13,7 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #include <alsa/asoundlib.h>
 
+#include <stdint.h>
 #endif //WIN32
 
 #include <queue>
@@ -66,7 +67,7 @@ public:
   Flaudio(unsigned int samplerate = 44100);
   ~Flaudio();
 
-  void writeBuffer(int16_t*buffer, int num);
+  void writeBuffer(int16_t*buffer, uint32_t num);
   void playStep();
 
   int getSampleRate();

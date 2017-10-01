@@ -17,7 +17,7 @@ endif()
 
 add_definitions(-std=c++11)
 if(NOT WIN32)
-  add_definitions(-g)
+  add_definitions(-g -Wall)
 endif()
 set(includeDir ${CMAKE_HOME_DIRECTORY}/include)
 set(srcDir ${CMAKE_HOME_DIRECTORY}/src)

@@ -359,7 +359,7 @@ void HCam::YUVtoRGB(int width, int height, unsigned char *src, unsigned char *ds
       *tmp++ = CLIP((double)*py - 0.344*((double)*pu-128.0) - 0.714*((double)*pv-128.0));
       *tmp++ = CLIP((double)*py + 1.402*((double)*pv-128.0));
 
-      *tmp++;
+      tmp++;
       // increase py every time
       py += pyinc;
       // increase pu,pv every second time
@@ -378,8 +378,7 @@ void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *
   int h = height;
 
   unsigned short *col = (unsigned short*)src;
-  unsigned short mx = 0;
-  //int tr = 0, tg = 0, tb = 0, tg2 = 0;
+    //int tr = 0, tg = 0, tb = 0, tg2 = 0;
 
   for(int i = 1; i < h-1; i++){
     int write_row = upsideDown?h -i - 1: i;
@@ -412,7 +411,7 @@ void HCam::BayerToRGB(int width, int height, unsigned char *src, unsigned char *
       int write_column = upsideDown? w-j-1 : j;
 
       //Since we get 12 bits for every channel
-      dst[4*(write_row*w + write_column) + 2] = b>>4, 255;
+      dst[4*(write_row*w + write_column) + 2] = b>>4;
       dst[4*(write_row*w + write_column) + 1] = g>>4;
       dst[4*(write_row*w + write_column) ] = r>>4;
     }
@@ -429,9 +428,6 @@ int HCam::capture_image(unsigned char* rgb_buffer)
 
 
   struct v4l2_buffer buf;
-  unsigned int i;
-
-
 
   memset(&buf, 0, sizeof(buf));
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -553,8 +549,6 @@ void HCam::init_full_name(int w, int h, const char* deviceName, int mode, bool u
   }
 
   struct v4l2_capability cap;
-  struct v4l2_cropcap cropcap;
-  struct v4l2_crop crop;
   struct v4l2_format fmt;
   unsigned int min;
 
@@ -580,7 +574,7 @@ void HCam::init_full_name(int w, int h, const char* deviceName, int mode, bool u
     exit(EXIT_FAILURE);
   }
 
-  const int formats[] = {V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_YUYV};
+  const uint32_t formats[] = {V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_YUYV};
 
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;

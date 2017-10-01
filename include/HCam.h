@@ -62,7 +62,7 @@ class HCam{
     size_t  length;
   };
 
-  int width, height;
+  uint32_t width, height;
 
   char webcamName[100];
   struct webcam_buffer    *webcam_buffers;

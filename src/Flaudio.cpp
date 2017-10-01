@@ -229,10 +229,10 @@ Flaudio::Flaudio(unsigned int rate){
 }
 
 
-void Flaudio::writeBuffer(int16_t* buffer, int num){
+void Flaudio::writeBuffer(int16_t* buffer, uint32_t num){
   int16_t* newbuff = new int16_t[num*2];
   int16_t* a = newbuff;
-  for(int i = 0; i < num; i++){
+  for(uint32_t i = 0; i < num; i++){
     *(a++) = buffer[i];
     *(a++) = buffer[i];
   }
@@ -249,10 +249,10 @@ void Flaudio::writeBuffer(int16_t* buffer, int num){
 void Flaudio::playStep(){
 
 
-  long int delay = 0;
+  snd_pcm_sframes_t delay = 0;
   snd_pcm_delay(handle, &delay);
 
-  while(delay > 3*frames_per_period/2){
+  while((unsigned long int)delay > 3*frames_per_period/2){
     usleep(1000); //Sleep 1 ms at a time
     int err = snd_pcm_delay(handle, &delay);
     if(err < 0){
@@ -281,7 +281,7 @@ void Flaudio::playStep(){
     newbuff[i] = 0;
   }
 
-  for(int j = 0; j < channels.size(); j++){
+  for(uint32_t j = 0; j < channels.size(); j++){
     if(!channels[j].empty()){
       for(int i =0 ;i < numberToWrite; i++){
       	Segment* s = channels[j].front();
@@ -330,7 +330,7 @@ void Flaudio::playStep(){
 Flaudio::~Flaudio(){
   snd_pcm_drain(handle);
   snd_pcm_close(handle);
-  for(int i = 0; i  < channels.size();i++){
+  for(uint32_t i = 0; i  < channels.size();i++){
     while(!channels[i].empty()){
       if(channels[i].front()){
 	delete channels[i].front();

@@ -12,7 +12,6 @@ int main(){
 
   Winval win(w, h);
 
-  const char* chars = "aoeuidhtns";
   const int charcodes[] = {WK_A, WK_O, WK_E, WK_U, WK_I, WK_D, WK_H, WK_T, WK_N, WK_S};
   const int steps[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16};
 

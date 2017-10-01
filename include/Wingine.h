@@ -133,11 +133,15 @@ class WingineRenderObject{
   bool altered = true;
   const WinginePipeline* pipeline;
   WingineObjectGroup* objectGroup;
+
+  int numDrawIndices;
+  int indexOffset;
   
  public:
-  WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
+  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
   
   void setPipeline(const WinginePipeline& p);
+  void setIndexOffset(int newIndex);
 
   void recordCommandBuffer(VkCommandBuffer& cmd);
   void setCommandBuffer(const VkCommandBuffer& cmd);

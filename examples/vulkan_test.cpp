@@ -15,29 +15,24 @@ void sleepMilliseconds(int u){
 
 using namespace std;
 
-static const float _test_vertices[] =
+static const float test_vertices[] =
   { -1.0f, 0.0f, 0.f, 1.0f,
     1.0f, 0.0f, 0.f, 1.0f,
     0.0f, 1.0f, 0.f, 1.0f};
 
-static const float _test_colors[] =
+static const float test_colors[] =
   { 1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 1.0f,
     0.0f, 0.0f, 1.0f, 1.0f};
-    
-static const float _test_colors2[] =
-  { 1.0f, 1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f, 1.0f};
 
 static const float texture_coords[] =
   {1.0f, 1.0f,
    0.0f, 0.0f,
    1.0f, 0.0f};
 
-static const uint32_t _test_indices[] =
-  { 0, 1, 2,
-    0, 2, 1};
+static const uint32_t test_indices[] =
+  { 0, 2, 1,
+    0, 1, 2};
 
 const char *vertShaderText =
   "#version 400\n"
@@ -104,7 +99,36 @@ int main(){
   for(int i =0; i < texWidth*texHeight; i++){
     ((int*)generic_pattern)[i] = (i % 8 < 4) ^ ((i/texWidth) % 8 <4) ? 0xFFFFFFFF : 0xFF000000; 
   }
+
+  //Dirty trick for creating cube:
+  int cubeNumbers[8] = {0, 1, 3, 2, 6, 4, 5, 7};
   
+  float cube_vertices[4*8];
+  float cube_tex_coords[2*8];
+  for(int i = 0; i < 8; i++){
+    int pop = 0;
+    for(int j = 0; j < 3; j++){
+      if(cubeNumbers[i] & (1 << j)){
+	cube_vertices[4*i + j] = 0.5f;
+	pop++;
+      }else{
+	cube_vertices[4*i + j] = -0.5;
+      }
+    }
+    cube_vertices[4*i + 3] = 1.0f;
+    cube_tex_coords[2*i] = pop & 1 ? 1.0f : 0.0f;
+    cube_tex_coords[2*i] = pop & 2 ? 1.0f : 0.0f;
+  }
+
+  int cube_indices[3*12];
+  int pivots[2] = {0, 7};
+  for(int i = 0; i < 2; i++){
+    for(int j = 0; j < 6; j++){
+      cube_indices[3*(i*6 + j)] = pivots[i];
+      cube_indices[3*(i*6 + j) + (i?2:1)] = 1 + j;
+      cube_indices[3*(i*6 + j) + (i?1:2)] = 1 + ((j + 1) % 6);
+    }
+  }
 
   Winval win(1280, 720);
   Wingine wg(win);
@@ -112,34 +136,42 @@ int main(){
   //Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
 
   WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( vertexBuffer, _test_vertices, 3*4*sizeof(float));
+  wg.setBuffer( vertexBuffer, test_vertices, 3*4*sizeof(float));
 
   WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( colorBuffer, _test_colors, 3*4*sizeof(float));
+  wg.setBuffer( colorBuffer, test_colors, 3*4*sizeof(float));
 
-  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( indexBuffer, _test_indices, 2*3*sizeof(uint32_t));
-
-  WingineBuffer colorBuffer2 = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( colorBuffer2, _test_colors2, 3*4*sizeof(float));
+  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(int));
+  wg.setBuffer( indexBuffer, test_indices, 2*3*sizeof(uint32_t));
 
   WingineBuffer textureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*2*sizeof(float));
   wg.setBuffer(textureCoordBuffer, texture_coords, 2*4*sizeof(float));
+
+
+  WingineBuffer cubeVertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 8*4*sizeof(float));
+  wg.setBuffer(cubeVertexBuffer, cube_vertices, 8*4*sizeof(float));
+
+  WingineBuffer cubeIndexBuffer = wg.createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 12*3*sizeof(int));
+  wg.setBuffer(cubeIndexBuffer, cube_indices, 12*3*sizeof(int));
+  
+  WingineBuffer cubeTextureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 8*2*sizeof(float));
+  wg.setBuffer(cubeTextureCoordBuffer, cube_tex_coords, 8*2*sizeof(float));
+  
 
   VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
   VkShaderStageFlagBits textureResourceSetStageBits[2] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
     
   WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
+  WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
   
   WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, 0, bits);
   WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(1, 1, textureResourceSetStageBits);
   
   WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniform, NULL);
-  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, &cameraUniform, &texture);
+  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, &offsetUniform, &texture);
   
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
-  WingineBuffer vertexAttribs2[2] = {vertexBuffer, colorBuffer2};
   WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};
 
   VkFormat attribTypes[] = {VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT};
@@ -157,13 +189,15 @@ int main(){
   WingineScene scene(wg);
   scene.addPipeline(resourceLayout, 2, shaders, 2, attribTypes); //pipelineLayout, num shaders, shaders, num vertex attribs
   scene.addPipeline(textureResourceLayout, 2, textureShaders, 2, attribTypesTexture);
-  WingineRenderObject object1(2, vertexAttribs, indexBuffer, cameraSet); //Num vertex attribs, vertex attribs, index buffer, resourceset
-  WingineRenderObject object2(2, vertexAttribs2, indexBuffer, cameraSet);
-  WingineRenderObject object3(2, textureVertexAttribs, indexBuffer, textureSet);
+  WingineRenderObject object1(6, 2, vertexAttribs, indexBuffer, cameraSet); //Num drawIndices, num vertex attribs, vertex attribs, index buffer, resourceset
+  WingineRenderObject object3(6, 2, textureVertexAttribs, indexBuffer, textureSet);
 
-  scene.addObject(object1, 0); //Object, pipeline number
-  //scene.addObject(object2, 0);
-  scene.addObject(object3, 1);
+  WingineBuffer cubeVertexAttribs[2] = {cubeVertexBuffer, cubeTextureCoordBuffer};
+  WingineRenderObject cubeObject(3*12, 2, cubeVertexAttribs, cubeIndexBuffer, textureSet);
+
+  //scene.addObject(object1, 0); //Object, pipeline number
+  //scene.addObject(object3, 1);
+  scene.addObject(cubeObject, 1);
 
   wg.setScene(scene);
   
@@ -172,7 +206,10 @@ int main(){
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
-  
+  Matrix4 offset = Matrix4(1.0f, .0f, .0f, 1.0f,
+			   .0f, 1.0f, .0f, .0f,
+			   .0f, .0f, 1.0f, .5f,
+			   .0f, .0f, .0f, 1.0f);
   
     
   clock_t start_time = clock();
@@ -180,9 +217,11 @@ int main(){
 
   while(win.isOpen()){
     cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));
+    Matrix4 newOffset = ~((~cam.getRenderMatrix())*offset);
     count++;
     Matrix4 cMatrix = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
+    wg.setUniform(offsetUniform, &newOffset, sizeof(Matrix4));
     wg.renderScene();
     clock_t current_time = clock();
     long long int diff = current_time - start_time;
@@ -199,6 +238,7 @@ int main(){
   
   wg.destroyTexture(texture);
   wg.destroyUniform(cameraUniform);
+  wg.destroyUniform(offsetUniform);
   
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
@@ -214,7 +254,9 @@ int main(){
   wg.destroyBuffer(vertexBuffer);
   wg.destroyBuffer(colorBuffer);
   wg.destroyBuffer(indexBuffer);
-  wg.destroyBuffer(colorBuffer2);
+  wg.destroyBuffer(cubeVertexBuffer);
+  wg.destroyBuffer(cubeIndexBuffer);
+  wg.destroyBuffer(cubeTextureCoordBuffer);
   wg.destroyBuffer(textureCoordBuffer);
   
   return 0;

@@ -1924,12 +1924,18 @@ void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
   currSemaphore++;
 }
 
-WingineRenderObject::WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet){
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet){
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
   }
   indexBuffer = iBuffer;
   uniformSet = uSet;
+  numDrawIndices = numInds;
+  indexOffset = 0;
+}
+
+void WingineRenderObject::setIndexOffset(int newIndex){
+  indexOffset = newIndex;
 }
 
 void WingineRenderObject::setPipeline(const WinginePipeline& p){
@@ -1959,7 +1965,7 @@ void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
   delete[] vertexBuffers;
 
   vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdDrawIndexed(cmd, 2*3, 1, 0, 0, 0);
+  vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
   //vkEndCommandBuffer(cmd);
   altered = false;
 }
@@ -2011,69 +2017,6 @@ void WingineScene::addObject(const WingineRenderObject& obj, int pipelineInd){
 WingineObjectGroup::WingineObjectGroup(const Wingine& wg){
   wingine = &wg;
 }
- 
-/*void  WingineObjectGroup::recordCommandBuffer(){
-  vkResetCommandBuffer(commandBuffer, 0);
-
-  VkCommandBufferBeginInfo begin = {};
-  begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  begin.pNext = NULL;
-  begin.flags = 0;
-  begin.pInheritanceInfo = NULL;
-    
-  VkClearValue clear_values[2];
-  clear_values[0].color.float32[0] = 0.2f;
-  clear_values[0].color.float32[1] = 0.2f;
-  clear_values[0].color.float32[2] = 0.2f;
-  clear_values[0].color.float32[3] = 1.0f;
-  clear_values[1].depthStencil.depth = 1.0f;
-  clear_values[1].depthStencil.stencil = 0.0f;
-
-  VkViewport viewport;
-  viewport.height = (float)wingine->getScreenHeight();
-  viewport.width = (float)wingine->getScreenWidth();
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-  viewport.x = 0;
-  viewport.y = 0;
-
-  VkRect2D scissor;
-  scissor.extent.width = wingine->getScreenWidth();
-  scissor.extent.height = wingine->getScreenHeight();
-  scissor.offset.x = 0;
-  scissor.offset.y = 0;
-
-  VkRenderPassBeginInfo rp_begin = {};
-  rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  rp_begin.pNext = NULL;
-  rp_begin.renderPass = pipeline.compatibleRenderPass;
-  rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
-  
-  rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
-  rp_begin.framebuffer = wingine->getCurrentFramebuffer();
-  rp_begin.renderArea.offset.x = 0;
-  rp_begin.renderArea.offset.y = 0;
-  rp_begin.renderArea.extent.width = wingine->getScreenWidth();
-  rp_begin.renderArea.extent.height = wingine->getScreenHeight();
-
-  
-  VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
-  wgAssert(res == VK_SUCCESS, "Begin command buffer");
-  
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
-
-  vkCmdBeginRenderPass(commandBuffer, &rp_begin, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-  for(uint32_t i = 0; i < objects.size(); i++){
-    vkCmdExecuteCommands(commandBuffer, 0, objects[i].getCommandBufferPointer());
-  }
-  vkCmdEndRenderPass(commandBuffer);
-
-  res = vkEndCommandBuffer(commandBuffer);
-  wgAssert(res == VK_SUCCESS, "End command buffer");
-  }*/
 
 void WingineObjectGroup::startRecordingCommandBuffer(){
   vkResetCommandBuffer(commandBuffer, 0);

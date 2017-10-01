@@ -35,9 +35,9 @@
 
 #define MAX_COLOR_ATTACHMENTS 4
 #define MAX_VERTEX_ATTRIBUTES 10
-#define DESCRIPTOR_POOL_SIZE 10
+#define UNIFORM_DESCRIPTOR_POOL_SIZE 50
+#define TEXTURE_DESCRIPTOR_POOL_SIZE 10
 #define MAX_NUM_COMMANDS 100
-#define MAX_NUM_OBJECT_TYPES 10
 
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
@@ -54,15 +54,18 @@ struct WingineUniform{
   VkDescriptorBufferInfo bufferInfo;
 };
 
-struct WingineUniformSet{
+struct WingineResourceSetLayout{
+  VkDescriptorSetLayout layout;
+  int numUniforms;
+  int numTextures;
+};
+
+struct WingineResourceSet{
   VkDescriptorSet descriptorSet;
-  VkDescriptorSetLayout descriptorSetLayout;
-  const char* name;
 };
 
 struct WingineShader{
   VkPipelineShaderStageCreateInfo shader;
-  //WingineUniformSet* uniformSets;
   int numUniformSets;
 };
 
@@ -79,8 +82,6 @@ struct WingineRenderPassSetup{
 
 struct WinginePipeline{
   VkPipeline pipeline;
-  //VkDescriptorSet* descriptorSets;
-  //int numDescriptorSets;
   VkPipelineLayout pipelineLayout;
   int numVertexAttribs;
   VkRenderPass compatibleRenderPass;
@@ -110,19 +111,31 @@ struct WinginePipelineSetup{
   WingineRenderPassSetup renderPassSetup;
 };
 
+struct WingineTexture{
+  VkSampler sampler;
+  VkImage image;
+  VkImageLayout imageLayout;
+  VkDeviceMemory mem;
+  VkImageView view;
+
+  uint32_t width, height;
+  
+  VkDescriptorImageInfo imageInfo;
+};
+
 struct WingineObjectGroup;
 
 class WingineRenderObject{
   std::vector<WingineBuffer> vertexAttribs;
   WingineBuffer indexBuffer;
   VkCommandBuffer commandBuffer;
-  WingineUniformSet uniformSet;
+  WingineResourceSet uniformSet;
   bool altered = true;
   const WinginePipeline* pipeline;
   WingineObjectGroup* objectGroup;
   
  public:
-  WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineUniformSet& uSet);
+  WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
   
   void setPipeline(const WinginePipeline& p);
 
@@ -144,6 +157,7 @@ private:
 public:
   WingineObjectGroup(const Wingine& wg);
   bool altered  = true;
+  bool shouldClearAttachments;
   WinginePipeline pipeline;
   std::vector<WingineRenderObject> objects;
   VkCommandBuffer commandBuffer;
@@ -160,7 +174,7 @@ public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
   ~WingineScene();
-  void addPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs);
+  void addPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes);
   void addObject(const WingineRenderObject& obj, int pipelineInd);
   
 };
@@ -199,6 +213,8 @@ class Wingine{
   uint32_t graphics_queue_family_index;
   uint32_t present_queue_family_index;
   VkCommandPool cmd_pool;
+  VkCommandBuffer free_command_buffer;
+  VkFence free_command_buffer_fence;
   //VkCommandBuffer cmd_buffers[MAX_NUM_COMMANDS];
   //uint32_t current_command_buffer;
   
@@ -237,7 +253,7 @@ class Wingine{
   VkFramebuffer* framebuffers;
 
   std::vector<VkSemaphore> drawSemaphores;
-  int currSemaphore;
+  uint32_t currSemaphore;
 
   VkFence imageAcquiredFence;
 
@@ -258,11 +274,6 @@ class Wingine{
   std::vector<const char*> instance_layer_names;
   std::vector<const char*> device_extension_names;
 
-  VkPipelineShaderStageCreateInfo shaderStages[2];
-
-  VkVertexInputBindingDescription vi_binding;
-  VkVertexInputAttributeDescription vi_attribs[2];
-
   WingineScene* currentScene;
   
   VkResult init_instance(const Winval*);
@@ -278,7 +289,6 @@ class Wingine{
   VkResult init_descriptor_pool();
   VkResult init_descriptor_set();
   VkResult init_render_passes();
-  VkResult init_shaders();
   VkResult init_framebuffers();
   VkResult init_pipeline_cache();
   VkPipeline init_pipeline();
@@ -292,7 +302,6 @@ class Wingine{
   void destroy_descriptor_set_layouts();
   void destroy_descriptor_set();
   void destroy_render_passes();
-  void destroy_shaders();
   void destroy_framebuffers();
   void destroy_pipeline_cache();
   void destroy_pipeline();
@@ -312,6 +321,8 @@ class Wingine{
   void create_pipeline_color_renderer(VkPipeline*);
 
   void render_pass_setup_generic(WingineRenderPassSetup* setup);
+
+  void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout, VkPipelineStageFlags, VkPipelineStageFlags);
   
   void updateMVP(const Matrix4&);
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
@@ -337,16 +348,24 @@ class Wingine{
   WingineUniform createUniform(uint32_t size);
   void setUniform(const WingineUniform&, void*, uint32_t);
   void destroyUniform(const WingineUniform&);
-  
-  //A set of uniforms (to better utilize Vulkan's descriptor set abstraction) that "belong together"
-  WingineUniformSet createUniformSet(int numUniforms, WingineUniform* uniforms, VkShaderStageFlagBits* shaderStages, const char* name);
-  void destroyUniformSet(const WingineUniformSet& uniformSet);
 
-  WingineShader createShader(const char* shaderText, int numUniformSets, /*const WingineUniformSet* uniformSets,*/ VkShaderStageFlagBits stageBit);
+  //A layout for resource sets
+  // First evaluates stages for uniforms, then textures. Number of elements in stages = numUniforms + numTextures
+  WingineResourceSetLayout createResourceSetLayout(int numUniforms, int numTextures, VkShaderStageFlagBits* stages);
+  void destroyResourceSetLayout(WingineResourceSetLayout wrsl);
+  
+  //A set of uniforms and textures (to better utilize Vulkan's descriptor set abstraction) that "belong together"
+  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineUniform* uniforms, WingineTexture* textures);
+  void destroyResourceSet(const WingineResourceSet& resourceSet);
+
+  WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
   void destroyShader(WingineShader shader);
 
-  WinginePipeline createPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs, bool clear = false);
+  WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear = false);
   void destroyPipeline(WinginePipeline pipeline);
+
+  WingineTexture createTexture(int w, int h, unsigned char* data);
+  void destroyTexture(WingineTexture&);
   
   void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
   void render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear);
@@ -354,7 +373,7 @@ class Wingine{
   void synchronizeDrawing();
   void present();
 
-  void submitCommandBuffer(const VkCommandBuffer& buffer);
+  void submitDrawCommandBuffer(const VkCommandBuffer& buffer);
 
   void setCamera(WingineCamera& camera);
 

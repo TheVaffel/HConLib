@@ -29,10 +29,15 @@ static const float _test_colors2[] =
   { 1.0f, 1.0f, 1.0f, 1.0f,
     1.0f, 1.0f, 1.0f, 1.0f,
     1.0f, 1.0f, 1.0f, 1.0f};
+
+static const float texture_coords[] =
+  {1.0f, 1.0f,
+   0.0f, 0.0f,
+   1.0f, 0.0f};
+
 static const uint32_t _test_indices[] =
   { 0, 1, 2,
-    0, 2, 1
-  };
+    0, 2, 1};
 
 const char *vertShaderText =
   "#version 400\n"
@@ -63,7 +68,43 @@ const char *fragShaderText =
   "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
   "}\n";
 
+const char *texVertShaderText =
+  "#version 400\n"
+  "#extension GL_ARB_separate_shader_objects : enable\n"
+  "#extension GL_ARB_shading_language_420pack : enable\n"
+  "layout (std140, binding = 0) uniform bufferVals {\n"
+  "    mat4 mvp;\n"
+  "} myBufferVals;\n"
+  "layout (location = 0) in vec4 pos;\n"
+  "layout (location = 1) in vec2 texCoord;\n"
+  "layout (location = 0) out vec2 outTexCoord;\n"
+  "out gl_PerVertex { \n"
+  "    vec4 gl_Position;\n"
+  "};\n"
+  "void main() {\n"
+  "   outTexCoord = texCoord;\n"
+  "   gl_Position = myBufferVals.mvp * pos;\n"
+  "}\n";
+
+const char* texFragShaderText =
+  "#version 400\n"
+  "#extension GL_ARB_separate_shader_objects : enable\n"
+  "#extension GL_ARB_shading_language_420pack : enable\n"
+  "layout (binding = 1) uniform sampler2D tex;\n"
+  "layout (location = 0) in vec2 texCoord;\n"
+  "layout (location = 0) out vec4 outColor;\n"
+  "void main() {\n"
+  "  outColor = textureLod(tex, texCoord, 0.0);\n"
+  "}\n";
+
 int main(){
+  int texWidth = 64;
+  int texHeight = 64;
+  unsigned char generic_pattern[4*texWidth*texHeight];
+  for(int i =0; i < texWidth*texHeight; i++){
+    ((int*)generic_pattern)[i] = (i % 8 < 4) ^ ((i/texWidth) % 8 <4) ? 0xFFFFFFFF : 0xFF000000; 
+  }
+  
 
   Winval win(1280, 720);
   Wingine wg(win);
@@ -82,26 +123,47 @@ int main(){
   WingineBuffer colorBuffer2 = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
   wg.setBuffer( colorBuffer2, _test_colors2, 3*4*sizeof(float));
 
+  WingineBuffer textureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*2*sizeof(float));
+  wg.setBuffer(textureCoordBuffer, texture_coords, 2*4*sizeof(float));
 
   VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
+  VkShaderStageFlagBits textureResourceSetStageBits[2] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
+    
   WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
-  WingineUniformSet cameraSet = wg.createUniformSet(1, &cameraUniform, bits, "Camera");
+  WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
+  
+  WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, 0, bits);
+  WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(1, 1, textureResourceSetStageBits);
+  
+  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniform, NULL);
+  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, &cameraUniform, &texture);
   
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
   WingineBuffer vertexAttribs2[2] = {vertexBuffer, colorBuffer2};
+  WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};
 
-  WingineShader vertexShader = wg.createShader(vertShaderText, 1, /*&cameraSet,*/ VK_SHADER_STAGE_VERTEX_BIT);
-  WingineShader fragmentShader = wg.createShader(fragShaderText, 0, /*NULL,*/ VK_SHADER_STAGE_FRAGMENT_BIT);
+  VkFormat attribTypes[] = {VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT};
+  VkFormat attribTypesTexture[] = {VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32_SFLOAT};
+
+  WingineShader vertexShader = wg.createShader(vertShaderText, VK_SHADER_STAGE_VERTEX_BIT);
+  WingineShader fragmentShader = wg.createShader(fragShaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  WingineShader textureVertexShader = wg.createShader(texVertShaderText, VK_SHADER_STAGE_VERTEX_BIT);
+  WingineShader textureFragmentShader = wg.createShader(texFragShaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
 
   WingineShader shaders[2] = {vertexShader, fragmentShader};
+  WingineShader textureShaders[2] = {textureVertexShader, textureFragmentShader};
 
   WingineScene scene(wg);
-  scene.addPipeline(2, shaders, 2); //Num shaders, shaders, num vertex attribs
-  WingineRenderObject object1(2, vertexAttribs, indexBuffer, cameraSet); //Num vertex attribs, vertex attribs, index buffer, uniformset
+  scene.addPipeline(resourceLayout, 2, shaders, 2, attribTypes); //pipelineLayout, num shaders, shaders, num vertex attribs
+  scene.addPipeline(textureResourceLayout, 2, textureShaders, 2, attribTypesTexture);
+  WingineRenderObject object1(2, vertexAttribs, indexBuffer, cameraSet); //Num vertex attribs, vertex attribs, index buffer, resourceset
   WingineRenderObject object2(2, vertexAttribs2, indexBuffer, cameraSet);
+  WingineRenderObject object3(2, textureVertexAttribs, indexBuffer, textureSet);
 
-  scene.addObject(object1, 0);
-  scene.addObject(object2, 0);
+  scene.addObject(object1, 0); //Object, pipeline number
+  //scene.addObject(object2, 0);
+  scene.addObject(object3, 1);
 
   wg.setScene(scene);
   
@@ -117,7 +179,7 @@ int main(){
   int count = 0;
 
   while(win.isOpen()){
-    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count));
+    cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));
     count++;
     Matrix4 cMatrix = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
@@ -134,53 +196,26 @@ int main(){
       break;
     }
   }
-  /*WinginePipeline pipeline = wg.createPipeline(2, shaders, 2);
   
-  //wg.setCamera(cam);
-  while(win.isOpen()){
-    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count));
-    Matrix4 cMatrix = cam.getRenderMatrix();
-    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
-    wg.render(count%2 == 3?vertexAttribs:vertexAttribs2, indexBuffer, pipeline, true);
-
-    //wg.synchronizeDrawing();
-    
-    cam.setPosition(camPos + 0.5f*camPos*sin(0.1f*count) + Vector3(3.3f, 0.0f, 0.0f));
-    cMatrix = cam.getRenderMatrix();
-    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
-    wg.render(count%2 < 3? vertexAttribs:vertexAttribs2, indexBuffer, pipeline, false);
-    wg.present();
-    
-    count++;
-
-    clock_t current_time = clock();
-
-    long long int diff = current_time - start_time;
-    long long w = 1000/60 - 1000*diff/CLOCKS_PER_SEC;
-    if(w > 0){
-      sleepMilliseconds((int32_t)w);
-    }
-    start_time = current_time;
-
-    //if(win.waitForKey() == WK_ESC){
-      //break;
-      //}
-
-    win.flushEvents();
-    if(win.isKeyPressed(WK_ESC)){
-      break;
-    }
-    }*/
+  wg.destroyTexture(texture);
+  wg.destroyUniform(cameraUniform);
   
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
-  wg.destroyUniformSet(cameraSet);
-  wg.destroyUniform(cameraUniform);
+  wg.destroyShader(textureVertexShader);
+  wg.destroyShader(textureFragmentShader);
+  
+  wg.destroyResourceSet(cameraSet);
+  wg.destroyResourceSet(textureSet);
+
+  wg.destroyResourceSetLayout(resourceLayout);
+  wg.destroyResourceSetLayout(textureResourceLayout);
   
   wg.destroyBuffer(vertexBuffer);
   wg.destroyBuffer(colorBuffer);
   wg.destroyBuffer(indexBuffer);
   wg.destroyBuffer(colorBuffer2);
+  wg.destroyBuffer(textureCoordBuffer);
   
   return 0;
 }

@@ -22,7 +22,6 @@
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
   view = Matrix4(FLATALG_MATRIX_IDENTITY);
   projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
-
   altered = true;
 }
 
@@ -32,7 +31,7 @@ void WingineCamera::setPosition(const Vector3& v){
   view[2][3] = -Vector3(view[2][0], view[2][1], view[2][2])*v;
   altered = true;
 }
-  
+
 void WingineCamera::setLookAt(const Vector3& pos,
 			      const Vector3& target,
 			      const Vector3& up){
@@ -96,7 +95,7 @@ VkCommandBuffer Wingine::createCommandBuffer(VkCommandBufferLevel level){
   info.commandBufferCount = 1;
 
   VkResult res = vkAllocateCommandBuffers(device, &info, &cmd);
-
+  wgAssert(res == VK_SUCCESS, "Allocate command buffer");
   return cmd;
 }
 
@@ -350,25 +349,24 @@ VkResult Wingine::init_command_buffers(){
     printf("Failed to create command buffer pool \n");
   }
 
-  /*VkCommandBufferAllocateInfo cmd_alloc = {};
+  VkCommandBufferAllocateInfo cmd_alloc = {};
   cmd_alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmd_alloc.pNext = NULL;
   cmd_alloc.commandPool = cmd_pool;
   cmd_alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  cmd_alloc.commandBufferCount = COMMAND_POOL_SIZE;
+  cmd_alloc.commandBufferCount = 1;
   
-  res = vkAllocateCommandBuffers(device, &cmd_alloc, cmd_buffers);
+  res = vkAllocateCommandBuffers(device, &cmd_alloc, &free_command_buffer);
+  wgAssert(res == VK_SUCCESS, "Allocate command buffers");
 
-  for(int i = 0; i < COMMAND_POOL_SIZE; i++){
-    vkResetCommandBuffer(cmd_buffers[i], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-    }*/
-  
-  if(res != VK_SUCCESS){
-    printf("Failed to allocate command buffer\n");
-    exit(0);
-  }
+  vkResetCommandBuffer(free_command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
-  //current_command_buffer = 0;
+  VkFenceCreateInfo fenceInfo;
+  fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceInfo.pNext = NULL;
+  fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+  vkCreateFence(device, &fenceInfo, NULL, &free_command_buffer_fence);
 
   return res;
 }
@@ -450,7 +448,7 @@ VkResult Wingine::init_swapchain(){
 
   VkExtent2D swapchainExtent;
 
-  if(caps.currentExtent.width == -1){ //Set extent to window width and height
+  if(caps.currentExtent.width == 0xFFFFFFFF){ //Set extent to window width and height
     swapchainExtent.width = width;
     swapchainExtent.height = height;
 
@@ -780,16 +778,19 @@ VkResult Wingine::init_descriptor_set_layouts(){
 }
 
 VkResult Wingine::init_descriptor_pool(){
-  VkDescriptorPoolSize type_count[1];
+  VkDescriptorPoolSize type_count[2];
   type_count[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  type_count[0].descriptorCount = DESCRIPTOR_POOL_SIZE;
+  type_count[0].descriptorCount = UNIFORM_DESCRIPTOR_POOL_SIZE;
+  
+  type_count[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  type_count[1].descriptorCount = TEXTURE_DESCRIPTOR_POOL_SIZE;
 
   VkDescriptorPoolCreateInfo descriptor_pool_info = {};
   descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   descriptor_pool_info.pNext = NULL;
   descriptor_pool_info.flags = 0;
-  descriptor_pool_info.maxSets = DESCRIPTOR_POOL_SIZE;
-  descriptor_pool_info.poolSizeCount = 1;
+  descriptor_pool_info.maxSets = TEXTURE_DESCRIPTOR_POOL_SIZE + UNIFORM_DESCRIPTOR_POOL_SIZE;
+  descriptor_pool_info.poolSizeCount = 2;
   descriptor_pool_info.pPoolSizes = type_count;
 
   VkResult res = vkCreateDescriptorPool(device, &descriptor_pool_info, NULL, &descriptor_pool);
@@ -903,93 +904,6 @@ VkResult Wingine::init_render_passes(){
   return res;
 }
 
-VkResult Wingine::init_shaders(){
-  static const char *vertShaderText =
-    "#version 400\n"
-    "#extension GL_ARB_separate_shader_objects : enable\n"
-    "#extension GL_ARB_shading_language_420pack : enable\n"
-    "layout (std140, binding = 0) uniform bufferVals {\n"
-    "    mat4 mvp;\n"
-    "} myBufferVals;\n"
-    "layout (location = 0) in vec4 pos;\n"
-    "layout (location = 1) in vec4 inColor;\n"
-    "layout (location = 0) out vec4 outColor;\n"
-    "out gl_PerVertex { \n"
-    "    vec4 gl_Position;\n"
-    "};\n"
-    "void main() {\n"
-    "   outColor = inColor;\n"
-    "   gl_Position = myBufferVals.mvp * pos;\n"
-    "}\n";
-
-  static const char *fragShaderText =
-    "#version 400\n"
-    "#extension GL_ARB_separate_shader_objects : enable\n"
-    "#extension GL_ARB_shading_language_420pack : enable\n"
-    "layout (location = 0) in vec4 color;\n"
-    "layout (location = 0) out vec4 outColor;\n"
-    "void main() {\n"
-    "  outColor = color;\n"
-    "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
-    "}\n";
-
-  std::vector<unsigned int> vtx_spv;
-  shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  shaderStages[0].pNext = NULL;
-  shaderStages[0].pSpecializationInfo = NULL;
-  shaderStages[0].flags = 0;
-  shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-  shaderStages[0].pName = "main";
-
-  glslang::InitializeProcess();
-  bool retVal = GLSLtoSPV(VK_SHADER_STAGE_VERTEX_BIT, vertShaderText, vtx_spv);
-  if(!retVal){
-    printf("Could not compile vertex shader\n");
-    exit(0);
-  }
-
-  VkShaderModuleCreateInfo moduleCreateInfo;
-  moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  moduleCreateInfo.pNext = NULL;
-  moduleCreateInfo.flags = 0;
-  moduleCreateInfo.codeSize = vtx_spv.size() * sizeof(unsigned int);
-  moduleCreateInfo.pCode = vtx_spv.data();
-  VkResult res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[0].module);
-  if(res != VK_SUCCESS){
-    printf("Could not create vertex shadermodule\n");
-    exit(0);
-  }
-
-  std::vector<unsigned int> frag_spv;
-  shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  shaderStages[1].pNext = NULL;
-  shaderStages[1].pSpecializationInfo = NULL;
-  shaderStages[1].flags = 0;
-  shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-  shaderStages[1].pName = "main";
-
-  retVal = GLSLtoSPV(VK_SHADER_STAGE_FRAGMENT_BIT, fragShaderText, frag_spv);
-  if(!retVal){
-    printf("Could not compile fragment shader\n");
-    exit(0);
-  }
-
-  moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  moduleCreateInfo.pNext = NULL;
-  moduleCreateInfo.flags = 0;
-  moduleCreateInfo.codeSize = frag_spv.size() * sizeof(unsigned int);
-  moduleCreateInfo.pCode = frag_spv.data();
-  res = vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderStages[1].module);
-  if(res != VK_SUCCESS){
-    printf("Could not create fragment shader module\n");
-    exit(0);
-  }
-
-  glslang::FinalizeProcess();
-
-  return res;
-}
-
 VkResult Wingine::init_framebuffers(){
   VkImageView attachments[2];
   attachments[1] = depth_buffer_view;
@@ -1053,6 +967,7 @@ void Wingine::destroy_command_buffers(){
     vkFreeCommandBuffers(device, cmd_pool, 1, &(cmd_buffers[i]));
     }*/
   vkDestroyCommandPool(device, cmd_pool, NULL);
+  vkDestroyFence(device, free_command_buffer_fence, NULL);
 }
 
 void Wingine::destroy_swapchain(){
@@ -1066,7 +981,7 @@ void Wingine::destroy_swapchain(){
   vkWaitForFences(device, 1, &imageAcquiredFence, VK_TRUE, 1000000000ULL);
   vkDestroyFence(device, imageAcquiredFence, NULL);
 
-  for(int i = 0; i < drawSemaphores.size(); i++){
+  for(uint32_t i = 0; i < drawSemaphores.size(); i++){
     vkDestroySemaphore(device, drawSemaphores[i], NULL);
   }
   
@@ -1100,11 +1015,6 @@ void Wingine::destroy_descriptor_set(){
 void Wingine::destroy_render_passes(){
   vkDestroyRenderPass(device, render_pass_generic, NULL);
   vkDestroyRenderPass(device, render_pass_clear, NULL);
-}
-
-void Wingine::destroy_shaders(){
-  vkDestroyShaderModule(device, shaderStages[0].module, NULL);
-  vkDestroyShaderModule(device, shaderStages[1].module, NULL);
 }
 
 void Wingine::destroy_framebuffers(){
@@ -1229,18 +1139,6 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
   setup->vi_bindings = new VkVertexInputBindingDescription[numVertexAttribs];
   setup->vi_attribs = new VkVertexInputAttributeDescription[numVertexAttribs];
 
-  for(int i = 0; i < numVertexAttribs; i++){
-
-    setup->vi_bindings[i].binding = i;
-    setup->vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    setup->vi_bindings[i].stride = 4*sizeof(float);
-
-    setup->vi_attribs[i].binding = i;
-    setup->vi_attribs[i].location = i;
-    setup->vi_attribs[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    setup->vi_attribs[i].offset = 0;
-  }
-
   setup->vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   setup->vi.pNext = NULL;
   setup->vi.flags = 0;
@@ -1334,6 +1232,7 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
 
   setup->layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   setup->layoutCreateInfo.pNext = NULL;
+  setup->layoutCreateInfo.flags = 0;
   setup->layoutCreateInfo.pushConstantRangeCount = 0;
   setup->layoutCreateInfo.pPushConstantRanges = NULL;
   setup->layoutCreateInfo.setLayoutCount = NUM_DESCRIPTOR_SETS;
@@ -1354,8 +1253,8 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
   setup->createInfo.pDynamicState = &setup->dynamicState;
   setup->createInfo.pViewportState = &setup->vp;
   setup->createInfo.pDepthStencilState = &setup->ds;
-  setup->createInfo.pStages = shaderStages;
-  setup->createInfo.stageCount = 2;
+  setup->createInfo.pStages = NULL; // Replaced in createPipeline
+  setup->createInfo.stageCount = 0;
   setup->createInfo.renderPass = render_pass_generic;
   setup->createInfo.subpass = 0;
 
@@ -1408,7 +1307,6 @@ void Wingine::initVulkan(const Winval* win){
   init_descriptor_set_layouts();
 
   init_render_passes();
-  init_shaders();
   init_framebuffers();
   init_descriptor_pool();
   init_descriptor_set();
@@ -1422,7 +1320,6 @@ void Wingine::destroy_vulkan(){
   destroy_pipeline();
   destroy_pipeline_cache();
   destroy_framebuffers();
-  destroy_shaders();
   destroy_render_passes();
   destroy_descriptor_set();
   destroy_descriptor_set_layouts();
@@ -1434,18 +1331,26 @@ void Wingine::destroy_vulkan(){
   destroy_instance();
 }
 
-WingineUniformSet Wingine::createUniformSet( int numUniforms, WingineUniform* uniforms, VkShaderStageFlagBits* shaderStages, const char* name){
-  WingineUniformSet uniformSet;
-  uniformSet.name = name;
-
-  VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numUniforms];
+WingineResourceSetLayout Wingine::createResourceSetLayout(int numUniforms, int numTextures, VkShaderStageFlagBits* stages){
+  WingineResourceSetLayout wgLayout;
+  
+  VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numUniforms + numTextures];
 
   for(int i = 0; i < numUniforms; i++){
     lbs[i] = {};
     lbs[i].binding = i;
     lbs[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     lbs[i].descriptorCount = 1;
-    lbs[i].stageFlags = shaderStages[i];
+    lbs[i].stageFlags = stages[i];
+    lbs[i].pImmutableSamplers = NULL;
+  }
+
+  for(int i = numUniforms; i < numUniforms + numTextures; i++){
+    lbs[i] = {};
+    lbs[i].binding = i;
+    lbs[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    lbs[i].descriptorCount = 1;
+    lbs[i].stageFlags = stages[i];
     lbs[i].pImmutableSamplers = NULL;
   }
 
@@ -1453,46 +1358,72 @@ WingineUniformSet Wingine::createUniformSet( int numUniforms, WingineUniform* un
   dlc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   dlc.pNext = NULL;
   dlc.flags = 0;
-  dlc.bindingCount = numUniforms;
+  dlc.bindingCount = numUniforms + numTextures;
   dlc.pBindings = lbs;
   
-  VkResult res = vkCreateDescriptorSetLayout(device, &dlc, NULL, &uniformSet.descriptorSetLayout);
+  VkResult res = vkCreateDescriptorSetLayout(device, &dlc, NULL, &wgLayout.layout);
   wgAssert(res == VK_SUCCESS, "Creating descriptor set layout");
 
   delete[] lbs;
 
+  wgLayout.numUniforms = numUniforms;
+  wgLayout.numTextures = numTextures;
+
+  return wgLayout;
+}
+
+void Wingine::destroyResourceSetLayout(WingineResourceSetLayout wrsl){
+  vkDestroyDescriptorSetLayout(device,wrsl.layout,NULL);
+}
+
+WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineUniform* uniforms, WingineTexture* textures){
+  WingineResourceSet resourceSet;
+
+  //Create descriptor set and initialize descriptors
   VkDescriptorSetAllocateInfo alloc;
   alloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   alloc.pNext = NULL;
   alloc.descriptorPool = descriptor_pool;
   alloc.descriptorSetCount  = 1;
-  alloc.pSetLayouts = &uniformSet.descriptorSetLayout;
+  alloc.pSetLayouts = &resourceLayout.layout;
 
-  res = vkAllocateDescriptorSets(device, &alloc, &uniformSet.descriptorSet);
-
-  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[numUniforms];
-  for(int i = 0; i < numUniforms; i++){
+  VkResult res = vkAllocateDescriptorSets(device, &alloc, &resourceSet.descriptorSet);
+  wgAssert(res == VK_SUCCESS, "Allocate descriptor set");
+  
+  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[resourceLayout.numUniforms + resourceLayout.numTextures];
+  for(int i = 0; i < resourceLayout.numUniforms; i++){
     writes[i] = {};
     writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[i].pNext = NULL;
-    writes[i].dstSet = uniformSet.descriptorSet;
-    writes[i].descriptorCount = numUniforms;
+    writes[i].dstSet = resourceSet.descriptorSet;
+    writes[i].descriptorCount = 1;
     writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[i].pBufferInfo = &uniforms[i].bufferInfo;
     writes[i].dstArrayElement = 0;
     writes[i].dstBinding = i;
   }
+  
+  for(int i = resourceLayout.numUniforms; i < resourceLayout.numUniforms + resourceLayout.numTextures; i++){
+    writes[i] = {};
+    writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[i].pNext = NULL;
+    writes[i].dstSet = resourceSet.descriptorSet;
+    writes[i].descriptorCount = 1;
+    writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writes[i].pImageInfo = &textures[i - resourceLayout.numUniforms].imageInfo;
+    writes[i].dstArrayElement = 0;
+    writes[i].dstBinding = i;
+  }
 
-  vkUpdateDescriptorSets(device, numUniforms, writes, 0, NULL);
+  vkUpdateDescriptorSets(device, resourceLayout.numUniforms + resourceLayout.numTextures, writes, 0, NULL);
 
-  return uniformSet;
+  return resourceSet;
 }
 
-void Wingine::destroyUniformSet(const WingineUniformSet& set){
-  vkDestroyDescriptorSetLayout(device, set.descriptorSetLayout, NULL);
+void Wingine::destroyResourceSet(const WingineResourceSet& set){
 }
 
-WingineShader Wingine::createShader(const char* shaderText, int numUniformSets, /*const WingineUniformSet* uniformSets,*/ VkShaderStageFlagBits stageBit){
+WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBits stageBit){
   WingineShader wgShader;
   wgShader.shader.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   wgShader.shader.pNext = NULL;
@@ -1521,9 +1452,6 @@ WingineShader Wingine::createShader(const char* shaderText, int numUniformSets, 
 
   glslang::FinalizeProcess();
 
-  /*wgShader.uniformSets = new WingineUniformSet[numUniformSets];
-    memcpy(wgShader.uniformSets, uniformSets, sizeof(WingineUniformSet) * numUniformSets);*/
-  wgShader.numUniformSets = numUniformSets;
   return wgShader;
 }
 
@@ -1532,7 +1460,7 @@ void Wingine::destroyShader(WingineShader shader){
   //delete[] shader.uniformSets;
 }
 
-WinginePipeline Wingine::createPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs, bool clear){
+WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear){
 
   WinginePipelineSetup pipelineSetup;
   WinginePipeline pipeline;
@@ -1546,94 +1474,344 @@ WinginePipeline Wingine::createPipeline(int numShaders, WingineShader* shaders, 
       pipelineSetup.renderPassSetup.attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     }
   }
-   
 
   //Todo: Let vertex attribs be of variable size? (Currently 4*sizeof(float) only)
-
-  VkPipelineShaderStageCreateInfo* shaderStages = new VkPipelineShaderStageCreateInfo[numShaders];
-  for(int i = 0; i < numShaders; i++){
-    shaderStages[i] = shaders[i].shader;
+  VkPipelineShaderStageCreateInfo* mods = new VkPipelineShaderStageCreateInfo[numShaders];
+  for(int i=  0; i < numShaders; i++){
+    mods[i] = shaders[i].shader;
   }
-  pipelineSetup.createInfo.pStages = shaderStages;
+
+  for(int i = 0; i < numVertexAttribs; i++){
+
+    pipelineSetup.vi_bindings[i].binding = i;
+    pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    pipelineSetup.vi_bindings[i].stride = 4*sizeof(float);
+
+    pipelineSetup.vi_attribs[i].binding = i;
+    pipelineSetup.vi_attribs[i].location = i;
+    pipelineSetup.vi_attribs[i].format = attribTypes[i]; //This is a bit too static
+    pipelineSetup.vi_attribs[i].offset = 0;
+  }
+  
+  pipelineSetup.createInfo.pStages = mods;
   pipelineSetup.createInfo.stageCount = numShaders;
-
-
-  /*int numDss = 0;
-  for(int i = 0; i<  numShaders; i++){
-    numDss += shaders[i].numUniformSets;
-  }VkDescriptorSet* dss = new VkDescriptorSet[numDss];
-  VkDescriptorSetLayout* dsls = new VkDescriptorSetLayout[numDss];
-  int j = 0;
-  int setNumInShader = 0;
-  for(int i = 0; i< numDss; i++){
-    while(setNumInShader >= shaders[j].numUniformSets){
-      j++;
-      setNumInShader = 0;
-    }
-    dss[i] = shaders[j].uniformSets[setNumInShader].descriptorSet;
-    dsls[i] = shaders[j].uniformSets[setNumInShader].descriptorSetLayout;
-    setNumInShader++;
-  }
-
-  pipeline.descriptorSets = dss;
-  pipeline.numDescriptorSets = numDss;*/
-  int numBindings = 0;
-  for(int i = 0; i <numShaders; i++){
-    numBindings += shaders[i].numUniformSets;
-  }
-  VkDescriptorSetLayoutBinding* bindings = new VkDescriptorSetLayoutBinding[numBindings];
-  int curr = 0;
-  for(int i = 0; i < numShaders; i++){
-    if(shaders[i].numUniformSets){
-      bindings[curr].binding = curr;
-      bindings[curr].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      bindings[curr].descriptorCount = 1;
-      bindings[curr].stageFlags = shaders[i].shader.stage;
-      bindings[curr].pImmutableSamplers = NULL;
-      curr++;
-    }
-  }
-  VkDescriptorSetLayoutCreateInfo descInfo = {};
-  descInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descInfo.pNext = NULL;
-  descInfo.flags = 0;
-  descInfo.bindingCount = numBindings;
-  descInfo.pBindings = bindings;
-
-  VkDescriptorSetLayout dsl;
-  VkResult res = vkCreateDescriptorSetLayout(device, &descInfo, NULL, &dsl);
-  pipeline.descriptorSetLayout = dsl;
+  
+  pipeline.descriptorSetLayout = resourceLayout.layout;
   
   pipelineSetup.layoutCreateInfo.setLayoutCount = 1;
-  pipelineSetup.layoutCreateInfo.pSetLayouts = &dsl;
+  pipelineSetup.layoutCreateInfo.pSetLayouts = &resourceLayout.layout;
   
-  res = vkCreatePipelineLayout(device, &pipelineSetup.layoutCreateInfo, NULL, &pipeline.pipelineLayout);
-
+  VkResult res = vkCreatePipelineLayout(device, &pipelineSetup.layoutCreateInfo, NULL, &pipeline.pipelineLayout);
+  wgAssert(res == VK_SUCCESS, "Create pipeline layout");
+  
   res = vkCreateRenderPass(device, &pipelineSetup.renderPassSetup.createInfo, NULL, &pipeline.compatibleRenderPass);
-  
   wgAssert(res == VK_SUCCESS, "Creating pipelineLayout");
 
   pipelineSetup.createInfo.layout =  pipeline.pipelineLayout;
   
   res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &pipelineSetup.createInfo, NULL, &pipeline.pipeline);
-
   wgAssert(res == VK_SUCCESS, "Creating pipeline");
 
-  delete [] shaderStages;
-  delete [] bindings;
-    
+  delete[] mods;
+  
   return pipeline;
 }
 
 void Wingine::destroyPipeline(WinginePipeline pipeline){
-  //delete[] pipeline.descriptorSets;
-  
   vkDestroyPipelineLayout(device, pipeline.pipelineLayout, NULL);
   vkDestroyRenderPass(device, pipeline.compatibleRenderPass, NULL);
-  vkDestroyDescriptorSetLayout(device, pipeline.descriptorSetLayout, NULL);
   vkDestroyPipeline(device, pipeline.pipeline, NULL);
 }
 
+void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStages, VkPipelineStageFlags destStages){
+  //Shameful copy-paste from LunarG. I'm sorry :(
+  
+  VkImageMemoryBarrier image_memory_barrier = {};
+  image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  image_memory_barrier.pNext = NULL;
+  image_memory_barrier.srcAccessMask = 0;
+  image_memory_barrier.dstAccessMask = 0;
+  image_memory_barrier.oldLayout = oldLayout;
+  image_memory_barrier.newLayout = newLayout;
+  image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  image_memory_barrier.image = image;
+  image_memory_barrier.subresourceRange.aspectMask = aspect;
+  image_memory_barrier.subresourceRange.baseMipLevel = 0;
+  image_memory_barrier.subresourceRange.levelCount = 1;
+  image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+  image_memory_barrier.subresourceRange.layerCount = 1;
+
+  switch (oldLayout) {
+  case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+    image_memory_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+    image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_PREINITIALIZED:
+    image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+    break;
+
+  default:
+    break;
+  }
+
+  switch (newLayout) {
+  case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+    image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+    image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+    image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+    image_memory_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+    image_memory_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    break;
+
+  default:
+    break;
+  }
+
+  vkCmdPipelineBarrier(cmd, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &image_memory_barrier);
+}
+
+
+//This will create a texture immutable from the CPU
+WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
+{
+  VkResult res;
+
+  WingineTexture resultTexture;
+
+  resultTexture.width = w;
+  resultTexture.height = h;
+
+  //First, prepare staging image
+  VkImageCreateInfo ici = {};
+  ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  ici.pNext = NULL;
+  ici.imageType = VK_IMAGE_TYPE_2D;
+  ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+  ici.extent.width = w;
+  ici.extent.height = h;
+  ici.extent.depth = 1;
+  ici.mipLevels = 1;
+  ici.arrayLayers = 1;
+  ici.samples = NUM_SAMPLES;
+  ici.tiling = VK_IMAGE_TILING_LINEAR;
+  ici.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+  ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  ici.queueFamilyIndexCount = 0;
+  ici.pQueueFamilyIndices = NULL;
+  ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  ici.flags = 0;
+
+  VkMemoryAllocateInfo memAlloc = {};
+  memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAlloc.pNext = NULL;
+  memAlloc.allocationSize = 0;
+  memAlloc.memoryTypeIndex = 0;
+
+  VkImage mappableImage;
+  VkDeviceMemory mappableMemory;
+  VkMemoryRequirements memReqs;
+
+  res = vkCreateImage(device, &ici, NULL, &mappableImage);
+  wgAssert(res == VK_SUCCESS, "Create image");
+
+  vkGetImageMemoryRequirements(device, mappableImage, &memReqs);
+
+  memAlloc.allocationSize = memReqs.size;
+  
+  memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits,
+						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+						   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  res = vkAllocateMemory(device, &memAlloc, NULL, &mappableMemory);
+  wgAssert(res == VK_SUCCESS, "Allocate image memory");
+
+  res = vkBindImageMemory(device, mappableImage, mappableMemory, 0);
+  wgAssert(res == VK_SUCCESS, "Bind image memory");
+
+
+  VkImageSubresource subres = {};
+  subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subres.mipLevel = 0;
+  subres.arrayLayer = 0;
+
+  VkSubresourceLayout layout;
+  void *data;
+
+  vkGetImageSubresourceLayout(device, mappableImage, &subres, &layout);
+
+  res = vkMapMemory(device, mappableMemory, 0,memReqs.size, 0, &data);
+  wgAssert(res == VK_SUCCESS, "Map memory");
+
+  unsigned char* currRow = (unsigned char*)data;
+  for(int i = 0; i < h; i++){
+    memcpy(currRow, &imageBuffer[4*i*w], w*4);
+    currRow += layout.rowPitch;
+  }
+
+  vkUnmapMemory(device, mappableMemory);
+
+  VkCommandBufferBeginInfo cmd_begin = {};
+  cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmd_begin.pNext = NULL;
+  cmd_begin.flags = 0;
+  cmd_begin.pInheritanceInfo = NULL;
+
+  wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
+
+  //Now, create the actual image
+  ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+  ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+  res = vkCreateImage(device, &ici, NULL, &resultTexture.image);
+  wgAssert(res == VK_SUCCESS, "Create actual image");
+
+  vkGetImageMemoryRequirements(device, resultTexture.image, &memReqs);
+  memAlloc.allocationSize = memReqs.size;
+
+  memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+  res = vkAllocateMemory(device, &memAlloc, NULL, &resultTexture.mem);
+  wgAssert(res == VK_SUCCESS, "Allocate memory");
+
+  res = vkBindImageMemory(device,resultTexture.image,resultTexture.mem,0);
+  wgAssert(res == VK_SUCCESS, "Bind memory");
+
+  //Ensure free command buffer is ready
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+
+  wgAssert(res == VK_SUCCESS, "Waiting for free_command_buffer_fence");
+
+  res = vkResetFences(device, 1, &free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Reset free_command_buffer_fence")
+  
+  res = vkBeginCommandBuffer(free_command_buffer, &cmd_begin);
+  
+  //Set the layouts of the images
+  wg_cmd_set_image_layout(free_command_buffer, mappableImage,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_PREINITIALIZED,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+  wg_cmd_set_image_layout(free_command_buffer, resultTexture.image, VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+  VkImageCopy copy;
+  copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy.srcSubresource.mipLevel = 0;
+  copy.srcSubresource.baseArrayLayer = 0;
+  copy.srcSubresource.layerCount = 1;
+  copy.srcOffset.x = 0;
+  copy.srcOffset.y = 0;
+  copy.srcOffset.z = 0;
+  copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy.dstSubresource.mipLevel = 0;
+  copy.dstSubresource.baseArrayLayer = 0;
+  copy.dstSubresource.layerCount = 1;
+  copy.dstOffset.x = 0;
+  copy.dstOffset.y = 0;
+  copy.dstOffset.z = 0;
+  copy.extent.width = w;
+  copy.extent.height = h;
+  copy.extent.depth = 1;
+
+  vkCmdCopyImage(free_command_buffer, mappableImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, resultTexture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+  resultTexture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  wg_cmd_set_image_layout(free_command_buffer, resultTexture.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, resultTexture.imageLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+  res = vkEndCommandBuffer(free_command_buffer);
+  wgAssert(res == VK_SUCCESS, "End free command buffer");
+
+  VkSubmitInfo submitInfo = {};
+  
+  submitInfo.pNext = NULL;
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.waitSemaphoreCount = 0;
+  submitInfo.pWaitSemaphores = NULL;
+  submitInfo.pWaitDstStageMask = NULL;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &free_command_buffer;
+  submitInfo.signalSemaphoreCount = 0;
+  submitInfo.pSignalSemaphores = NULL;
+
+  res = vkQueueSubmit(graphics_queue,1,&submitInfo, free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Submitting command buffer for initializing texture");
+
+  VkImageViewCreateInfo viewInfo = {};
+  viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  viewInfo.pNext = NULL;
+  viewInfo.image = resultTexture.image;
+  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+  viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+  viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = 1;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = 1;
+
+  res = vkCreateImageView(device,&viewInfo, NULL, &resultTexture.view);
+
+  //Initialize sampler
+  VkSamplerCreateInfo samplerInfo = {};
+  samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  samplerInfo.magFilter = VK_FILTER_NEAREST;
+  samplerInfo.minFilter = VK_FILTER_NEAREST;
+  samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.mipLodBias = 0.0f;
+  samplerInfo.anisotropyEnable = VK_FALSE;
+  samplerInfo.maxAnisotropy = 1;
+  samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+  samplerInfo.minLod = 0.0f;
+  samplerInfo.maxLod = 0.0f;
+  samplerInfo.compareEnable = VK_FALSE;
+  samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+
+  res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
+  wgAssert(res == VK_SUCCESS, "Creating image sampler");
+
+  resultTexture.imageInfo.imageLayout = resultTexture.imageLayout;
+  resultTexture.imageInfo.imageView = resultTexture.view;
+  resultTexture.imageInfo.sampler = resultTexture.sampler;
+
+  //Arh, or else, we must take care of the images, which I don't want to :(
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+  
+  vkDestroyImage(device, mappableImage, NULL);
+  vkFreeMemory(device, mappableMemory, NULL);
+
+  return resultTexture;
+}
+
+void Wingine::destroyTexture(WingineTexture& tex){
+  vkDestroyImageView(device, tex.view, NULL);
+  vkDestroyImage(device, tex.image, NULL);
+  vkDestroySampler(device, tex.sampler, NULL);
+  vkFreeMemory(device, tex.mem, NULL);
+}
 
 void Wingine::stage_next_image(){
   VkResult res;
@@ -1674,145 +1852,6 @@ void Wingine::present(){
   stage_next_image();
 }
 
-/*
-//vertexAttribs must contain a number of WingineBuffers equal to pipeline.numVertexAttribs
-void Wingine::render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear){
-  VkCommandBufferBeginInfo cmd_buf_info = {};
-  cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmd_buf_info.pNext = NULL;
-  cmd_buf_info.flags = 0;
-  cmd_buf_info.pInheritanceInfo = NULL;
-
-
-  VkRect2D screenRect;
-  screenRect.extent.width = width;
-  screenRect.extent.height = height;
-  screenRect.offset.x = 0;
-  screenRect.offset.y = 0;
-
-  VkClearValue clear_values[2];
-  clear_values[0].color.float32[0] = 0.2f;
-  clear_values[0].color.float32[1] = 0.2f;
-  clear_values[0].color.float32[2] = 0.2f;
-  clear_values[0].color.float32[3] = 1.0f;
-  clear_values[1].depthStencil.depth = 1.0;
-  clear_values[1].depthStencil.stencil = 0;
-
-  VkResult res;
-
-  vkResetCommandBuffer(cmd_buffers[current_command_buffer], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-
-  res = vkBeginCommandBuffer(cmd_buffers[current_command_buffer], &cmd_buf_info);
-  if(res != VK_SUCCESS){
-    printf("Could not begin command buffer\n");
-    exit(0);
-  }
-
-  VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];
-  for(int i = 0; i < pipeline.numVertexAttribs; i++){
-    offsets[i] = 0;
-  }
-  
-  VkRenderPassBeginInfo rp_begin = {};
-  rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  rp_begin.pNext = NULL;
-  if(clear){
-    rp_begin.renderPass = render_pass_clear;
-    rp_begin.clearValueCount = 2;
-    rp_begin.pClearValues = clear_values;
-  }else{
-    rp_begin.renderPass = render_pass_generic;
-    rp_begin.clearValueCount = 0;
-    rp_begin.pClearValues = NULL;
-  }
-  rp_begin.framebuffer = framebuffers[current_buffer];
-  rp_begin.renderArea.offset.x = 0;
-  rp_begin.renderArea.offset.y = 0;
-  rp_begin.renderArea.extent.width = width;
-  rp_begin.renderArea.extent.height = height;
-
-  wgAssert(MAX_VERTEX_ATTRIBUTES >= pipeline.numVertexAttribs, "MAX_VERTEX_ATTRIBUTES high enough");
-  
-  VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
-  for(int i = 0; i < pipeline.numVertexAttribs; i++){
-    vertexBuffers[i] = vertexAttribs[i].buffer;
-  }
-
-  vkCmdBeginRenderPass(cmd_buffers[current_command_buffer], &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(cmd_buffers[current_command_buffer], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
-  vkCmdBindDescriptorSets(cmd_buffers[current_command_buffer], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, pipeline.numDescriptorSets,
-			  pipeline.descriptorSets, 0, NULL);
-  vkCmdBindVertexBuffers(cmd_buffers[current_command_buffer], 0,
-			 pipeline.numVertexAttribs,
-			 vertexBuffers,
-			 offsets);
-  vkCmdBindIndexBuffer(cmd_buffers[current_command_buffer], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  viewport.height = (float)height;
-  viewport.width = (float)width;
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-  viewport.x = 0;
-  viewport.y = 0;
-  vkCmdSetViewport(cmd_buffers[current_command_buffer], 0, NUM_VIEWPORTS, &viewport);
-
-  scissor.extent.width = width;
-  scissor.extent.height = height;
-  scissor.offset.x = 0;
-  scissor.offset.y = 0;
-  vkCmdSetScissor(cmd_buffers[current_command_buffer], 0, NUM_SCISSORS, &scissor);
-
-  //vkCmdDraw(cmd_buffer, 18, 1, 0, 0);
-  vkCmdDrawIndexed(cmd_buffers[current_command_buffer], 2*3, 1, 0, 0, 0);
-  vkCmdEndRenderPass(cmd_buffers[current_command_buffer]);
-  res = vkEndCommandBuffer(cmd_buffers[current_command_buffer]);
-
-  //Create new semaphore if there are not enough: 
-  if(currSemaphore == drawSemaphores.size() -1){
-    VkSemaphore sem;
-    VkSemaphoreCreateInfo inf;
-    inf.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    inf.pNext = NULL;
-    inf.flags = 0;
-
-    res = vkCreateSemaphore(device, &inf, NULL, &sem);
-    drawSemaphores.push_back(sem);
-  }
-  
-  // Queue the command buffer for execution 
-  const VkCommandBuffer cmd_bufs[] = {cmd_buffers[current_command_buffer]};
-
-  VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  VkSubmitInfo submit_info[1] = {};
-  submit_info[0].pNext = NULL;
-  submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  //if(clear){
-  submit_info[0].waitSemaphoreCount = 1;
-  submit_info[0].pWaitSemaphores = &drawSemaphores[currSemaphore];
-  submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-    //}
-
-  //else{
-  //  submit_info[0].waitSemaphoreCount = 0;
-  //  submit_info[0].pWaitSemaphores = NULL;
-  //  submit_info[0].pWaitDstStageMask = NULL;
-  //  }
-  currSemaphore++;
-  submit_info[0].commandBufferCount = 1;
-  submit_info[0].pCommandBuffers = cmd_bufs;
-  submit_info[0].signalSemaphoreCount = 1;
-  submit_info[0].pSignalSemaphores = &drawSemaphores[currSemaphore];
-    
-  res = vkQueueSubmit(graphics_queue, 1, submit_info, VK_NULL_HANDLE);
-  if(res != VK_SUCCESS){
-    printf("Could not submit to graphics queue\n");
-    exit(0);
-  }
-
-  current_command_buffer = (current_command_buffer + 1)%COMMAND_POOL_SIZE;
-  }*/
-
 int Wingine::getScreenWidth() const{
   return width;
 }
@@ -1829,6 +1868,7 @@ void Wingine::pushNewDrawSemaphore(){
   inf.flags = 0;
   
   VkResult res = vkCreateSemaphore(device, &inf, NULL, &sem);
+  wgAssert(res == VK_SUCCESS, "Create semaphore");
   drawSemaphores.push_back(sem);
 }
 
@@ -1841,23 +1881,23 @@ void Wingine::setScene(WingineScene& scene){
 }
 
 void Wingine::renderScene(){
-  for(int i = 0; i < currentScene->objectGroups.size(); i++){
+  for(uint32_t i = 0; i < currentScene->objectGroups.size(); i++){
     //if(currentScene->objectGroups[i].altered){ // We have to rerecord to get the right framebuffer :(
     currentScene->objectGroups[i].startRecordingCommandBuffer();
-    for(int j = 0;j < currentScene->objectGroups[i].objects.size(); j++){
+    for(uint32_t j = 0;j < currentScene->objectGroups[i].objects.size(); j++){
       //if(currentScene->objectGroups[i].objects[j].isAltered()){
 	currentScene->objectGroups[i].objects[j].recordCommandBuffer(currentScene->objectGroups[i].commandBuffer);
 	//}
     }
     currentScene->objectGroups[i].endRecordingCommandBuffer();
       //}
-    submitCommandBuffer(currentScene->objectGroups[i].commandBuffer);
+    submitDrawCommandBuffer(currentScene->objectGroups[i].commandBuffer);
   }
 
   present();
 }
 
-void Wingine::submitCommandBuffer(const VkCommandBuffer& buffer){
+void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
   VkResult res;
   
   do{
@@ -1884,7 +1924,7 @@ void Wingine::submitCommandBuffer(const VkCommandBuffer& buffer){
   currSemaphore++;
 }
 
-WingineRenderObject::WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineUniformSet& uSet){
+WingineRenderObject::WingineRenderObject(int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet){
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
   }
@@ -1907,31 +1947,11 @@ void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
 }
 
 void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
-  /*VkResult res = vkResetCommandBuffer(commandBuffer, 0);
-
-  VkCommandBufferInheritanceInfo inInfo = {};
-  inInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-  inInfo.pNext = NULL;
-  inInfo.renderPass = pipeline->compatibleRenderPass;
-  inInfo.subpass = 0;
-  inInfo.framebuffer = VK_NULL_HANDLE;
-  inInfo.occlusionQueryEnable = VK_FALSE;
-  inInfo.queryFlags = 0;
-  inInfo.pipelineStatistics = 0;
-  
-  VkCommandBufferBeginInfo begin = {};
-  begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  begin.pNext = NULL;
-  begin.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-  begin.pInheritanceInfo = &inInfo;
-  
-  vkBeginCommandBuffer(commandBuffer, &begin);*/
-  //vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS) // Must have this for secondary command buffer :(
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout,
 			  0, 1, &uniformSet.descriptorSet, 0, NULL);
   VkBuffer* vertexBuffers = new VkBuffer[vertexAttribs.size()];
-  for(int i = 0; i< vertexAttribs.size(); i++){
+  for(uint32_t i = 0; i< vertexAttribs.size(); i++){
     vertexBuffers[i] = vertexAttribs[i].buffer;
   }
   VkDeviceSize offsets[] = {0, 0};
@@ -1965,15 +1985,16 @@ WingineScene::WingineScene(Wingine& w){
 }
 
 WingineScene::~WingineScene(){
-  for(int i = 0; i < objectGroups.size(); i++){
+  for(uint32_t i = 0; i < objectGroups.size(); i++){
     wg->destroyPipeline(objectGroups[i].pipeline);
   }
 }
 
-void WingineScene::addPipeline(int numShaders, WingineShader* shaders, int numVertexAttribs){
-  WinginePipeline p =  wg->createPipeline(numShaders, shaders, numVertexAttribs, objectGroups.size() == 0);
+void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes){
+  WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders, numVertexAttribs, attribTypes, objectGroups.size() == 0);
   WingineObjectGroup wog(*wg);
   wog.pipeline = p;
+  wog.shouldClearAttachments = objectGroups.size() == 0;
   wog.commandBuffer = wg->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   objectGroups.push_back(wog);
 }
@@ -1991,7 +2012,7 @@ WingineObjectGroup::WingineObjectGroup(const Wingine& wg){
   wingine = &wg;
 }
  
-void  WingineObjectGroup::recordCommandBuffer(){
+/*void  WingineObjectGroup::recordCommandBuffer(){
   vkResetCommandBuffer(commandBuffer, 0);
 
   VkCommandBufferBeginInfo begin = {};
@@ -2026,7 +2047,7 @@ void  WingineObjectGroup::recordCommandBuffer(){
   rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   rp_begin.pNext = NULL;
   rp_begin.renderPass = pipeline.compatibleRenderPass;
-  rp_begin.clearValueCount = 2; //TODO: Allow other than just two writing attachments
+  rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
   
   rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
   rp_begin.framebuffer = wingine->getCurrentFramebuffer();
@@ -2037,20 +2058,22 @@ void  WingineObjectGroup::recordCommandBuffer(){
 
   
   VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
-
+  wgAssert(res == VK_SUCCESS, "Begin command buffer");
+  
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
   vkCmdBeginRenderPass(commandBuffer, &rp_begin, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-  for(int i = 0; i < objects.size(); i++){
+  for(uint32_t i = 0; i < objects.size(); i++){
     vkCmdExecuteCommands(commandBuffer, 0, objects[i].getCommandBufferPointer());
   }
   vkCmdEndRenderPass(commandBuffer);
 
   res = vkEndCommandBuffer(commandBuffer);
-}
+  wgAssert(res == VK_SUCCESS, "End command buffer");
+  }*/
 
 void WingineObjectGroup::startRecordingCommandBuffer(){
   vkResetCommandBuffer(commandBuffer, 0);
@@ -2087,7 +2110,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(){
   rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   rp_begin.pNext = NULL;
   rp_begin.renderPass = pipeline.compatibleRenderPass;
-  rp_begin.clearValueCount = 2; //TODO: Allow other than just two writing attachments
+  rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
   
   rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
   rp_begin.framebuffer = wingine->getCurrentFramebuffer();
@@ -2097,12 +2120,13 @@ void WingineObjectGroup::startRecordingCommandBuffer(){
   rp_begin.renderArea.extent.height = wingine->getScreenHeight();
 
   VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
-
+  wgAssert(res == VK_SUCCESS, "Begin command buffer");
+  
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
-
+  
   vkCmdBeginRenderPass(commandBuffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
@@ -2111,4 +2135,5 @@ void WingineObjectGroup::endRecordingCommandBuffer(){
   vkCmdEndRenderPass(commandBuffer);
   VkResult res;
   res = vkEndCommandBuffer(commandBuffer);
+  wgAssert(res == VK_SUCCESS, "End command buffer");
 }

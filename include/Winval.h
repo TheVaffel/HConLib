@@ -59,6 +59,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
+#include "X11/Xatom.h"
 #include "X11/keysym.h"
 
 #define WK_SPACE XK_space
@@ -147,8 +148,11 @@ class Winval{
   int pointerX, pointerY;
   bool mouseButtonPressed;
 
+  bool lockedPointer;
+  int lockedPointerX, lockedPointerY;
+
  public:
-  Winval(int w, int h);
+  Winval(int w, int h, bool fullscreen = false);
   Winval();
   ~Winval();
 
@@ -170,7 +174,9 @@ class Winval{
   int getWidth() const;
   int getHeight() const;
   bool isOpen();
-
+  void setPointerVisible(bool visible);
+  void lockPointer(bool lock, int x = 300, int y = 300);
+  
 #ifdef WIN32
   HINSTANCE getInstance() const;
   HWND getHWND() const;

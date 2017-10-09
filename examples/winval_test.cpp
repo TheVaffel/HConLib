@@ -15,11 +15,11 @@ int main(){
   }
 
 
-  Winval win(w,h );
+  Winval win(w,h);
   win.setTitle("This is a test application");
   win.drawBuffer(p, w, h);
   int down = 0;
-  int x, y;
+  int x = 0, y = 0;
   int bound[2][2] = {{0, 0}, {959, 539}};
   int point[2] = {958, 539};
   float vec[2] = {-0.972254f, 0.233926f};
@@ -35,18 +35,24 @@ int main(){
     li++;
     }*/
 
+  win.setPointerVisible(false);
   // cout<<li.currPoint[0]<<", "<<li.currPoint[1]<<" and "<<li.endPoint[0]<<", "<<li.endPoint[1]<<endl;
+  int lockX = w/2, lockY = h/2;
+  win.lockPointer(true, lockX, lockY);
   while(win.isOpen()){
-    for(int i = 0; i < h*w*4; i++){
+    /*for(int i = 0; i < h*w*4; i++){
       p[i] = ~p[i];
-    }
+      }*/
     win.drawBuffer(p, w, h);
-    win.waitForKey();
+    //win.waitForKey();
     if(win.isKeyPressed(WK_ESC))
       break;
     win.flushEvents();
-    win.getPointerPosition(&x, &y);
-    cout<<"Mouse is at "<<x<<", "<<y<<endl;
+    int diffx, diffy;
+    win.getPointerPosition(&diffx, &diffy);
+    x += diffx - lockX;
+    y += diffy - lockY;
+    cout<<"X: "<<x<<", Y: "<<y<<endl;
   }
 
   return 0;

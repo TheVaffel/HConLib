@@ -28,28 +28,12 @@ Winval::Winval(int w, int h){
   windowOpen = true;
   if (!hwnd)
     exit(0);
-  /*std::cout<<"Starting to fill out BMI"<<std::endl;
-  memset(&bmi, 0, sizeof(bmi));
-  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmi.bmiHeader.biWidth = w;
-  bmi.bmiHeader.biHeight = h;
-  bmi.bmiHeader.biPlanes = 1;
-  bmi.bmiHeader.biBitCount = 32;
-  bmi.bmiHeader.biCompression = BI_RGB;
-  HDC hDesktopDC = GetDC(GetDesktopWindow());
-  HBITMAP hDib = CreateDIBSection(hDesktopDC, &bmi, DIB_RGB_COLORS, (void**)&pixelData, 0,0);*/
   pixelData = new COLORREF[w*h];
 
   hdc = GetDC(hwnd);
 
   if(pixelData == 0)
     exit(0);
-
-  /*hDibDC = CreateCompatibleDC(hDesktopDC);
-  HGDIOBJ hOldObj = SelectObject(hDibDC, hDib);
-  if(pointer != 0)
-    memcpy(((void*)pixelData), *pointer, w*h*4);
-  ReleaseDC(GetDesktopWindow(), hDesktopDC);*/
 
   ShowWindow(hwnd,10);
   UpdateWindow(hwnd);
@@ -70,10 +54,6 @@ void Winval::handleEventProperly(MSG& msg){
 
       BitBlt(hdc, 0, 0, width, height, src, 0, 0, SRCCOPY);
       DeleteDC(src);
-      /*PAINTSTRUCT paint;
-      HDC hWndDC = BeginPaint(hwnd, &paint);
-      BitBlt(hWndDC, 0, 0, w, h, hDibDC, 0, 0, SRCCOPY);
-      EndPaint(hwnd, &paint);*/
       break;
     }
     case WM_LBUTTONDOWN: {
@@ -166,10 +146,6 @@ void Winval::drawBuffer(unsigned char* p, int w, int h){
   DeleteDC(src);
   
   DeleteObject(bitmap);
-  /*PAINTSTRUCT paint;
-  HDC hWndDC = BeginPaint(hwnd, &paint);
-  BitBlt(hWndDC, 0, 0, w, h, hDibDC, 0, 0, SRCCOPY);
-  EndPaint(hwnd, &paint);*/
 }
 
 bool Winval::isOpen(){
@@ -212,7 +188,7 @@ Winval::Winval(){
 
 }
 
-Winval::Winval(int w, int h){
+Winval::Winval(int w, int h, bool fullscreen){
   dsp = XOpenDisplay(NULL);
   if(!dsp) return;
 
@@ -253,6 +229,7 @@ Winval::Winval(int w, int h){
   image = 0;
 
   autoRepeat = false;
+  lockedPointer = false;
 
   width = w;
   height = h;
@@ -366,6 +343,10 @@ void Winval::handleEventProperly(XEvent& e){
 
 void Winval::getPointerPosition(int* x, int*y){
   *x = pointerX; *y = pointerY;
+  
+  if(lockedPointer){
+    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY); 
+  }
 }
 
 bool Winval::isMouseButtonPressed(){
@@ -377,7 +358,6 @@ bool Winval::isKeyPressed(int i){
 }
 
 void Winval::flushEvents(){
-  
   int num = XEventsQueued(dsp, QueuedAfterFlush);
   XEvent e2;
   while(num--){
@@ -447,5 +427,32 @@ bool Winval::isOpen() {
   flushEvents();
   return dsp;
 }
+
+void Winval::setPointerVisible(bool visible){
+  if(visible){
+    XUndefineCursor(dsp, win);
+  }else{
+    const char invisibleData[] = {0, 0, 0, 0, 0, 0, 0, 0};
+    XColor col;
+
+    Pixmap bitmap = XCreateBitmapFromData(dsp, win, invisibleData, 8, 8);
+
+    Cursor c = XCreatePixmapCursor(dsp,bitmap, bitmap,&col,&col, 0, 0);
+    XDefineCursor(dsp, win, c);
+
+    XFreeCursor(dsp, c);
+    XFreePixmap(dsp,bitmap);
+  }
+}
+
+ void Winval::lockPointer(bool lock, int x, int y){
+  lockedPointer = lock;
+  lockedPointerX = x;
+  lockedPointerY = y;
+
+  if(lockedPointer){
+    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY); 
+  }
+ }
 
 #endif //WIN32

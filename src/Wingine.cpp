@@ -708,75 +708,6 @@ VkResult Wingine::init_depth_buffer(){
 
 }
 
-void Wingine::init_uniform_buffer(){
-  Matrix4 projection = flatalg::projection(45.f/180.0f*F_PI, 9.0f/16.0f, 0.1f, 100.0f);
-
-  Matrix4 view = flatalg::lookAt(Vector3(-5, 3, -10),
-				 Vector3(0, 0, 0),
-				 Vector3(0, 1, 0));
-  Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
-  Matrix4 clip = Matrix4(1.f, 0.f, 0.f, 0.f,
-			 0.f, -1.f, 0.f, 0.f,
-			 0.f, 0.f, 0.5f, 0.5f,
-			 0.f, 0.f, 0.0f, 1.f);
-
-  Matrix4 mvp = clip*projection*view*model;
-  Matrix4 usableMvp = ~mvp;
-  //printf("MVP = %s\n", mvp.str().c_str());
-  
-  VPCUniform = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 4*4*sizeof(float));
-  setBuffer(VPCUniform, &usableMvp, 4*4*sizeof(float));
-  
-  uniform_buffer = VPCUniform.buffer;
-  uniform_memory = VPCUniform.memory;
-
-  uniform_buffer_info.buffer = uniform_buffer;
-  uniform_buffer_info.offset = 0;
-  uniform_buffer_info.range = 4*4*sizeof(float);
-
-  ModelTransformUniform = createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 4*4*sizeof(float));
-  setBuffer(ModelTransformUniform, &model, 4*4*sizeof(float));
-}
-
-VkResult Wingine::init_descriptor_set_layouts(){
-  VkDescriptorSetLayoutBinding layout_binding = {};
-  layout_binding.binding = 0;
-  layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  layout_binding.descriptorCount = 1;
-  layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-  layout_binding.pImmutableSamplers = NULL;
-
-  VkDescriptorSetLayoutCreateInfo descriptor_layout = {};
-  descriptor_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptor_layout.pNext = NULL;
-  descriptor_layout.flags = 0;
-  descriptor_layout.bindingCount = 1;
-  descriptor_layout.pBindings = &layout_binding;
-
-  desc_layout = new VkDescriptorSetLayout[NUM_DESCRIPTOR_SETS];
-  VkResult res = vkCreateDescriptorSetLayout(device, &descriptor_layout, NULL, desc_layout);
-  if(res != VK_SUCCESS){
-    printf("Could not create descriptor set layout\n");
-    exit(0);
-  }
-
-  VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-  pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pPipelineLayoutCreateInfo.pNext = NULL;
-  pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-  pPipelineLayoutCreateInfo.pPushConstantRanges = NULL;
-  pPipelineLayoutCreateInfo.setLayoutCount = NUM_DESCRIPTOR_SETS;
-  pPipelineLayoutCreateInfo.pSetLayouts = desc_layout;
-
-  res = vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, NULL, &pipeline_layout);
-  if(res != VK_SUCCESS){
-    printf("Could not create pipeline layout\n");
-    exit(0);
-  }
-
-  return res;
-}
-
 VkResult Wingine::init_descriptor_pool(){
   VkDescriptorPoolSize type_count[2];
   type_count[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -798,36 +729,6 @@ VkResult Wingine::init_descriptor_pool(){
     printf("Could not create descriptor pool\n");
     exit(0);
   }
-
-  return res;
-}
-
-VkResult Wingine::init_descriptor_set(){
-  VkDescriptorSetAllocateInfo alloc_info[1];
-  alloc_info[0].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  alloc_info[0].pNext = NULL;
-  alloc_info[0].descriptorPool = descriptor_pool;
-  alloc_info[0].descriptorSetCount = NUM_DESCRIPTOR_SETS;
-  alloc_info[0].pSetLayouts = desc_layout;
-
-  descriptor_set = new VkDescriptorSet[NUM_DESCRIPTOR_SETS];
-  VkResult res = vkAllocateDescriptorSets(device, alloc_info, descriptor_set);
-  if(res != VK_SUCCESS){
-    printf("Could not allocate descriptor sets\n");
-    exit(0);
-  }
-
-  VkWriteDescriptorSet writes[1];
-  writes[0] = {};
-  writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writes[0].pNext = NULL;
-  writes[0].dstSet = descriptor_set[0];
-  writes[0].descriptorCount = 1;
-  writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  writes[0].pBufferInfo = &uniform_buffer_info;
-  writes[0].dstArrayElement = 0;
-  writes[0].dstBinding = 0;
-  vkUpdateDescriptorSets(device, 1, writes, 0, NULL);
 
   return res;
 }
@@ -895,7 +796,6 @@ VkResult Wingine::init_render_passes(){
   setup.attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   setup.attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 
-  res = vkCreateRenderPass(device, &setup.createInfo, NULL, &render_pass_clear);
   if(res != VK_SUCCESS){
     printf("Could not create render pass\n");
     exit(0);
@@ -996,25 +896,8 @@ void Wingine::destroy_depth_buffer(){
   vkFreeMemory(device, depth_buffer_memory, NULL);
 }
 
-void Wingine::destroy_uniform_buffer(){
-  vkDestroyBuffer(device, uniform_buffer, NULL);
-  vkFreeMemory(device, uniform_memory, NULL);
-
-  destroyBuffer(ModelTransformUniform);
-}
-
-void Wingine::destroy_descriptor_set_layouts(){
-  for(int i = 0; i < NUM_DESCRIPTOR_SETS; i++) vkDestroyDescriptorSetLayout(device, desc_layout[i], NULL);
-  vkDestroyPipelineLayout(device, pipeline_layout, NULL);
-}
-
-void Wingine::destroy_descriptor_set(){
-  vkDestroyDescriptorPool(device, descriptor_pool, NULL);
-}
-
 void Wingine::destroy_render_passes(){
   vkDestroyRenderPass(device, render_pass_generic, NULL);
-  vkDestroyRenderPass(device, render_pass_clear, NULL);
 }
 
 void Wingine::destroy_framebuffers(){
@@ -1033,9 +916,8 @@ void Wingine::destroy_pipeline_cache(){
   vkDestroyPipelineCache(device, pipeline_cache, NULL);
 }
 
-void Wingine::setCamera(WingineCamera& camera){
-  Matrix4 VPC = camera.getRenderMatrix();
-  setBuffer(VPCUniform, (void*)&VPC, 4*4*sizeof(float));
+void Wingine::destroy_descriptor_pool(){
+  vkDestroyDescriptorPool(device, descriptor_pool, NULL);
 }
 
 
@@ -1236,11 +1118,11 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
   setup->layoutCreateInfo.pushConstantRangeCount = 0;
   setup->layoutCreateInfo.pPushConstantRanges = NULL;
   setup->layoutCreateInfo.setLayoutCount = NUM_DESCRIPTOR_SETS;
-  setup->layoutCreateInfo.pSetLayouts = desc_layout;
+  setup->layoutCreateInfo.pSetLayouts = NULL; // Replaced in createPipeline
 
   setup->createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
   setup->createInfo.pNext = NULL;
-  setup->createInfo.layout = {}; // Will be replaced in createPipeline(..)
+  setup->createInfo.layout = {}; // Replaced in createPipeline
   setup->createInfo.basePipelineHandle = VK_NULL_HANDLE;
   setup->createInfo.basePipelineIndex = 0;
   setup->createInfo.flags = 0;
@@ -1303,13 +1185,9 @@ void Wingine::initVulkan(const Winval* win){
   init_command_buffers();
   init_swapchain();
   init_depth_buffer();
-  init_uniform_buffer();
-  init_descriptor_set_layouts();
-
   init_render_passes();
   init_framebuffers();
   init_descriptor_pool();
-  init_descriptor_set();
   init_pipeline_cache();
   stage_next_image();
 
@@ -1321,10 +1199,8 @@ void Wingine::destroy_vulkan(){
   destroy_pipeline_cache();
   destroy_framebuffers();
   destroy_render_passes();
-  destroy_descriptor_set();
-  destroy_descriptor_set_layouts();
-  destroy_uniform_buffer();
   destroy_depth_buffer();
+  destroy_descriptor_pool();
   destroy_swapchain();
   destroy_command_buffers();
   destroy_device();

@@ -240,19 +240,11 @@ class Wingine{
 
   uint32_t width;
   uint32_t height;
-
-  VkBuffer uniform_buffer;
-  VkDeviceMemory uniform_memory;
-  VkDescriptorBufferInfo uniform_buffer_info;
-
-  VkDescriptorSetLayout* desc_layout;
-  VkPipelineLayout pipeline_layout;
-
+  
   VkDescriptorPool descriptor_pool;
   VkDescriptorSet* descriptor_set;
 
   VkRenderPass render_pass_generic;
-  VkRenderPass render_pass_clear;
 
   VkFramebuffer* framebuffers;
 
@@ -270,9 +262,6 @@ class Wingine{
   VkDebugReportCallbackEXT debugCallback;
 #endif //DEBUG
   
-  WingineBuffer VPCUniform;
-  WingineBuffer ModelTransformUniform;
-  
   std::vector<VkLayerProperties> instance_layer_properties;
   std::vector<const char*> instance_extension_names;
   std::vector<const char*> instance_layer_names;
@@ -288,10 +277,7 @@ class Wingine{
   VkResult init_command_buffers();
   VkResult init_swapchain();
   VkResult init_depth_buffer();
-  void init_uniform_buffer();
-  VkResult init_descriptor_set_layouts();
   VkResult init_descriptor_pool();
-  VkResult init_descriptor_set();
   VkResult init_render_passes();
   VkResult init_framebuffers();
   VkResult init_pipeline_cache();
@@ -302,10 +288,8 @@ class Wingine{
   void destroy_command_buffers();
   void destroy_swapchain();
   void destroy_depth_buffer();
-  void destroy_uniform_buffer();
-  void destroy_descriptor_set_layouts();
-  void destroy_descriptor_set();
   void destroy_render_passes();
+  void destroy_descriptor_pool();
   void destroy_framebuffers();
   void destroy_pipeline_cache();
   void destroy_pipeline();

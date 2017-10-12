@@ -30,9 +30,21 @@ add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 
-#HCam
-add_library(HCam STATIC ${srcDir}/HCam.cpp)
 
+#HCam
+if(NOT WIN32)
+  find_library(HCAM_LIB NAMES v4l v4l2)
+else()
+  set(HCAM_LIB TRUE)
+endif()
+
+if(HCAM_LIB)
+  add_library(HCam STATIC ${srcDir}/HCam.cpp)
+else()
+  message(">>>Library v4l(2) not found, not building HCam")
+endif()
+
+#Flaudio
 if(NOT WIN32)
   find_library(FLAUDIO_LIB NAMES asound)
 else()
@@ -40,7 +52,6 @@ else()
 endif()
 
 if(FLAUDIO_LIB)
-  #Flaudio
   add_library(Flaudio STATIC ${srcDir}/Flaudio.cpp)
 else()
   message(">>>Library asound not found, not building Flaudio")

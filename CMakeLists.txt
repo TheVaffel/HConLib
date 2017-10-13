@@ -32,17 +32,7 @@ add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 
 
 #HCam
-if(NOT WIN32)
-  find_library(HCAM_LIB NAMES v4l v4l2)
-else()
-  set(HCAM_LIB TRUE)
-endif()
-
-if(HCAM_LIB)
-  add_library(HCam STATIC ${srcDir}/HCam.cpp)
-else()
-  message(">>>Library v4l(2) not found, not building HCam")
-endif()
+add_library(HCam STATIC ${srcDir}/HCam.cpp)
 
 #Flaudio
 if(NOT WIN32)

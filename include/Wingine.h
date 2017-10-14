@@ -317,7 +317,9 @@ class Wingine{
   void stage_next_image();
 
   void pushNewDrawSemaphore();
-    
+
+  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
+  
  public:
 
   int getScreenWidth() const;

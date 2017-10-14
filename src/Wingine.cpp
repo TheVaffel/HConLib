@@ -1463,6 +1463,85 @@ void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImag
   vkCmdPipelineBarrier(cmd, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &image_memory_barrier);
 }
 
+void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout){
+  VkResult res;
+  
+  VkCommandBufferBeginInfo cmd_begin = {};
+  cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmd_begin.pNext = NULL;
+  cmd_begin.flags = 0;
+  cmd_begin.pInheritanceInfo = NULL;
+  
+  //Ensure free command buffer is ready
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+
+  wgAssert(res == VK_SUCCESS, "Waiting for free_command_buffer_fence");
+
+  res = vkResetFences(device, 1, &free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Reset free_command_buffer_fence")
+  
+  res = vkBeginCommandBuffer(free_command_buffer, &cmd_begin);
+  wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
+
+  // Set the layouts of the images for transfer
+  wg_cmd_set_image_layout(free_command_buffer, srcImage ,VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+  // Transfer
+  VkImageCopy copy;
+  copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy.srcSubresource.mipLevel = 0;
+  copy.srcSubresource.baseArrayLayer = 0;
+  copy.srcSubresource.layerCount = 1;
+  copy.srcOffset.x = 0;
+  copy.srcOffset.y = 0;
+  copy.srcOffset.z = 0;
+  copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy.dstSubresource.mipLevel = 0;
+  copy.dstSubresource.baseArrayLayer = 0;
+  copy.dstSubresource.layerCount = 1;
+  copy.dstOffset.x = 0;
+  copy.dstOffset.y = 0;
+  copy.dstOffset.z = 0;
+  copy.extent.width = w;
+  copy.extent.height = h;
+  copy.extent.depth = 1;
+
+  vkCmdCopyImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+  // Set the layouts of the images for use later
+  if(srcEndLayout != VK_IMAGE_LAYOUT_UNDEFINED){
+    wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+  }
+  
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstEndLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+  res = vkEndCommandBuffer(free_command_buffer);
+  wgAssert(res == VK_SUCCESS, "End free command buffer");
+
+  VkSubmitInfo submitInfo = {};
+  
+  submitInfo.pNext = NULL;
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.waitSemaphoreCount = 0;
+  submitInfo.pWaitSemaphores = NULL;
+  submitInfo.pWaitDstStageMask = NULL;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &free_command_buffer;
+  submitInfo.signalSemaphoreCount = 0;
+  submitInfo.pSignalSemaphores = NULL;
+
+  res = vkQueueSubmit(graphics_queue,1,&submitInfo, free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Submitting command buffer for copying image");
+
+  //Arh, or else, we must take care of the images, which I don't want to :(
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+}
 
 //This will create a texture immutable from the CPU
 WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
@@ -1542,14 +1621,6 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 
   vkUnmapMemory(device, mappableMemory);
 
-  VkCommandBufferBeginInfo cmd_begin = {};
-  cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmd_begin.pNext = NULL;
-  cmd_begin.flags = 0;
-  cmd_begin.pInheritanceInfo = NULL;
-
-  wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
-
   //Now, create the actual image
   ici.tiling = VK_IMAGE_TILING_OPTIMAL;
   ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1568,65 +1639,8 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 
   res = vkBindImageMemory(device,resultTexture.image,resultTexture.mem,0);
   wgAssert(res == VK_SUCCESS, "Bind memory");
-
-  //Ensure free command buffer is ready
-  do{
-    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
-  } while (res == VK_TIMEOUT);
-
-  wgAssert(res == VK_SUCCESS, "Waiting for free_command_buffer_fence");
-
-  res = vkResetFences(device, 1, &free_command_buffer_fence);
-  wgAssert(res == VK_SUCCESS, "Reset free_command_buffer_fence")
   
-  res = vkBeginCommandBuffer(free_command_buffer, &cmd_begin);
-  
-  //Set the layouts of the images
-  wg_cmd_set_image_layout(free_command_buffer, mappableImage,VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_PREINITIALIZED,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-  wg_cmd_set_image_layout(free_command_buffer, resultTexture.image, VK_IMAGE_ASPECT_COLOR_BIT,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-  VkImageCopy copy;
-  copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copy.srcSubresource.mipLevel = 0;
-  copy.srcSubresource.baseArrayLayer = 0;
-  copy.srcSubresource.layerCount = 1;
-  copy.srcOffset.x = 0;
-  copy.srcOffset.y = 0;
-  copy.srcOffset.z = 0;
-  copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copy.dstSubresource.mipLevel = 0;
-  copy.dstSubresource.baseArrayLayer = 0;
-  copy.dstSubresource.layerCount = 1;
-  copy.dstOffset.x = 0;
-  copy.dstOffset.y = 0;
-  copy.dstOffset.z = 0;
-  copy.extent.width = w;
-  copy.extent.height = h;
-  copy.extent.depth = 1;
-
-  vkCmdCopyImage(free_command_buffer, mappableImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, resultTexture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
-
-  resultTexture.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  wg_cmd_set_image_layout(free_command_buffer, resultTexture.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, resultTexture.imageLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-  res = vkEndCommandBuffer(free_command_buffer);
-  wgAssert(res == VK_SUCCESS, "End free command buffer");
-
-  VkSubmitInfo submitInfo = {};
-  
-  submitInfo.pNext = NULL;
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.waitSemaphoreCount = 0;
-  submitInfo.pWaitSemaphores = NULL;
-  submitInfo.pWaitDstStageMask = NULL;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &free_command_buffer;
-  submitInfo.signalSemaphoreCount = 0;
-  submitInfo.pSignalSemaphores = NULL;
-
-  res = vkQueueSubmit(graphics_queue,1,&submitInfo, free_command_buffer_fence);
-  wgAssert(res == VK_SUCCESS, "Submitting command buffer for initializing texture");
+  copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED, resultTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   VkImageViewCreateInfo viewInfo = {};
   viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1671,11 +1685,6 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.imageInfo.imageView = resultTexture.view;
   resultTexture.imageInfo.sampler = resultTexture.sampler;
 
-  //Arh, or else, we must take care of the images, which I don't want to :(
-  do{
-    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
-  } while (res == VK_TIMEOUT);
-  
   vkDestroyImage(device, mappableImage, NULL);
   vkFreeMemory(device, mappableMemory, NULL);
 

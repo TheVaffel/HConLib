@@ -204,6 +204,16 @@ Winval::Winval(int w, int h, bool fullscreen){
 			    0, Black,
 			    Black);
 
+  if(fullscreen){
+    Atom atoms[2] = { XInternAtom(dsp, "_NET_WM_STATE_FULLSCREEN", False), None };
+    XChangeProperty(
+		    dsp, 
+		    win, 
+		    XInternAtom(dsp, "_NET_WM_STATE", False),
+		    XA_ATOM, 32, PropModeReplace, (unsigned char*)atoms, 1
+		    );
+  }
+    
   long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
   XSelectInput(dsp, win, eventMask);
 

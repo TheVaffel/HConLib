@@ -153,12 +153,17 @@ int main(){
   WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
+
+  VkDescriptorType desc[] = {WINGINE_RESOURCE_UNIFORM};
+  WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
   
-  WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, 0, bits);
-  WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(1, 1, textureResourceSetStageBits);
-  
-  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniform, NULL);
-  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, &offsetUniform, &texture);
+  VkDescriptorType textDescriptorTypes[] = {WINGINE_RESOURCE_UNIFORM, WINGINE_RESOURCE_TEXTURE};
+  WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
+
+  WingineResource* cameraUniformResource = &cameraUniform;
+  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniformResource);
+  WingineResource* resources[] = {&offsetUniform, &texture};
+  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, resources);
   
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
   WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};

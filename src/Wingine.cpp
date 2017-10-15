@@ -1207,34 +1207,25 @@ void Wingine::destroy_vulkan(){
   destroy_instance();
 }
 
-WingineResourceSetLayout Wingine::createResourceSetLayout(int numUniforms, int numTextures, VkShaderStageFlagBits* stages){
+WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, VkDescriptorType* types,  VkShaderStageFlagBits* stages){
   WingineResourceSetLayout wgLayout;
   
-  VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numUniforms + numTextures];
+  VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numResources];
 
-  for(int i = 0; i < numUniforms; i++){
+  for(int i = 0; i < numResources; i++){
     lbs[i] = {};
     lbs[i].binding = i;
-    lbs[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     lbs[i].descriptorCount = 1;
     lbs[i].stageFlags = stages[i];
+    lbs[i].descriptorType = types[i];
     lbs[i].pImmutableSamplers = NULL;
   }
-
-  for(int i = numUniforms; i < numUniforms + numTextures; i++){
-    lbs[i] = {};
-    lbs[i].binding = i;
-    lbs[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    lbs[i].descriptorCount = 1;
-    lbs[i].stageFlags = stages[i];
-    lbs[i].pImmutableSamplers = NULL;
-  }
-
+  
   VkDescriptorSetLayoutCreateInfo dlc = {};
   dlc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   dlc.pNext = NULL;
   dlc.flags = 0;
-  dlc.bindingCount = numUniforms + numTextures;
+  dlc.bindingCount = numResources;
   dlc.pBindings = lbs;
   
   VkResult res = vkCreateDescriptorSetLayout(device, &dlc, NULL, &wgLayout.layout);
@@ -1242,8 +1233,7 @@ WingineResourceSetLayout Wingine::createResourceSetLayout(int numUniforms, int n
 
   delete[] lbs;
 
-  wgLayout.numUniforms = numUniforms;
-  wgLayout.numTextures = numTextures;
+  wgLayout.numResources = numResources;
 
   return wgLayout;
 }
@@ -1252,7 +1242,7 @@ void Wingine::destroyResourceSetLayout(WingineResourceSetLayout wrsl){
   vkDestroyDescriptorSetLayout(device,wrsl.layout,NULL);
 }
 
-WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineUniform* uniforms, WingineTexture* textures){
+WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineResource** resources){
   WingineResourceSet resourceSet;
 
   //Create descriptor set and initialize descriptors
@@ -1266,32 +1256,21 @@ WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceL
   VkResult res = vkAllocateDescriptorSets(device, &alloc, &resourceSet.descriptorSet);
   wgAssert(res == VK_SUCCESS, "Allocate descriptor set");
   
-  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[resourceLayout.numUniforms + resourceLayout.numTextures];
-  for(int i = 0; i < resourceLayout.numUniforms; i++){
-    writes[i] = {};
-    writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[i].pNext = NULL;
-    writes[i].dstSet = resourceSet.descriptorSet;
-    writes[i].descriptorCount = 1;
-    writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writes[i].pBufferInfo = &uniforms[i].bufferInfo;
-    writes[i].dstArrayElement = 0;
-    writes[i].dstBinding = i;
-  }
-  
-  for(int i = resourceLayout.numUniforms; i < resourceLayout.numUniforms + resourceLayout.numTextures; i++){
-    writes[i] = {};
-    writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[i].pNext = NULL;
-    writes[i].dstSet = resourceSet.descriptorSet;
-    writes[i].descriptorCount = 1;
-    writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writes[i].pImageInfo = &textures[i - resourceLayout.numUniforms].imageInfo;
-    writes[i].dstArrayElement = 0;
-    writes[i].dstBinding = i;
-  }
+  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[resourceLayout.numResources];
 
-  vkUpdateDescriptorSets(device, resourceLayout.numUniforms + resourceLayout.numTextures, writes, 0, NULL);
+  for(int i = 0; i < resourceLayout.numResources; i++){
+    writes[i] = {};
+    writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[i].pNext = NULL;
+    writes[i].dstSet = resourceSet.descriptorSet;
+    writes[i].descriptorCount = 1;
+    writes[i].descriptorType = resources[i]->getDescriptorType();
+    writes[i].pBufferInfo = resources[i]->getBufferInfo();
+    writes[i].pImageInfo = resources[i]->getImageInfo();
+    writes[i].dstArrayElement = 0;
+    writes[i].dstBinding = i;
+  }
+  vkUpdateDescriptorSets(device, resourceLayout.numResources, writes, 0, NULL);
 
   return resourceSet;
 }
@@ -1543,6 +1522,87 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   } while (res == VK_TIMEOUT);
 }
 
+WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, VkImageUsageFlags usage){
+  WingineImage image;
+  image.width = w;
+  image.height = h;
+  image.layout = layout;
+
+  VkImageCreateInfo ici = {};
+  ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  ici.pNext = NULL;
+  ici.imageType = VK_IMAGE_TYPE_2D;
+  ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+  ici.extent.width = w;
+  ici.extent.height = h;
+  ici.extent.depth = 1;
+  ici.mipLevels = 1;
+  ici.arrayLayers = 1;
+  ici.samples = NUM_SAMPLES;
+  ici.tiling = VK_IMAGE_TILING_LINEAR;
+  ici.initialLayout = layout;
+  ici.usage = usage;
+  ici.queueFamilyIndexCount = 0;
+  ici.pQueueFamilyIndices = NULL;
+  ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  ici.flags = 0;
+
+  VkMemoryAllocateInfo memAlloc = {};
+  memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAlloc.pNext = NULL;
+  memAlloc.allocationSize = 0;
+  memAlloc.memoryTypeIndex = 0;
+
+  VkMemoryRequirements memReqs;
+
+  VkResult res = vkCreateImage(device, &ici, NULL, &image.image);
+  wgAssert(res == VK_SUCCESS, "Create image");
+
+  vkGetImageMemoryRequirements(device, image.image, &memReqs);
+
+  memAlloc.allocationSize = memReqs.size;
+  
+  memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits,
+						   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  
+  res = vkAllocateMemory(device, &memAlloc, NULL, &image.mem);
+  wgAssert(res == VK_SUCCESS, "Allocate image memory");
+
+  res = vkBindImageMemory(device, image.image, image.mem, 0);
+  wgAssert(res == VK_SUCCESS, "Bind image memory");
+
+  
+  VkImageViewCreateInfo viewInfo = {};
+  viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  viewInfo.pNext = NULL;
+  viewInfo.image = image.image;
+  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+  viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+  viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = 1;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = 1;
+
+  res = vkCreateImageView(device,&viewInfo, NULL, &image.view);
+
+  
+  image.imageInfo.imageLayout = image.layout;
+  image.imageInfo.imageView = image.view;
+
+  return image;
+}
+
+void Wingine::destroyImage(WingineImage w){
+  vkDestroyImageView(device, w.view, NULL);
+  vkDestroyImage(device, w.image, NULL);
+  vkFreeMemory(device, w.mem, NULL);
+}
+
 //This will create a texture immutable from the CPU
 WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 {
@@ -1550,8 +1610,8 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 
   WingineTexture resultTexture;
 
-  resultTexture.width = w;
-  resultTexture.height = h;
+  resultTexture.image.width = w;
+  resultTexture.image.height = h;
 
   //First, prepare staging image
   VkImageCreateInfo ici = {};
@@ -1622,43 +1682,11 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   vkUnmapMemory(device, mappableMemory);
 
   //Now, create the actual image
-  ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-  ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-  ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  resultTexture.image = createImage(w,h,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-  res = vkCreateImage(device, &ici, NULL, &resultTexture.image);
-  wgAssert(res == VK_SUCCESS, "Create actual image");
-
-  vkGetImageMemoryRequirements(device, resultTexture.image, &memReqs);
-  memAlloc.allocationSize = memReqs.size;
-
-  memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-  res = vkAllocateMemory(device, &memAlloc, NULL, &resultTexture.mem);
-  wgAssert(res == VK_SUCCESS, "Allocate memory");
-
-  res = vkBindImageMemory(device,resultTexture.image,resultTexture.mem,0);
-  wgAssert(res == VK_SUCCESS, "Bind memory");
   
-  copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED, resultTexture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED, resultTexture.image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  VkImageViewCreateInfo viewInfo = {};
-  viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  viewInfo.pNext = NULL;
-  viewInfo.image = resultTexture.image;
-  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
-  viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
-  viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
-  viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
-  viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
-  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  viewInfo.subresourceRange.baseMipLevel = 0;
-  viewInfo.subresourceRange.levelCount = 1;
-  viewInfo.subresourceRange.baseArrayLayer = 0;
-  viewInfo.subresourceRange.layerCount = 1;
-
-  res = vkCreateImageView(device,&viewInfo, NULL, &resultTexture.view);
 
   //Initialize sampler
   VkSamplerCreateInfo samplerInfo = {};
@@ -1681,9 +1709,9 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
   wgAssert(res == VK_SUCCESS, "Creating image sampler");
 
-  resultTexture.imageInfo.imageLayout = resultTexture.imageLayout;
-  resultTexture.imageInfo.imageView = resultTexture.view;
-  resultTexture.imageInfo.sampler = resultTexture.sampler;
+  resultTexture.image.imageInfo.imageLayout = resultTexture.image.layout;
+  resultTexture.image.imageInfo.imageView = resultTexture.image.view;
+  resultTexture.image.imageInfo.sampler = resultTexture.sampler;
 
   vkDestroyImage(device, mappableImage, NULL);
   vkFreeMemory(device, mappableMemory, NULL);
@@ -1691,11 +1719,9 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   return resultTexture;
 }
 
-void Wingine::destroyTexture(WingineTexture& tex){
-  vkDestroyImageView(device, tex.view, NULL);
-  vkDestroyImage(device, tex.image, NULL);
+void Wingine::destroyTexture(WingineTexture& tex){  
   vkDestroySampler(device, tex.sampler, NULL);
-  vkFreeMemory(device, tex.mem, NULL);
+  destroyImage(tex.image);
 }
 
 void Wingine::stage_next_image(){

@@ -39,6 +39,10 @@
 #define TEXTURE_DESCRIPTOR_POOL_SIZE 10
 #define MAX_NUM_COMMANDS 100
 
+#define WINGINE_RESOURCE_TEXTURE VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+#define WINGINE_RESOURCE_UNIFORM VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+#define WINGINE_RESOURCE_STORE_IMAGE VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
 
@@ -49,15 +53,70 @@ struct WingineBuffer{
   VkDeviceMemory memory;
 };
 
-struct WingineUniform{
+struct WingineResource {
+  virtual VkDescriptorType getDescriptorType() = 0;
+  
+  virtual VkDescriptorImageInfo* getImageInfo(){
+    return NULL;
+  }
+  
+  virtual VkDescriptorBufferInfo* getBufferInfo(){
+    return NULL;
+  }
+};
+
+struct WingineUniform : WingineResource{
   WingineBuffer buffer;
   VkDescriptorBufferInfo bufferInfo;
+
+  virtual VkDescriptorType getDescriptorType(){
+    return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  }
+
+  virtual VkDescriptorBufferInfo* getBufferInfo(){
+    return &bufferInfo;
+  }
 };
+
+
+struct WingineImage : WingineResource {
+  uint32_t width, height;
+  VkImage image;
+  VkImageLayout layout;
+  VkDeviceMemory mem;
+  VkImageView view;
+  VkDescriptorImageInfo imageInfo;
+
+  virtual VkDescriptorType getDescriptorType(){
+    return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  }
+
+  virtual VkDescriptorImageInfo* getImageInfo(){
+    return &imageInfo;
+  }
+};
+
+struct WingineTexture : WingineResource {
+  WingineImage image;
+  VkSampler sampler;
+
+  virtual VkDescriptorType getDescriptorType(){
+    return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  }
+
+  virtual VkDescriptorImageInfo* getImageInfo(){
+    return &image.imageInfo;
+  }
+
+  virtual VkDescriptorBufferInfo* getBufferInfo(){
+    return NULL;
+  }
+};
+
 
 struct WingineResourceSetLayout{
   VkDescriptorSetLayout layout;
-  int numUniforms;
-  int numTextures;
+  int numResources;
 };
 
 struct WingineResourceSet{
@@ -109,18 +168,6 @@ struct WinginePipelineSetup{
   VkPipelineLayoutCreateInfo layoutCreateInfo;
   int numShaders;
   WingineRenderPassSetup renderPassSetup;
-};
-
-struct WingineTexture{
-  VkSampler sampler;
-  VkImage image;
-  VkImageLayout imageLayout;
-  VkDeviceMemory mem;
-  VkImageView view;
-
-  uint32_t width, height;
-  
-  VkDescriptorImageInfo imageInfo;
 };
 
 struct WingineObjectGroup;
@@ -334,6 +381,9 @@ class Wingine{
   VkResult setBuffer(const WingineBuffer&, const void*, uint32_t);
   void destroyBuffer(const WingineBuffer&);
 
+  WingineImage createImage(uint32_t w, uint32_t h, VkImageLayout, VkImageUsageFlags);
+  void destroyImage(WingineImage);
+
   //A single uniform. Basically just a lump of data to be accessed from shaders
   WingineUniform createUniform(uint32_t size);
   void setUniform(const WingineUniform&, void*, uint32_t);
@@ -341,11 +391,11 @@ class Wingine{
 
   //A layout for resource sets
   // First evaluates stages for uniforms, then textures. Number of elements in stages = numUniforms + numTextures
-  WingineResourceSetLayout createResourceSetLayout(int numUniforms, int numTextures, VkShaderStageFlagBits* stages);
+  WingineResourceSetLayout createResourceSetLayout(int numResources, VkDescriptorType* types, VkShaderStageFlagBits* stages);
   void destroyResourceSetLayout(WingineResourceSetLayout wrsl);
   
   //A set of uniforms and textures (to better utilize Vulkan's descriptor set abstraction) that "belong together"
-  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineUniform* uniforms, WingineTexture* textures);
+  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineResource **resources);
   void destroyResourceSet(const WingineResourceSet& resourceSet);
 
   WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);

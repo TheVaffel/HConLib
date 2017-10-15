@@ -181,6 +181,10 @@ int Winval::getHeight() const {
   return height;
 }
 
+void sleepMilliseconds(int u){
+  Sleep(u);
+}
+
 #else //WIN32
 
 #define WINVAL_KEYMAP_OFFSET 8
@@ -455,14 +459,19 @@ void Winval::setPointerVisible(bool visible){
   }
 }
 
- void Winval::lockPointer(bool lock, int x, int y){
+void Winval::lockPointer(bool lock, int x, int y){
   lockedPointer = lock;
   lockedPointerX = x;
   lockedPointerY = y;
-
+  
   if(lockedPointer){
     XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY); 
   }
- }
+}
+
+#include <unistd.h>
+void Winval::sleepMilliseconds(int u){
+  usleep(u * 1000);
+}
 
 #endif //WIN32

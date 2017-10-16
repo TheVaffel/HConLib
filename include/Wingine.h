@@ -37,6 +37,7 @@
 #define MAX_VERTEX_ATTRIBUTES 10
 #define UNIFORM_DESCRIPTOR_POOL_SIZE 50
 #define TEXTURE_DESCRIPTOR_POOL_SIZE 10
+#define IMAGE_STORE_DESCRIPTOR_POOL_SIZE 10
 #define MAX_NUM_COMMANDS 100
 
 #define WINGINE_RESOURCE_TEXTURE VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
@@ -107,10 +108,6 @@ struct WingineTexture : WingineResource {
   virtual VkDescriptorImageInfo* getImageInfo(){
     return &image.imageInfo;
   }
-
-  virtual VkDescriptorBufferInfo* getBufferInfo(){
-    return NULL;
-  }
 };
 
 
@@ -126,6 +123,12 @@ struct WingineResourceSet{
 struct WingineShader{
   VkPipelineShaderStageCreateInfo shader;
   int numUniformSets;
+};
+
+struct WingineKernel{
+  WingineShader shader;
+  VkPipeline pipeline;
+  VkPipelineLayout layout;
 };
 
 struct WingineRenderPassSetup{
@@ -263,9 +266,15 @@ class Wingine{
   uint32_t queue_family_count;
   uint32_t graphics_queue_family_index;
   uint32_t present_queue_family_index;
+  uint32_t compute_queue_family_index;
+  
   VkCommandPool cmd_pool;
+  VkCommandPool compute_cmd_pool;
+  
   VkCommandBuffer free_command_buffer;
+  VkCommandBuffer compute_command_buffer;
   VkFence free_command_buffer_fence;
+  VkFence compute_command_buffer_fence;
   //VkCommandBuffer cmd_buffers[MAX_NUM_COMMANDS];
   //uint32_t current_command_buffer;
   
@@ -279,6 +288,7 @@ class Wingine{
 
   VkQueue graphics_queue;
   VkQueue present_queue;
+  VkQueue compute_queue;
 
   VkFormat depth_buffer_format;
   VkImage depth_buffer_image;
@@ -359,16 +369,16 @@ class Wingine{
 
   void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout, VkPipelineStageFlags, VkPipelineStageFlags);
   
-  void updateMVP(const Matrix4&);
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
   void stage_next_image();
 
   void pushNewDrawSemaphore();
 
-  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
   
  public:
-
+  
+  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
+  
   int getScreenWidth() const;
   int getScreenHeight() const;
 
@@ -382,6 +392,7 @@ class Wingine{
   void destroyBuffer(const WingineBuffer&);
 
   WingineImage createImage(uint32_t w, uint32_t h, VkImageLayout, VkImageUsageFlags);
+  void setLayout(WingineImage& wim, VkImageLayout newLayout);
   void destroyImage(WingineImage);
 
   //A single uniform. Basically just a lump of data to be accessed from shaders
@@ -406,6 +417,10 @@ class Wingine{
 
   WingineTexture createTexture(int w, int h, unsigned char* data);
   void destroyTexture(WingineTexture&);
+
+  WingineKernel createKernel(const char* kernelText, WingineResourceSetLayout layout);
+  void executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ);
+  void destroyKernel(WingineKernel kernel);
   
   void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
   void render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear);

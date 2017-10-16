@@ -274,6 +274,7 @@ VkResult Wingine::init_device(){
 
   graphics_queue_family_index = UINT32_MAX;
   present_queue_family_index = UINT32_MAX;
+  compute_queue_family_index = UINT32_MAX;
 
   for(uint32_t i = 0; i < queue_family_count; i++){
     if((queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
@@ -300,6 +301,14 @@ VkResult Wingine::init_device(){
     printf("Failed to find present- and/or graphics queue\n");
     exit(0);
   }
+
+  for(uint32_t i = 0; i < queue_family_count; i++){
+    if(queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT){
+      compute_queue_family_index = i;
+    }
+  }
+
+  wgAssert(compute_queue_family_index != UINT32_MAX, "Find compute capable queue\n");
 
   delete[] pSupportsPresent;
 
@@ -349,6 +358,12 @@ VkResult Wingine::init_command_buffers(){
     printf("Failed to create command buffer pool \n");
   }
 
+  cmd_pool_info.queueFamilyIndex = compute_queue_family_index;
+
+  res = vkCreateCommandPool(device, &cmd_pool_info, NULL, &compute_cmd_pool);
+
+  wgAssert(res == VK_SUCCESS, "Create compute command pool");
+  
   VkCommandBufferAllocateInfo cmd_alloc = {};
   cmd_alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   cmd_alloc.pNext = NULL;
@@ -357,17 +372,22 @@ VkResult Wingine::init_command_buffers(){
   cmd_alloc.commandBufferCount = 1;
   
   res = vkAllocateCommandBuffers(device, &cmd_alloc, &free_command_buffer);
-  wgAssert(res == VK_SUCCESS, "Allocate command buffers");
+  wgAssert(res == VK_SUCCESS, "Allocate command buffer");
+  
+  cmd_alloc.commandPool = compute_cmd_pool;
+  res = vkAllocateCommandBuffers(device, &cmd_alloc, &compute_command_buffer);
+  wgAssert(res == VK_SUCCESS, "Allocate compute command buffer");
 
   vkResetCommandBuffer(free_command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-
+  vkResetCommandBuffer(compute_command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+  
   VkFenceCreateInfo fenceInfo;
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.pNext = NULL;
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
   vkCreateFence(device, &fenceInfo, NULL, &free_command_buffer_fence);
-
+  vkCreateFence(device, &fenceInfo, NULL, &compute_command_buffer_fence);
   return res;
 }
 
@@ -404,6 +424,8 @@ VkResult Wingine::init_device_queue(){
   }else{
     vkGetDeviceQueue(device, present_queue_family_index, 0, &present_queue);
   }
+
+  vkGetDeviceQueue(device,compute_queue_family_index,0,&compute_queue);
 
   return VK_SUCCESS;
 }
@@ -709,20 +731,24 @@ VkResult Wingine::init_depth_buffer(){
 }
 
 VkResult Wingine::init_descriptor_pool(){
-  VkDescriptorPoolSize type_count[2];
-  type_count[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  type_count[0].descriptorCount = UNIFORM_DESCRIPTOR_POOL_SIZE;
+  const int typeCount = 3;
+  VkDescriptorPoolSize type_size[typeCount];
+  type_size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  type_size[0].descriptorCount = UNIFORM_DESCRIPTOR_POOL_SIZE;
   
-  type_count[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  type_count[1].descriptorCount = TEXTURE_DESCRIPTOR_POOL_SIZE;
+  type_size[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  type_size[1].descriptorCount = TEXTURE_DESCRIPTOR_POOL_SIZE;
 
+  type_size[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  type_size[2].descriptorCount = IMAGE_STORE_DESCRIPTOR_POOL_SIZE;
+  
   VkDescriptorPoolCreateInfo descriptor_pool_info = {};
   descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   descriptor_pool_info.pNext = NULL;
   descriptor_pool_info.flags = 0;
   descriptor_pool_info.maxSets = TEXTURE_DESCRIPTOR_POOL_SIZE + UNIFORM_DESCRIPTOR_POOL_SIZE;
-  descriptor_pool_info.poolSizeCount = 2;
-  descriptor_pool_info.pPoolSizes = type_count;
+  descriptor_pool_info.poolSizeCount = typeCount;
+  descriptor_pool_info.pPoolSizes = type_size;
 
   VkResult res = vkCreateDescriptorPool(device, &descriptor_pool_info, NULL, &descriptor_pool);
   if(res != VK_SUCCESS){
@@ -867,7 +893,9 @@ void Wingine::destroy_command_buffers(){
     vkFreeCommandBuffers(device, cmd_pool, 1, &(cmd_buffers[i]));
     }*/
   vkDestroyCommandPool(device, cmd_pool, NULL);
+  vkDestroyCommandPool(device, compute_cmd_pool, NULL);
   vkDestroyFence(device, free_command_buffer_fence, NULL);
+  vkDestroyFence(device, compute_command_buffer_fence, NULL);
 }
 
 void Wingine::destroy_swapchain(){
@@ -1378,6 +1406,73 @@ void Wingine::destroyPipeline(WinginePipeline pipeline){
   vkDestroyPipeline(device, pipeline.pipeline, NULL);
 }
 
+WingineKernel Wingine::createKernel(const char* kernelText, WingineResourceSetLayout resourceLayout){
+  WingineKernel wk;
+  
+  wk.shader = createShader(kernelText,VK_SHADER_STAGE_COMPUTE_BIT);
+  
+  VkPipelineLayoutCreateInfo lCreateInfo = {};
+  lCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  lCreateInfo.pNext = NULL;
+  lCreateInfo.setLayoutCount = 1;
+  lCreateInfo.pSetLayouts = &resourceLayout.layout;
+
+  VkResult res = vkCreatePipelineLayout(device, &lCreateInfo, NULL, &wk.layout);
+
+  wgAssert(res == VK_SUCCESS, "Create pipeline layout for kernel");
+  
+  VkComputePipelineCreateInfo pipelineCreateInfo = {};
+  pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  pipelineCreateInfo.layout = wk.layout;
+  pipelineCreateInfo.flags = 0;
+  pipelineCreateInfo.stage = wk.shader.shader;
+
+  res = vkCreateComputePipelines(device,pipeline_cache,1,&pipelineCreateInfo,NULL,&wk.pipeline);
+  
+  return wk;
+}
+
+void Wingine::destroyKernel(WingineKernel kernel){
+  vkDestroyPipelineLayout(device, kernel.layout, NULL);
+  destroyShader(kernel.shader);
+  vkDestroyPipeline(device, kernel.pipeline,NULL);
+}
+
+void Wingine::executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ){
+  VkResult res;
+  do{
+    res = vkWaitForFences(device, 1, &compute_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+
+  res = vkResetFences(device, 1, &compute_command_buffer_fence);
+  
+  VkCommandBufferBeginInfo cmd_begin = {};
+  cmd_begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  cmd_begin.pNext = NULL;
+
+  vkBeginCommandBuffer(compute_command_buffer, &cmd_begin);
+
+  vkCmdBindPipeline(compute_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, kernel.pipeline);
+  vkCmdBindDescriptorSets(compute_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,kernel.layout, 0, 1, &resourceSet.descriptorSet, 0, NULL);
+  vkCmdDispatch(compute_command_buffer, numX, numY, numZ);
+
+  vkEndCommandBuffer(compute_command_buffer);
+
+  VkSubmitInfo computeSubmit = {};
+  computeSubmit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  computeSubmit.pNext = NULL;
+  computeSubmit.commandBufferCount = 1;
+  computeSubmit.pCommandBuffers = &compute_command_buffer;
+  res = vkQueueSubmit(compute_queue, 1, &computeSubmit, compute_command_buffer_fence);
+
+  wgAssert(res == VK_SUCCESS, "Submit compute command");
+  
+  //Play it safe for now
+  do{
+    res = vkWaitForFences(device, 1, &compute_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+}
+
 void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStages, VkPipelineStageFlags destStages){
   //Shameful copy-paste from LunarG. I'm sorry :(
   
@@ -1410,6 +1505,13 @@ void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImag
     image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
     break;
 
+  case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+    image_memory_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    break;
+
+  case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+    image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
   default:
     break;
   }
@@ -1441,6 +1543,76 @@ void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImag
 
   vkCmdPipelineBarrier(cmd, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &image_memory_barrier);
 }
+
+void Wingine::setLayout(WingineImage& wim, VkImageLayout newLayout){
+  VkCommandBufferBeginInfo beg = {};
+  beg.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beg.pNext = NULL;
+  beg.flags = 0;
+  beg.pInheritanceInfo = NULL;
+  VkResult res;
+  
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+
+  wgAssert(res == VK_SUCCESS, "Waiting for free_command_buffer_fence");
+
+  res = vkResetFences(device, 1, &free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Reset free command buffer");
+
+  res = vkBeginCommandBuffer(free_command_buffer, &beg);
+
+  wg_cmd_set_image_layout(free_command_buffer,wim.image,VK_IMAGE_ASPECT_COLOR_BIT, wim.layout, newLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+  res = vkEndCommandBuffer(free_command_buffer);
+  wgAssert(res == VK_SUCCESS, "Record endCommandBuffer");
+
+  VkSubmitInfo submitInfo = {};
+  submitInfo.pNext = NULL;
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.waitSemaphoreCount = 0;
+  submitInfo.pWaitSemaphores = NULL;
+  submitInfo.pWaitDstStageMask = NULL;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &free_command_buffer;
+  submitInfo.signalSemaphoreCount = 0;
+  submitInfo.pSignalSemaphores = NULL;
+
+  res = vkQueueSubmit(graphics_queue,1,&submitInfo, free_command_buffer_fence);
+  wgAssert(res == VK_SUCCESS, "Submitting command buffer for changing image layout");
+
+  wim.layout = newLayout;
+  wim.imageInfo.imageLayout = newLayout;
+
+  vkDestroyImageView(device, wim.view, NULL);
+    
+  // Playing it safe
+  do{
+    res = vkWaitForFences(device, 1, &free_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
+  } while (res == VK_TIMEOUT);
+
+  VkImageViewCreateInfo viewInfo = {};
+  viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  viewInfo.pNext = NULL;
+  viewInfo.image = wim.image;
+  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+  viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+  viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+  viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = 1;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = 1;
+
+  res = vkCreateImageView(device,&viewInfo, NULL, &wim.view);
+
+  wim.imageInfo.imageView = wim.view;
+}
+
 
 void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout){
   VkResult res;
@@ -1539,7 +1711,7 @@ WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, 
   ici.mipLevels = 1;
   ici.arrayLayers = 1;
   ici.samples = NUM_SAMPLES;
-  ici.tiling = VK_IMAGE_TILING_LINEAR;
+  ici.tiling = VK_IMAGE_TILING_OPTIMAL;
   ici.initialLayout = layout;
   ici.usage = usage;
   ici.queueFamilyIndexCount = 0;

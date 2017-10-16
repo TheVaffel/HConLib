@@ -81,6 +81,20 @@ const char* texFragShaderText =
   "  outColor = textureLod(tex, texCoord, 0.0);\n"
   "}\n";
 
+const char* computeShaderText =
+  "#version 450\n"
+  "#extension GL_ARB_shading_language_420pack : enable\n"
+  "#extension GL_ARB_compute_shader : enable\n"
+
+  "layout(binding = 0, rgba32f) uniform image2D outputs;\n"
+
+  "layout (local_size_x = 16, local_size_y = 16) in;\n"
+  "void main() {\n"
+  "  ivec2 coords = ivec2(gl_LocalInvocationID.xy);\n"
+  "  imageStore(outputs, coords, vec4(0.5, 0.5, 1, 1));\n"
+  "}";
+
+
 int main(){
   int texWidth = 64;
   int texHeight = 64;
@@ -177,6 +191,22 @@ int main(){
   WingineShader textureVertexShader = wg.createShader(texVertShaderText, VK_SHADER_STAGE_VERTEX_BIT);
   WingineShader textureFragmentShader = wg.createShader(texFragShaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
 
+  // #onlycomputethings
+  desc[0] = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  bits[0] = VK_SHADER_STAGE_COMPUTE_BIT;
+ 
+  WingineResourceSetLayout computeLayout = wg.createResourceSetLayout(1, desc, bits);
+  WingineKernel kernel = wg.createKernel(computeShaderText, computeLayout);
+
+  WingineImage im = wg.createImage(64, 64, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+  wg.setLayout(im, VK_IMAGE_LAYOUT_GENERAL);
+  WingineResource* computeImageResource[] = {&im};
+  WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,computeImageResource);
+  wg.executeKernel(kernel, kernelResources, 64, 64, 1);
+  
+  wg.copyImage(64, 64, im.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, texture.image.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  
   WingineShader shaders[2] = {vertexShader, fragmentShader};
   WingineShader textureShaders[2] = {textureVertexShader, textureFragmentShader};
 
@@ -233,6 +263,8 @@ int main(){
   wg.destroyTexture(texture);
   wg.destroyUniform(cameraUniform);
   wg.destroyUniform(offsetUniform);
+
+  wg.destroyImage(im);
   
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
@@ -241,7 +273,11 @@ int main(){
   
   wg.destroyResourceSet(cameraSet);
   wg.destroyResourceSet(textureSet);
+  wg.destroyResourceSet(kernelResources);
 
+  wg.destroyKernel(kernel);
+
+  wg.destroyResourceSetLayout(computeLayout);
   wg.destroyResourceSetLayout(resourceLayout);
   wg.destroyResourceSetLayout(textureResourceLayout);
   

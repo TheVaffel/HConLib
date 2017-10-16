@@ -1368,11 +1368,11 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
 
     pipelineSetup.vi_bindings[i].binding = i;
     pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    pipelineSetup.vi_bindings[i].stride = 4*sizeof(float);
+    pipelineSetup.vi_bindings[i].stride = attribTypes[i] == VK_FORMAT_R32G32B32A32_SFLOAT ? 4*sizeof(float) : 2 * sizeof(float);
 
     pipelineSetup.vi_attribs[i].binding = i;
     pipelineSetup.vi_attribs[i].location = i;
-    pipelineSetup.vi_attribs[i].format = attribTypes[i]; //This is a bit too static
+    pipelineSetup.vi_attribs[i].format = attribTypes[i]; 
     pipelineSetup.vi_attribs[i].offset = 0;
   }
   
@@ -1726,7 +1726,7 @@ WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, 
   memAlloc.memoryTypeIndex = 0;
 
   VkMemoryRequirements memReqs;
-
+  
   VkResult res = vkCreateImage(device, &ici, NULL, &image.image);
   wgAssert(res == VK_SUCCESS, "Create image");
 

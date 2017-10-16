@@ -5,23 +5,26 @@
 using namespace std;
 
 static const float test_vertices[] =
-  { -1.0f, 0.0f, 0.f, 1.0f,
+  { 0.0f, 0.0f, 0.f, 1.0f,
     1.0f, 0.0f, 0.f, 1.0f,
-    0.0f, 1.0f, 0.f, 1.0f};
+    0.0f, 1.0f, 0.f, 1.0f,
+    1.0f, 1.0f, 0.f, 1.0f};
 
 static const float test_colors[] =
   { 1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 1.0f,
-    0.0f, 0.0f, 1.0f, 1.0f};
+    0.0f, 0.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f, 1.0f};
 
 static const float texture_coords[] =
-  {1.0f, 1.0f,
-   0.0f, 0.0f,
-   1.0f, 0.0f};
+  {0.0f, 0.0f,
+   1.0f, 0.0f,
+   0.0f, 1.0f,
+   1.0f, 1.0f};
 
 static const uint32_t test_indices[] =
-  { 0, 2, 1,
-    0, 1, 2};
+  { 0, 1, 3,
+    0, 3, 2};
 
 const char *vertShaderText =
   "#version 400\n"
@@ -90,8 +93,8 @@ const char* computeShaderText =
 
   "layout (local_size_x = 16, local_size_y = 16) in;\n"
   "void main() {\n"
-  "  ivec2 coords = ivec2(gl_LocalInvocationID.xy);\n"
-  "  imageStore(outputs, coords, vec4(0.5, 0.5, 1, 1));\n"
+  "  ivec2 coords = ivec2(gl_GlobalInvocationID.xy);\n"
+  "  imageStore(outputs, coords, vec4(coords/64.0, 0, 1));\n"
   "}";
 
 
@@ -99,8 +102,10 @@ int main(){
   int texWidth = 64;
   int texHeight = 64;
   unsigned char generic_pattern[4*texWidth*texHeight];
-  for(int i =0; i < texWidth*texHeight; i++){
-    ((int*)generic_pattern)[i] = (i % 8 < 4) ^ ((i/texWidth) % 8 <4) ? 0xFFFFFFFF : 0xFF000000; 
+  for(int i = 0; i < texHeight; i++){
+    for(int j = 0; j < texWidth; j++){
+      ((int*)generic_pattern)[i*texWidth + j] = (((i/8)%2 == 0) ^ ((j/8)%2 == 0)) ? 0xFFFFFFFF : 0xFF000000;
+    }
   }
 
   //Dirty trick for creating cube:
@@ -135,19 +140,18 @@ int main(){
 
   Winval win(1280, 720);
   Wingine wg(win);
-  Matrix4 rotation(FLATALG_MATRIX_ROTATION, 0, 0.01f);
-  //Matrix4 model = Matrix4(FLATALG_MATRIX_IDENTITY);
 
-  WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( vertexBuffer, test_vertices, 3*4*sizeof(float));
+  
+  WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
+  wg.setBuffer( vertexBuffer, test_vertices, 4*4*sizeof(float));
 
-  WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*4*sizeof(float));
-  wg.setBuffer( colorBuffer, test_colors, 3*4*sizeof(float));
+  WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
+  wg.setBuffer( colorBuffer, test_colors, 4*4*sizeof(float));
 
-  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*4*sizeof(int));
+  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*2*sizeof(int32_t));
   wg.setBuffer( indexBuffer, test_indices, 2*3*sizeof(uint32_t));
 
-  WingineBuffer textureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 3*2*sizeof(float));
+  WingineBuffer textureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*2*sizeof(float));
   wg.setBuffer(textureCoordBuffer, texture_coords, 2*4*sizeof(float));
 
 
@@ -219,8 +223,9 @@ int main(){
   WingineBuffer cubeVertexAttribs[2] = {cubeVertexBuffer, cubeTextureCoordBuffer};
   WingineRenderObject cubeObject(3*12, 2, cubeVertexAttribs, cubeIndexBuffer, textureSet);
 
-  //scene.addObject(object1, 0); //Object, pipeline number
+  scene.addObject(object1, 0); //Object, pipeline number
   //scene.addObject(object3, 1);
+  
   scene.addObject(cubeObject, 1);
 
   wg.setScene(scene);
@@ -230,6 +235,10 @@ int main(){
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
+  Matrix4 rotation = Matrix4(cosf(0.01f), sinf(0.01f), 0.0f, 0.0f,
+			     -sinf(0.01f), cosf(0.01f), 0.0f, 0.0f,
+			     0.0f, 0.0f, 1.0f, 0.0f,
+			     0.0f, 0.0f, 0.0f, 1.0f);
   Matrix4 offset = Matrix4(1.0f, .0f, .0f, 1.0f,
 			   .0f, 1.0f, .0f, .0f,
 			   .0f, .0f, 1.0f, .5f,
@@ -241,6 +250,7 @@ int main(){
 
   while(win.isOpen()){
     cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));
+    offset = offset * rotation;
     Matrix4 newOffset = ~((~cam.getRenderMatrix())*offset);
     count++;
     Matrix4 cMatrix = cam.getRenderMatrix();

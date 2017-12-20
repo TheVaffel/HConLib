@@ -3,17 +3,6 @@
 
 #include <iostream>
 
-#ifdef WIN32
-void sleepMilliseconds(int m){
-  Sleep(m);
-}
-#else //WIN32
-#include <unistd.h>
-void sleepMilliseconds(int m){
-  usleep(m*1000);
-}
-#endif //WIN32
-
 using namespace std;
 
 int main(){
@@ -32,7 +21,7 @@ int main(){
     win.flushEvents();
     int x, y;
     win.getPointerPosition(&x, &y);
-    sleepMilliseconds(30);
+    win.sleepMilliseconds(30);
   }
 
   return 0;

@@ -3,17 +3,6 @@
 #include "Winval.h"
 #include <cmath>
 
-#ifdef WIN32
-void sleepMilliseconds(int m){
-  Sleep(m);
-}
-#else //WIN32
-#include <unistd.h>
-void sleepMilliseconds(int m){
-  usleep(m*1000);
-}
-#endif //WIN32
-
 using namespace std;
 
 int main(){
@@ -46,7 +35,7 @@ int main(){
     hg::clearCanvas(vas);
     hg::drawLineModel(vas, par, lc, m, 0xFF0000);
     win.drawBuffer(vas.getData(), w, h);
-    sleepMilliseconds(20);
+    win.sleepMilliseconds(20);
     ++i;
   }
   //win.waitForKey();

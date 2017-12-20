@@ -110,7 +110,7 @@ int main(){
 
   //Dirty trick for creating cube:
   int cubeNumbers[8] = {0, 1, 3, 2, 6, 4, 5, 7};
-  
+
   float cube_vertices[4*8];
   float cube_tex_coords[2*8];
   for(int i = 0; i < 8; i++){
@@ -141,7 +141,7 @@ int main(){
   Winval win(1280, 720);
   Wingine wg(win);
 
-  
+
   WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
   wg.setBuffer( vertexBuffer, test_vertices, 4*4*sizeof(float));
 
@@ -160,21 +160,21 @@ int main(){
 
   WingineBuffer cubeIndexBuffer = wg.createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 12*3*sizeof(int));
   wg.setBuffer(cubeIndexBuffer, cube_indices, 12*3*sizeof(int));
-  
+
   WingineBuffer cubeTextureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 8*2*sizeof(float));
   wg.setBuffer(cubeTextureCoordBuffer, cube_tex_coords, 8*2*sizeof(float));
-  
+
 
   VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
   VkShaderStageFlagBits textureResourceSetStageBits[2] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
-    
+
   WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
 
   VkDescriptorType desc[] = {WINGINE_RESOURCE_UNIFORM};
   WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
-  
+
   VkDescriptorType textDescriptorTypes[] = {WINGINE_RESOURCE_UNIFORM, WINGINE_RESOURCE_TEXTURE};
   WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
 
@@ -182,7 +182,7 @@ int main(){
   WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniformResource);
   WingineResource* resources[] = {&offsetUniform, &texture};
   WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, resources);
-  
+
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
   WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};
 
@@ -198,19 +198,20 @@ int main(){
   // #onlycomputethings
   desc[0] = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   bits[0] = VK_SHADER_STAGE_COMPUTE_BIT;
- 
+
   WingineResourceSetLayout computeLayout = wg.createResourceSetLayout(1, desc, bits);
   WingineKernel kernel = wg.createKernel(computeShaderText, computeLayout);
 
   WingineImage im = wg.createImage(64, 64, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+
   wg.setLayout(im, VK_IMAGE_LAYOUT_GENERAL);
   WingineResource* computeImageResource[] = {&im};
   WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,computeImageResource);
   wg.executeKernel(kernel, kernelResources, 64, 64, 1);
-  
+
+
   wg.copyImage(64, 64, im.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, texture.image.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  
   WingineShader shaders[2] = {vertexShader, fragmentShader};
   WingineShader textureShaders[2] = {textureVertexShader, textureFragmentShader};
 
@@ -225,11 +226,11 @@ int main(){
 
   scene.addObject(object1, 0); //Object, pipeline number
   //scene.addObject(object3, 1);
-  
+
   scene.addObject(cubeObject, 1);
 
   wg.setScene(scene);
-  
+
   WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
   Vector3 camPos(-5, 3, -10);
   cam.setLookAt(camPos,
@@ -243,8 +244,8 @@ int main(){
 			   .0f, 1.0f, .0f, .0f,
 			   .0f, .0f, 1.0f, .5f,
 			   .0f, .0f, .0f, 1.0f);
-  
-    
+
+
   clock_t start_time = clock();
   int count = 0;
 
@@ -269,18 +270,18 @@ int main(){
       break;
     }
   }
-  
+
   wg.destroyTexture(texture);
   wg.destroyUniform(cameraUniform);
   wg.destroyUniform(offsetUniform);
 
   wg.destroyImage(im);
-  
+
   wg.destroyShader(vertexShader);
   wg.destroyShader(fragmentShader);
   wg.destroyShader(textureVertexShader);
   wg.destroyShader(textureFragmentShader);
-  
+
   wg.destroyResourceSet(cameraSet);
   wg.destroyResourceSet(textureSet);
   wg.destroyResourceSet(kernelResources);
@@ -290,7 +291,7 @@ int main(){
   wg.destroyResourceSetLayout(computeLayout);
   wg.destroyResourceSetLayout(resourceLayout);
   wg.destroyResourceSetLayout(textureResourceLayout);
-  
+
   wg.destroyBuffer(vertexBuffer);
   wg.destroyBuffer(colorBuffer);
   wg.destroyBuffer(indexBuffer);
@@ -298,6 +299,6 @@ int main(){
   wg.destroyBuffer(cubeIndexBuffer);
   wg.destroyBuffer(cubeTextureCoordBuffer);
   wg.destroyBuffer(textureCoordBuffer);
-  
+
   return 0;
 }

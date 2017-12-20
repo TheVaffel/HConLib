@@ -155,7 +155,7 @@ void Winval::drawBuffer(unsigned char* p, int w, int h){
 
   BitBlt(hdc, 0, 0, w, h, src, 0, 0, SRCCOPY);
   DeleteDC(src);
-  
+
   DeleteObject(bitmap);
 }
 
@@ -223,11 +223,11 @@ Winval::Winval(int w, int h, bool fullscreen){
   dsp = XOpenDisplay(NULL);
   if(!dsp) return;
 
-  
+
   screenNum = DefaultScreen(dsp);
 
   int Black = BlackPixel(dsp, screenNum);
-  
+
   win = XCreateSimpleWindow(dsp,
 			    DefaultRootWindow(dsp),
 			    50, 50,
@@ -238,13 +238,13 @@ Winval::Winval(int w, int h, bool fullscreen){
   if(fullscreen){
     Atom atoms[2] = { XInternAtom(dsp, "_NET_WM_STATE_FULLSCREEN", False), None };
     XChangeProperty(
-		    dsp, 
-		    win, 
+		    dsp,
+		    win,
 		    XInternAtom(dsp, "_NET_WM_STATE", False),
 		    XA_ATOM, 32, PropModeReplace, (unsigned char*)atoms, 1
 		    );
   }
-    
+
   long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
   XSelectInput(dsp, win, eventMask);
 
@@ -256,7 +256,7 @@ Winval::Winval(int w, int h, bool fullscreen){
   for(int i = 0; i < 256; i++){
     isDown[i] = false;
   }
-  
+
   pointerX = pointerY = 0;
   mouseButtonPressed = false;
 
@@ -281,10 +281,10 @@ Winval::Winval(int w, int h, bool fullscreen){
 
 Winval::~Winval(){
   flushEvents();
-  
+
   if(!isOpen())
     return;
-  
+
   if(image)
     XDestroyImage(image);
   if(win)
@@ -300,20 +300,20 @@ int Winval::getKeySym(int keyCode){
 int Winval::waitForKey(){
   if(!isOpen())
     return 0;
-  
+
   XEvent e;
   do{
     XNextEvent(dsp, &e);
     handleEventProperly(e);
   }while(e.type != KeyPress && isOpen());
-  
+
   return getKeySym(e.xkey.keycode);
 }
 
 void Winval::waitForButtonPress(int& x, int& y){
   if(!isOpen())
     return;
-  
+
   XEvent e;
   do {
     XNextEvent(dsp, &e);
@@ -346,7 +346,7 @@ void Winval::handleEventProperly(XEvent& e){
       bool pressDown = false;
       if(!autoRepeat){
 	if(XEventsQueued(dsp, QueuedAlready)){
-	  
+
 	  XEvent nextEvent;
 	  XPeekEvent(dsp, &nextEvent);
 	  if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
@@ -384,9 +384,9 @@ void Winval::handleEventProperly(XEvent& e){
 
 void Winval::getPointerPosition(int* x, int*y){
   *x = pointerX; *y = pointerY;
-  
+
   if(lockedPointer){
-    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY); 
+    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY);
   }
 }
 
@@ -490,9 +490,9 @@ void Winval::lockPointer(bool lock, int x, int y){
   lockedPointer = lock;
   lockedPointerX = x;
   lockedPointerY = y;
-  
+
   if(lockedPointer){
-    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY); 
+    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY);
   }
 }
 

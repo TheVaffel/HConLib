@@ -99,8 +99,8 @@ const char* computeShaderText =
 
 
 int main(){
-  int texWidth = 64;
-  int texHeight = 64;
+  const int texWidth = 64;
+  const int texHeight = 64;
   unsigned char generic_pattern[4*texWidth*texHeight];
   for(int i = 0; i < texHeight; i++){
     for(int j = 0; j < texWidth; j++){

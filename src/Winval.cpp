@@ -1,7 +1,7 @@
 #include <Winval.h>
 
 #ifdef WIN32
-Winval::Winval(int w, int h){
+Winval::Winval(int w, int h, bool fullscreen){
   hinstance = GetModuleHandle(0);
   const char* AppTitle = "Winval";
   wc.cbSize = sizeof(wc);
@@ -35,6 +35,11 @@ Winval::Winval(int w, int h){
   if(pixelData == 0)
     exit(0);
 
+  if (fullscreen) {
+    DEVMODE newSettings;
+	  EnumDisplaySettings(0, 0, &newSettings);
+    long result = ChangeDisplaySettings(&newSettings, CDS_FULLSCREEN);
+  }
   ShowWindow(hwnd,10);
   UpdateWindow(hwnd);
 }
@@ -93,6 +98,12 @@ void Winval::flushEvents(){
 
 void Winval::getPointerPosition(int* x, int* y){
   *x = pointerX; *y = pointerY;
+
+  if(lockedPointer){
+    POINT p = {lockedPointerX, lockedPointerY};
+    ClientToScreen(hwnd, &p);
+    SetCursorPos(p.x, p.y);
+  }
 }
 
 bool Winval::isMouseButtonPressed(){
@@ -181,8 +192,24 @@ int Winval::getHeight() const {
   return height;
 }
 
-void sleepMilliseconds(int u){
+void Winval::sleepMilliseconds(int u){
   Sleep(u);
+}
+
+void Winval::setPointerVisible(bool visible){
+  ShowCursor(visible);
+}
+
+void Winval::lockPointer(bool lock, int x, int y){
+  lockedPointer = lock;
+  lockedPointerX = x;
+  lockedPointerY = y;
+
+  if(lockedPointer){
+    POINT p = {x, y};
+    ClientToScreen(hwnd, &p);
+    SetCursorPos(p.x, p.y);
+  }
 }
 
 #else //WIN32

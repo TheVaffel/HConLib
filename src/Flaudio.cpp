@@ -81,7 +81,7 @@ Flaudio::~Flaudio(){
   }
 }
 
-void Flaudio::writeBuffer(int16_t*buffer, int numSamples){
+void Flaudio::writeBuffer(int16_t*buffer, uint32_t numSamples){
   uint8_t* hardwareBuffer;
   uint32_t numBytesToWrite = numSamples * 4;
   HRESULT hr;

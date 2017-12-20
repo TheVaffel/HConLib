@@ -1466,16 +1466,16 @@ void Wingine::executeKernel(WingineKernel& kernel, WingineResourceSet resourceSe
   res = vkQueueSubmit(compute_queue, 1, &computeSubmit, compute_command_buffer_fence);
 
   wgAssert(res == VK_SUCCESS, "Submit compute command");
-  
+
   //Play it safe for now
   do{
     res = vkWaitForFences(device, 1, &compute_command_buffer_fence, VK_TRUE, FENCE_TIMEOUT);
   } while (res == VK_TIMEOUT);
 }
 
-void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStages, VkPipelineStageFlags destStages){
+void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout){
   //Shameful copy-paste from LunarG. I'm sorry :(
-  
+
   VkImageMemoryBarrier image_memory_barrier = {};
   image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   image_memory_barrier.pNext = NULL;
@@ -1492,52 +1492,67 @@ void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImag
   image_memory_barrier.subresourceRange.baseArrayLayer = 0;
   image_memory_barrier.subresourceRange.layerCount = 1;
 
+  VkPipelineStageFlags srcStages, destStages;
+
   switch (oldLayout) {
   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
     image_memory_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
     image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    srcStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_PREINITIALIZED:
     image_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+    srcStages = VK_PIPELINE_STAGE_HOST_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
     image_memory_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    srcStages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
     image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    srcStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    break;
 
   default:
+    srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     break;
   }
 
   switch (newLayout) {
   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
     image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    destStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
     image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    destStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
     image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    destStages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
     image_memory_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    destStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     break;
 
   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
     image_memory_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    destStages = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     break;
 
   default:
+    destStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     break;
   }
 
@@ -1563,7 +1578,8 @@ void Wingine::setLayout(WingineImage& wim, VkImageLayout newLayout){
 
   res = vkBeginCommandBuffer(free_command_buffer, &beg);
 
-  wg_cmd_set_image_layout(free_command_buffer,wim.image,VK_IMAGE_ASPECT_COLOR_BIT, wim.layout, newLayout, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+  wg_cmd_set_image_layout(free_command_buffer,wim.image,
+    VK_IMAGE_ASPECT_COLOR_BIT, wim.layout, newLayout);
 
   res = vkEndCommandBuffer(free_command_buffer);
   wgAssert(res == VK_SUCCESS, "Record endCommandBuffer");
@@ -1632,14 +1648,14 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
 
   res = vkResetFences(device, 1, &free_command_buffer_fence);
   wgAssert(res == VK_SUCCESS, "Reset free_command_buffer_fence")
-  
+
   res = vkBeginCommandBuffer(free_command_buffer, &cmd_begin);
   wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
 
   // Set the layouts of the images for transfer
-  wg_cmd_set_image_layout(free_command_buffer, srcImage ,VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+  wg_cmd_set_image_layout(free_command_buffer, srcImage ,VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   // Transfer
   VkImageCopy copy;
@@ -1665,16 +1681,16 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
 
   // Set the layouts of the images for use later
   if(srcEndLayout != VK_IMAGE_LAYOUT_UNDEFINED){
-    wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout);
   }
-  
-  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstEndLayout, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstEndLayout);
 
   res = vkEndCommandBuffer(free_command_buffer);
   wgAssert(res == VK_SUCCESS, "End free command buffer");
 
   VkSubmitInfo submitInfo = {};
-  
+
   submitInfo.pNext = NULL;
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.waitSemaphoreCount = 0;
@@ -2109,14 +2125,14 @@ void WingineObjectGroup::startRecordingCommandBuffer(){
   begin.pNext = NULL;
   begin.flags = 0;
   begin.pInheritanceInfo = NULL;
-    
+
   VkClearValue clear_values[2];
   clear_values[0].color.float32[0] = 0.2f;
   clear_values[0].color.float32[1] = 0.2f;
   clear_values[0].color.float32[2] = 0.2f;
   clear_values[0].color.float32[3] = 1.0f;
   clear_values[1].depthStencil.depth = 1.0f;
-  clear_values[1].depthStencil.stencil = 0.0f;
+  clear_values[1].depthStencil.stencil = 0;
 
   VkViewport viewport;
   viewport.height = (float)wingine->getScreenHeight();

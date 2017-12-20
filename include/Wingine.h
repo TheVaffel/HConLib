@@ -367,18 +367,18 @@ class Wingine{
 
   void render_pass_setup_generic(WingineRenderPassSetup* setup);
 
-  void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout, VkPipelineStageFlags, VkPipelineStageFlags);
-  
+  void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout);
+
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
   void stage_next_image();
 
   void pushNewDrawSemaphore();
 
-  
+
  public:
-  
+
   void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
-  
+
   int getScreenWidth() const;
   int getScreenHeight() const;
 

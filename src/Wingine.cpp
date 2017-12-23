@@ -149,7 +149,6 @@ VkResult Wingine::init_instance(const  Winval* win){
   VkResult res;
 
   instance_extension_names.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-  //instance_extension_names.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 #ifdef WIN32
   instance_extension_names.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else //WIN32
@@ -858,21 +857,6 @@ VkResult Wingine::init_framebuffers(){
   return res;
 }
 
-VkResult Wingine::init_pipeline_cache(){
-  VkPipelineCacheCreateInfo pipelineCache;
-  pipelineCache.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-  pipelineCache.pNext = NULL;
-  pipelineCache.initialDataSize = 0;
-  pipelineCache.pInitialData = NULL;
-  pipelineCache.flags = 0;
-  VkResult res = vkCreatePipelineCache(device, &pipelineCache, NULL, &pipeline_cache);
-  if(res != VK_SUCCESS){
-    printf("Could not create pipeline cache\n");
-  }
-
-  return res;
-}
-
 void Wingine::destroy_instance(){
 #ifdef DEBUG
   PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
@@ -889,9 +873,6 @@ void Wingine::destroy_device(){
 }
 
 void Wingine::destroy_command_buffers(){
-  /*for(int i = 0; i < MAX_NUM_COMMANDS; i++){
-    vkFreeCommandBuffers(device, cmd_pool, 1, &(cmd_buffers[i]));
-    }*/
   vkDestroyCommandPool(device, cmd_pool, NULL);
   vkDestroyCommandPool(device, compute_cmd_pool, NULL);
   vkDestroyFence(device, free_command_buffer_fence, NULL);
@@ -936,9 +917,24 @@ void Wingine::destroy_framebuffers(){
   delete[] framebuffers;
 }
 
-void Wingine::destroy_pipeline(){
-  vkDestroyPipeline(device, color_pipeline, NULL);
+VkResult Wingine::init_pipeline_cache(){
+  VkPipelineCacheCreateInfo pipelineCache;
+  pipelineCache.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+  pipelineCache.pNext = NULL;
+  pipelineCache.initialDataSize = 0;
+  pipelineCache.pInitialData = NULL;
+  pipelineCache.flags = 0;
+  VkResult res = vkCreatePipelineCache(device, &pipelineCache, NULL, &pipeline_cache);
+  if(res != VK_SUCCESS){
+    printf("Could not create pipeline cache\n");
+  }
+
+  return res;
 }
+
+/*void Wingine::destroy_pipeline(){
+  vkDestroyPipeline(device, color_pipeline, NULL);
+}*/
 
 void Wingine::destroy_pipeline_cache(){
   vkDestroyPipelineCache(device, pipeline_cache, NULL);

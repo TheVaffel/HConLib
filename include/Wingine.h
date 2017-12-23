@@ -22,7 +22,6 @@
 #include <vector> //vector
 
 #include <ctime>
-//#include <unistd.h>
 
 #define DEBUG
 
@@ -275,8 +274,6 @@ class Wingine{
   VkCommandBuffer compute_command_buffer;
   VkFence free_command_buffer_fence;
   VkFence compute_command_buffer_fence;
-  //VkCommandBuffer cmd_buffers[MAX_NUM_COMMANDS];
-  //uint32_t current_command_buffer;
 
   VkSurfaceKHR surface;
   VkFormat format;
@@ -338,7 +335,6 @@ class Wingine{
   VkResult init_render_passes();
   VkResult init_framebuffers();
   VkResult init_pipeline_cache();
-  VkPipeline init_pipeline();
 
   void destroy_instance();
   void destroy_device();
@@ -349,7 +345,6 @@ class Wingine{
   void destroy_descriptor_pool();
   void destroy_framebuffers();
   void destroy_pipeline_cache();
-  void destroy_pipeline();
 
   VkResult init_global_extension_properties();
   VkResult init_global_layer_properties();

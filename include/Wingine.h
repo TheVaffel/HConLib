@@ -323,11 +323,17 @@ class Wingine{
 
   WingineScene* currentScene;
 
-  VkResult init_instance(const Winval*);
+  VkResult init_instance(int width, int height, const char* title);
   VkResult find_device();
   VkResult init_device();
   VkResult init_device_queue();
-  VkResult init_surface(const Winval*);
+
+#ifdef WIN32
+  VkResult init_surface(HINSTANCE hinst, HWND hwnd);
+#else // WIN32
+  VkResult init_surface(Window window, Display* display);
+#endif // WIN32
+
   VkResult init_command_buffers();
   VkResult init_swapchain();
   VkResult init_depth_buffer();
@@ -369,7 +375,12 @@ class Wingine{
 
   void pushNewDrawSemaphore();
 
-
+  void initVulkan(int width, int height, const char* title,
+#if WIN32
+             HINSTANCE hinstance, HWND hwnd);
+#else
+             Window window, Display* display);
+#endif
  public:
 
   void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
@@ -430,8 +441,9 @@ class Wingine{
   void setScene(WingineScene& scene);
   void renderScene();
 
-  void initVulkan(const Winval*);
-
+#ifdef WIN32
+  Wingine(int width, int height, const char* title, HINSTANCE hinst, HWND hwnd);
+#endif // WIN32
   Wingine(const Winval&);
 
   ~Wingine();

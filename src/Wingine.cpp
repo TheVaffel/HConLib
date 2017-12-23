@@ -67,9 +67,50 @@ WingineRenderPassSetup::~WingineRenderPassSetup(){
   delete [] references;
 }
 
+#if WIN32
+Wingine::Wingine(int inWidth, int inHeight,
+                 const char* title,
+                 HINSTANCE hinst, HWND hwnd){
+  initVulkan(inWidth, inHeight, title,
+             hinst, hwnd);
+}
+#endif // WIN32
 
 Wingine::Wingine(const Winval& win){
-  initVulkan(&win);
+  initVulkan(win.getWidth(), win.getHeight(), win.getTitle(),
+#ifdef WIN32
+             win.getInstance(), win.getHWND());
+#else // WIN32
+             win.getWindow(), win.getDisplay());
+#endif // WIN32
+}
+
+void Wingine::initVulkan(int inWidth, int inHeight, const char* title,
+#ifdef WIN32
+                       HINSTANCE hinstance, HWND hwnd){
+#else // WIN32
+                       Window window, Display* display){
+#endif // WIN32
+
+  init_instance(inWidth, inHeight, title);
+
+#ifdef WIN32
+  init_surface( hinstance, hwnd);
+#else // WIN32
+  init_surface(window, display);
+#endif // WIN32
+
+  find_device();
+  init_device();
+  init_device_queue();
+  init_command_buffers();
+  init_swapchain();
+  init_depth_buffer();
+  init_render_passes();
+  init_framebuffers();
+  init_descriptor_pool();
+  init_pipeline_cache();
+  stage_next_image();
 }
 
 Wingine::~Wingine(){
@@ -145,7 +186,7 @@ uint32_t Wingine::get_memory_type_index( uint32_t type_bits, VkFlags requirement
   exit(0);
 }
 
-VkResult Wingine::init_instance(const  Winval* win){
+VkResult Wingine::init_instance(int inWidth, int inHeight, const char * title){
   VkResult res;
 
   instance_extension_names.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -163,7 +204,7 @@ VkResult Wingine::init_instance(const  Winval* win){
   VkApplicationInfo app_info = {};
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   app_info.pNext = NULL;
-  app_info.pApplicationName = win->getTitle();
+  app_info.pApplicationName = title;
   app_info.applicationVersion = 1;
   app_info.pEngineName = "Wingine";
   app_info.engineVersion = 1;
@@ -213,8 +254,8 @@ VkResult Wingine::init_instance(const  Winval* win){
 
   #endif
 
-  width = win->getWidth();
-  height = win->getHeight();
+  width = inWidth;
+  height = inHeight;
 
   return res;
 }
@@ -390,15 +431,25 @@ VkResult Wingine::init_command_buffers(){
   return res;
 }
 
-VkResult Wingine::init_surface(const Winval* win){
 #ifdef WIN32
+VkResult Wingine::init_surface(HINSTANCE hinst, HWND hwnd){
   VkWin32SurfaceCreateInfoKHR surface_info = {};
   surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  surface_info.hinstance = win->getInstance();
-  surface_info.hwnd = win->getHWND();
+  surface_info.hinstance = hinst;
+  surface_info.hwnd = hwnd;
 
   VkResult res = vkCreateWin32SurfaceKHR(instance, &surface_info, NULL, &surface);
+  if(res != VK_SUCCESS){
+    printf("Could not create surface\n");
+    exit(0);
+  }
+
+  return res;
+}
+
 #else //WIN32
+
+VkResult Wingine::init_surface(Window window, Display* display){
   VkXlibSurfaceCreateInfoKHR surface_info = {};
   surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
   surface_info.pNext = NULL;
@@ -406,7 +457,6 @@ VkResult Wingine::init_surface(const Winval* win){
   surface_info.dpy = win->getDisplay();
 
   VkResult res = vkCreateXlibSurfaceKHR(instance, &surface_info, NULL, &surface);
-#endif //WIN32
 
   if(res != VK_SUCCESS){
     printf("Could not create surface\n");
@@ -415,6 +465,8 @@ VkResult Wingine::init_surface(const Winval* win){
 
   return res;
 }
+
+#endif //WIN32
 
 VkResult Wingine::init_device_queue(){
   vkGetDeviceQueue(device, graphics_queue_family_index, 0, &graphics_queue);
@@ -1200,26 +1252,7 @@ void Wingine::create_pipeline_color_renderer_single_buffer( VkPipeline* pipeline
   }
 }
 
-void Wingine::initVulkan(const Winval* win){
-  init_instance( win);
-  init_surface( win);
-  find_device();
-  init_device();
-  init_device_queue();
-  init_command_buffers();
-  init_swapchain();
-  init_depth_buffer();
-  init_render_passes();
-  init_framebuffers();
-  init_descriptor_pool();
-  init_pipeline_cache();
-  stage_next_image();
-
-  //create_pipeline_color_renderer( &color_pipeline);
-}
-
 void Wingine::destroy_vulkan(){
-  destroy_pipeline();
   destroy_pipeline_cache();
   destroy_framebuffers();
   destroy_render_passes();

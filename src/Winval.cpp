@@ -1,6 +1,8 @@
 #include <Winval.h>
 
 #ifdef WIN32
+Winval::Winval(){}
+
 Winval::Winval(int w, int h, bool fullscreen){
   hinstance = GetModuleHandle(0);
   const char* AppTitle = "Winval";

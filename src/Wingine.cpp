@@ -1790,6 +1790,25 @@ void Wingine::destroyImage(WingineImage w){
   vkFreeMemory(device, w.mem, NULL);
 }
 
+WingineDepthFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height){
+  WingineDepthFramebuffer framebuffer;
+  framebuffer.depth_image = createReadableDepthBuffer(width, height);
+
+  VkImageView attachments[] = {framebuffer.depth_image.view};
+  VkFramebufferCreateInfo fb_info = {};
+  fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  fb_info.pNext = NULL;
+  fb_info.renderPass = render_pass_generic;
+  fb_info.attachmentCount = 1;
+  fb_info.pAttachments = attachments;
+  fb_info.width = width;
+  fb_info.height = height;
+  fb_info.layers = 1;
+  VkResult res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
+  wgAssert(res == VK_SUCCESS, "Creating framebuffer");
+  return framebuffer;
+}
+
 WingineFramebuffer Wingine::createFramebuffer(uint32_t width, uint32_t height){
   VkImageCreateInfo ici = {};
 
@@ -1856,12 +1875,19 @@ WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32
   return framebuffer;
 }
 
+WingineImage Wingine::createReadableDepthBuffer(uint32_t width, uint32_t height){
+  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+}
+
 WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
+  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_t usage){
   WingineImage depth_buffer;
 
-  const VkFormat depth_format = DEPTH_BUFFER_FORMAT;
   VkFormatProperties props;
-  vkGetPhysicalDeviceFormatProperties(physical_device, depth_format, &props);
+  vkGetPhysicalDeviceFormatProperties(physical_device, DEPTH_BUFFER_FORMAT, &props);
 
 
   VkImageCreateInfo image_info = {};
@@ -1877,7 +1903,7 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
   image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   image_info.pNext = NULL;
   image_info.imageType = VK_IMAGE_TYPE_2D;
-  image_info.format = depth_format;
+  image_info.format = DEPTH_BUFFER_FORMAT;
   image_info.extent.width = width;
   image_info.extent.height = height;
   image_info.extent.depth = 1;
@@ -1885,7 +1911,7 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
   image_info.arrayLayers = 1;
   image_info.samples = NUM_SAMPLES;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  image_info.usage = usage;
   image_info.queueFamilyIndexCount = 0;
   image_info.pQueueFamilyIndices = NULL;
   image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -1927,7 +1953,7 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
   view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   view_info.pNext = NULL;
   view_info.image = depth_buffer.image;
-  view_info.format = depth_format;
+  view_info.format = DEPTH_BUFFER_FORMAT;
   view_info.components.r = VK_COMPONENT_SWIZZLE_R;
   view_info.components.g = VK_COMPONENT_SWIZZLE_G;
   view_info.components.b = VK_COMPONENT_SWIZZLE_B;

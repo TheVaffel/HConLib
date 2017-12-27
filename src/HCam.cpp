@@ -193,10 +193,10 @@ int HCam::capture_image(unsigned char* rgb_buffer) {
 	}
 
 	if (!upsideDown) {
-		for (int i = 0; i < height / 2; i++) {
+		for (uint32_t i = 0; i < height / 2; i++) {
 			uint32_t* fp = ((uint32_t*)rgb_buffer) + i*width;
 			uint32_t* sp = ((uint32_t*)rgb_buffer) + (height - 1 - i)*width;
-			for (int j = 0; j < width; j++) {
+			for (uint32_t j = 0; j < width; j++) {
 				uint32_t temp = *fp;
 				*(fp++) = *sp;
 				*(sp++) = temp;
@@ -204,10 +204,10 @@ int HCam::capture_image(unsigned char* rgb_buffer) {
 		}
 	}
 	else {
-		for (int i = 0; i < width / 2; i++) {
+		for (uint32_t i = 0; i < width / 2; i++) {
 			uint32_t* fp = ((uint32_t*)rgb_buffer) + i;
 			uint32_t* sp = ((uint32_t*)rgb_buffer) + width - 1 - i;
-			for (int j = 0; j < height; j++) {
+			for (uint32_t j = 0; j < height; j++) {
 				uint32_t temp = *fp;
 				*(fp++) = *sp;
 				*(sp++) = temp;

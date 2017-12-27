@@ -18,7 +18,6 @@
 
 #define wgAssert(B, STR) {if(!(B)){printf("\"%s\" failed at line %d in file %s\n", STR, __LINE__, __FILE__); exit(0);}}
 
-
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
   view = Matrix4(FLATALG_MATRIX_IDENTITY);
   projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
@@ -105,7 +104,6 @@ void Wingine::initVulkan(int inWidth, int inHeight, const char* title,
   init_device_queue();
   init_command_buffers();
   init_swapchain();
-  init_depth_buffer();
   init_render_passes();
   init_framebuffers();
   init_descriptor_pool();
@@ -605,7 +603,8 @@ VkResult Wingine::init_swapchain(){
   swapchain_ci.oldSwapchain = VK_NULL_HANDLE;
   swapchain_ci.clipped = true;
   swapchain_ci.imageColorSpace = colorSpace;
-  swapchain_ci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  swapchain_ci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+    | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   swapchain_ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
   swapchain_ci.queueFamilyIndexCount = 0;
   swapchain_ci.pQueueFamilyIndices = NULL;
@@ -636,7 +635,9 @@ VkResult Wingine::init_swapchain(){
     exit(0);
   }
 
-  swapchain_image_views = new VkImageView[swapchain_image_count];
+  //return res;
+
+  /*swapchain_image_views = new VkImageView[swapchain_image_count];
   for(uint32_t i = 0; i < swapchain_image_count; i++){
     VkImageViewCreateInfo color_image_view = {};
     color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -659,7 +660,7 @@ VkResult Wingine::init_swapchain(){
     if(res != VK_SUCCESS){
       printf("Could not create image view for image %d\n", i);
     }
-  }
+  }*/
 
   VkFenceCreateInfo fenceInfo;
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -686,99 +687,6 @@ VkResult Wingine::init_swapchain(){
   }
 
   return res;
-}
-
-VkResult Wingine::init_depth_buffer(){
-  VkImageCreateInfo image_info = {};
-
-  const VkFormat depth_format = VK_FORMAT_D16_UNORM;
-  VkFormatProperties props;
-  vkGetPhysicalDeviceFormatProperties(physical_device, depth_format, &props);
-
-  if(props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT){
-    image_info.tiling = VK_IMAGE_TILING_LINEAR;
-  }else if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT){
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-  }else{
-    printf("Did not support 16-bit depth format\n");
-    exit(0);
-  }
-
-  image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  image_info.pNext = NULL;
-  image_info.imageType = VK_IMAGE_TYPE_2D;
-  image_info.format = depth_format;
-  image_info.extent.width = width;
-  image_info.extent.height = height;
-  image_info.extent.depth = 1;
-  image_info.mipLevels = 1;
-  image_info.arrayLayers = 1;
-  image_info.samples = NUM_SAMPLES;
-  image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-  image_info.queueFamilyIndexCount = 0;
-  image_info.pQueueFamilyIndices = NULL;
-  image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  image_info.flags = 0;
-
-  VkMemoryAllocateInfo mem_alloc = {};
-  mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  mem_alloc.pNext = NULL;
-  mem_alloc.allocationSize = 0;
-  mem_alloc.memoryTypeIndex = 0;
-
-  VkImageViewCreateInfo view_info = {};
-  view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  view_info.pNext = NULL;
-  view_info.image = VK_NULL_HANDLE;
-  view_info.format = depth_format;
-  view_info.components.r = VK_COMPONENT_SWIZZLE_R;
-  view_info.components.g = VK_COMPONENT_SWIZZLE_G;
-  view_info.components.b = VK_COMPONENT_SWIZZLE_B;
-  view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-  view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-  view_info.subresourceRange.baseMipLevel = 0;
-  view_info.subresourceRange.levelCount = 1;
-  view_info.subresourceRange.baseArrayLayer = 0;
-  view_info.subresourceRange.layerCount = 1;
-  view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  view_info.flags = 0;
-
-  depth_buffer_format = depth_format;
-
-  VkResult res = vkCreateImage(device, &image_info, NULL, &depth_buffer_image);
-  if(res != VK_SUCCESS){
-    printf("Could not create depth buffer\n");
-    exit(0);
-  }
-
-  VkMemoryRequirements mem_reqs = {};
-  vkGetImageMemoryRequirements(device, depth_buffer_image, &mem_reqs);
-  mem_alloc.allocationSize = mem_reqs.size;
-
-  mem_alloc.memoryTypeIndex = get_memory_type_index(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-  res = vkAllocateMemory(device, &mem_alloc, NULL, &depth_buffer_memory);
-  if(res != VK_SUCCESS){
-    printf("Memory could not be allocated\n");
-    exit(0);
-  }
-
-  res = vkBindImageMemory(device, depth_buffer_image, depth_buffer_memory, 0);
-  if(res != VK_SUCCESS){
-    printf("Memory could not be bound\n");
-    exit(0);
-  }
-
-  view_info.image = depth_buffer_image;
-  res = vkCreateImageView(device, &view_info, NULL, &depth_buffer_view);
-  if(res != VK_SUCCESS){
-    printf("Depth image view could not be created\n");
-    exit(0);
-  }
-
-  return res;
-
 }
 
 VkResult Wingine::init_descriptor_pool(){
@@ -821,7 +729,7 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
   setup->attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   setup->attachments[0].flags = 0;
 
-  setup->attachments[1].format = depth_buffer_format;
+  setup->attachments[1].format = DEPTH_BUFFER_FORMAT;
   setup->attachments[1].samples = NUM_SAMPLES;
   setup->attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   setup->attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -882,31 +790,13 @@ VkResult Wingine::init_render_passes(){
 }
 
 VkResult Wingine::init_framebuffers(){
-  VkImageView attachments[2];
-  attachments[1] = depth_buffer_view;
+  framebuffers = new WingineFramebuffer[swapchain_image_count];
 
-  VkFramebufferCreateInfo fb_info = {};
-  fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-  fb_info.pNext = NULL;
-  fb_info.renderPass = render_pass_generic;
-  fb_info.attachmentCount = 2;
-  fb_info.pAttachments = attachments;
-  fb_info.width = width;
-  fb_info.height = height;
-  fb_info.layers = 1;
-  framebuffers = new VkFramebuffer[swapchain_image_count];
-
-  VkResult res;
-  for(uint32_t i = 0 ; i < swapchain_image_count; i++){
-    attachments[0] = swapchain_image_views[i];
-    res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffers[i]);
-    if(res != VK_SUCCESS){
-      printf("Could not create framebuffer number %d\n", i);
-      exit(0);
-    }
+  for(uint32_t i = 0; i < swapchain_image_count; i++){
+    framebuffers[i] = create_framebuffer_from_vk_image(swapchain_images[i], width, height);
   }
 
-  return res;
+  return VK_SUCCESS;
 }
 
 void Wingine::destroy_instance(){
@@ -932,11 +822,10 @@ void Wingine::destroy_command_buffers(){
 }
 
 void Wingine::destroy_swapchain(){
-  for(uint32_t i = 0; i < swapchain_image_count;i++){
+  /*for(uint32_t i = 0; i < swapchain_image_count;i++){
     vkDestroyImageView(device, swapchain_image_views[i], NULL);
-  }
+  }*/
 
-  delete[] swapchain_image_views;
   delete[] swapchain_images;
 
   vkWaitForFences(device, 1, &imageAcquiredFence, VK_TRUE, 1000000000ULL);
@@ -951,22 +840,27 @@ void Wingine::destroy_swapchain(){
   vkDestroySurfaceKHR(instance, surface, NULL);
 }
 
-void Wingine::destroy_depth_buffer(){
-  vkDestroyImageView(device, depth_buffer_view, NULL);
-  vkDestroyImage(device, depth_buffer_image, NULL);
-  vkFreeMemory(device, depth_buffer_memory, NULL);
-}
-
 void Wingine::destroy_render_passes(){
   vkDestroyRenderPass(device, render_pass_generic, NULL);
 }
 
 void Wingine::destroy_framebuffers(){
   for(uint32_t i = 0; i < swapchain_image_count; i++){
-    vkDestroyFramebuffer(device, framebuffers[i], NULL);
+    //destroyFramebuffer(framebuffers[i]);
+    vkDestroyImageView(device, framebuffers[i].image.view, NULL);
+    destroyImage(framebuffers[i].depth_image);
+
+    vkDestroyFramebuffer(device, framebuffers[i].framebuffer, NULL);
   }
 
   delete[] framebuffers;
+}
+
+void Wingine::destroyFramebuffer(WingineFramebuffer buffer){
+  //vkDestroyImageView(device, buffer.image.view, NULL);
+  destroyImage(buffer.image);
+  destroyImage(buffer.depth_image);
+  vkDestroyFramebuffer(device, buffer.framebuffer, NULL);
 }
 
 VkResult Wingine::init_pipeline_cache(){
@@ -999,7 +893,6 @@ void Wingine::destroy_descriptor_pool(){
 
 WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
   WingineBuffer wBuffer;
-
   VkBufferCreateInfo buf_info = {};
   buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   buf_info.pNext = NULL;
@@ -1017,7 +910,6 @@ WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
 
   VkMemoryRequirements mem_reqs;
   vkGetBufferMemoryRequirements(device, wBuffer.buffer, &mem_reqs);
-
   VkMemoryAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   alloc_info.pNext = NULL;
@@ -1025,7 +917,6 @@ WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
 
   alloc_info.allocationSize = mem_reqs.size;
   alloc_info.memoryTypeIndex = get_memory_type_index(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT); //Ensures reachability from host
-
   if(alloc_info.memoryTypeIndex < 0){
     printf("Could not find proper memory\n");
     exit(0);
@@ -1083,6 +974,26 @@ void Wingine::setUniform(const WingineUniform& uniform, void* data, uint32_t siz
 
 void Wingine::destroyUniform(const WingineUniform& uniform){
   destroyBuffer(uniform.buffer);
+}
+
+void Wingine::image_create_info_generic(VkImageCreateInfo* ici){
+  ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  ici->pNext = NULL;
+  ici->imageType = VK_IMAGE_TYPE_2D;
+  ici->format = VK_FORMAT_R8G8B8A8_UNORM;
+  ici->extent.width = width;
+  ici->extent.height = height;
+  ici->extent.depth = 1;
+  ici->mipLevels = 1;
+  ici->arrayLayers = 1;
+  ici->samples = NUM_SAMPLES;
+  ici->tiling = VK_IMAGE_TILING_OPTIMAL;
+  ici->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  ici->usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  ici->queueFamilyIndexCount = 0;
+  ici->pQueueFamilyIndices = NULL;
+  ici->sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  ici->flags = 0;
 }
 
 //Serves as basis for other pipelines
@@ -1256,7 +1167,6 @@ void Wingine::destroy_vulkan(){
   destroy_pipeline_cache();
   destroy_framebuffers();
   destroy_render_passes();
-  destroy_depth_buffer();
   destroy_descriptor_pool();
   destroy_swapchain();
   destroy_command_buffers();
@@ -1502,7 +1412,8 @@ void Wingine::executeKernel(WingineKernel& kernel, WingineResourceSet resourceSe
   } while (res == VK_TIMEOUT);
 }
 
-void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect, VkImageLayout oldLayout, VkImageLayout newLayout){
+void Wingine::wg_cmd_set_image_layout(VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect,
+  VkImageLayout oldLayout, VkImageLayout newLayout){
   //Shameful copy-paste from LunarG. I'm sorry :(
 
   VkImageMemoryBarrier image_memory_barrier = {};
@@ -1659,8 +1570,8 @@ void Wingine::setLayout(WingineImage& wim, VkImageLayout newLayout){
   wim.imageInfo.imageView = wim.view;
 }
 
-
-void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout){
+void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
+  int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout){
   VkResult res;
 
   VkCommandBufferBeginInfo cmd_begin = {};
@@ -1683,12 +1594,12 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
 
   // Set the layouts of the images for transfer
-  wg_cmd_set_image_layout(free_command_buffer, srcImage ,VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   // Transfer
-  VkImageCopy copy;
+  /*VkImageCopy copy;
   copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   copy.srcSubresource.mipLevel = 0;
   copy.srcSubresource.baseArrayLayer = 0;
@@ -1708,7 +1619,31 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   copy.extent.depth = 1;
 
   vkCmdCopyImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+  */
 
+  VkImageBlit region = {};
+  region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.srcSubresource.mipLevel = 0;
+  region.srcSubresource.baseArrayLayer = 0;
+  region.srcSubresource.layerCount = 1;
+  region.srcOffsets[0].x = 0;
+  region.srcOffsets[0].y = 0;
+  region.srcOffsets[1].x = w;
+  region.srcOffsets[1].y = h;
+  region.srcOffsets[1].z = 1;
+
+  region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.dstSubresource.mipLevel = 0;
+  region.dstSubresource.baseArrayLayer = 0;
+  region.dstSubresource.layerCount = 1;
+  region.dstOffsets[0].x = 0;
+  region.dstOffsets[0].y = 0;
+  region.dstOffsets[1].x = w2;
+  region.dstOffsets[1].y = h2;
+  region.dstOffsets[1].z = 1;
+
+  vkCmdBlitImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
   // Set the layouts of the images for use later
   if(srcEndLayout != VK_IMAGE_LAYOUT_UNDEFINED){
     wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout);
@@ -1740,30 +1675,62 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   } while (res == VK_TIMEOUT);
 }
 
-WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, VkImageUsageFlags usage){
+void Wingine::copyImage(WingineImage& src, WingineImage& dst){
+
+  VkImageLayout srcEndLayout = src.layout;
+  VkImageLayout dstEndLayout = dst.layout;
+
+  if(srcEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
+    srcEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  if(dstEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || dstEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
+    dstEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+  copyImage(src.width, src.height, src.image, src.layout, srcEndLayout,
+      dst.width, dst.height, dst.image, dst.layout, dstEndLayout);
+  src.layout = srcEndLayout;
+  dst.layout = dstEndLayout;
+}
+
+void Wingine::copyFromFramebuffer(WingineFramebuffer src, WingineImage dst){
+  copyImage(src.image, dst);
+}
+
+WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, VkImageUsageFlags usage,
+  VkImageTiling tiling, uint32_t memProps){
   WingineImage image;
   image.width = w;
   image.height = h;
   image.layout = layout;
 
+  VkImage vim;
+
   VkImageCreateInfo ici = {};
-  ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  ici.pNext = NULL;
-  ici.imageType = VK_IMAGE_TYPE_2D;
-  ici.format = VK_FORMAT_R8G8B8A8_UNORM;
+
+  image_create_info_generic(&ici);
   ici.extent.width = w;
   ici.extent.height = h;
-  ici.extent.depth = 1;
-  ici.mipLevels = 1;
-  ici.arrayLayers = 1;
-  ici.samples = NUM_SAMPLES;
-  ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+  ici.tiling = tiling;
   ici.initialLayout = layout;
   ici.usage = usage;
-  ici.queueFamilyIndexCount = 0;
-  ici.pQueueFamilyIndices = NULL;
-  ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  ici.flags = 0;
+
+  VkResult res = vkCreateImage(device, &ici, NULL, &vim);
+  wgAssert(res == VK_SUCCESS, "Create image");
+
+  return create_image_from_vk_image(vim, w, h, usage, memProps);
+}
+
+WingineImage Wingine::createGPUImage(uint32_t w, uint32_t h){
+  return createImage(w, h, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+}
+
+WingineImage Wingine::create_image_from_vk_image(VkImage vkim, uint32_t w, uint32_t h, VkImageUsageFlags usage, uint32_t memProps){
+  WingineImage image;
+  image.width = w;
+  image.height = h;
+  image.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  image.image = vkim;
 
   VkMemoryAllocateInfo memAlloc = {};
   memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1773,22 +1740,26 @@ WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, 
 
   VkMemoryRequirements memReqs;
 
-  VkResult res = vkCreateImage(device, &ici, NULL, &image.image);
-  wgAssert(res == VK_SUCCESS, "Create image");
-
   vkGetImageMemoryRequirements(device, image.image, &memReqs);
 
   memAlloc.allocationSize = memReqs.size;
+  image.memorySize = (int)memReqs.size;
 
   memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits,
-						   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+						   memProps);
 
-  res = vkAllocateMemory(device, &memAlloc, NULL, &image.mem);
+  VkResult res = vkAllocateMemory(device, &memAlloc, NULL, &image.mem);
   wgAssert(res == VK_SUCCESS, "Allocate image memory");
 
   res = vkBindImageMemory(device, image.image, image.mem, 0);
   wgAssert(res == VK_SUCCESS, "Bind image memory");
 
+  image.imageInfo.imageLayout = image.layout;
+
+  if((usage & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == usage){
+    image.view = 0;
+    return image;
+  }
 
   VkImageViewCreateInfo viewInfo = {};
   viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1808,17 +1779,216 @@ WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, 
 
   res = vkCreateImageView(device,&viewInfo, NULL, &image.view);
 
-
-  image.imageInfo.imageLayout = image.layout;
   image.imageInfo.imageView = image.view;
-
   return image;
 }
 
 void Wingine::destroyImage(WingineImage w){
-  vkDestroyImageView(device, w.view, NULL);
+  if(w.view != 0)
+    vkDestroyImageView(device, w.view, NULL);
   vkDestroyImage(device, w.image, NULL);
   vkFreeMemory(device, w.mem, NULL);
+}
+
+WingineFramebuffer Wingine::createFramebuffer(uint32_t width, uint32_t height){
+  VkImageCreateInfo ici = {};
+
+  image_create_info_generic(&ici);
+  ici.extent.width = width;
+  ici.extent.height = height;
+  ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+  ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  ici.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+  VkImage vim;
+  VkResult res = vkCreateImage(device, &ici, NULL, &vim);
+  wgAssert(res == VK_SUCCESS, "Create image");
+
+  return create_framebuffer_from_vk_image(vim, width, height);
+}
+
+WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32_t width, uint32_t height){
+  WingineImage colIm;
+  colIm.width = width;
+  colIm.height = height;
+  colIm.image = vim;
+  VkImageViewCreateInfo color_image_view = {};
+
+  color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  color_image_view.pNext = NULL;
+  color_image_view.flags = 0;
+  color_image_view.image = vim;
+  color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  color_image_view.format = format;
+  color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
+  color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
+  color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
+  color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
+  color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  color_image_view.subresourceRange.baseMipLevel = 0;
+  color_image_view.subresourceRange.levelCount = 1;
+  color_image_view.subresourceRange.baseArrayLayer = 0;
+  color_image_view.subresourceRange.layerCount = 1;
+
+  VkResult res = vkCreateImageView(device, &color_image_view, NULL, &colIm.view);
+
+  colIm.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  colIm.imageInfo.imageView = colIm.view;
+  colIm.imageInfo.imageLayout = colIm.layout;
+  wgAssert(res == VK_SUCCESS, "Creating image view to framebuffer");
+
+  WingineFramebuffer framebuffer;
+  framebuffer.image = colIm;
+  framebuffer.depth_image = createDepthBuffer(width, height);
+
+  VkImageView attachments[] = {colIm.view, framebuffer.depth_image.view};
+  VkFramebufferCreateInfo fb_info = {};
+  fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  fb_info.pNext = NULL;
+  fb_info.renderPass = render_pass_generic;
+  fb_info.attachmentCount = 2;
+  fb_info.pAttachments = attachments;
+  fb_info.width = width;
+  fb_info.height = height;
+  fb_info.layers = 1;
+  res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
+  wgAssert(res == VK_SUCCESS, "Creating framebuffer");
+  return framebuffer;
+}
+
+WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
+  WingineImage depth_buffer;
+
+  const VkFormat depth_format = DEPTH_BUFFER_FORMAT;
+  VkFormatProperties props;
+  vkGetPhysicalDeviceFormatProperties(physical_device, depth_format, &props);
+
+
+  VkImageCreateInfo image_info = {};
+  if(props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT){
+    image_info.tiling = VK_IMAGE_TILING_LINEAR;
+  }else if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT){
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+  }else{
+    printf("Did not support 16-bit depth format\n");
+    exit(0);
+  }
+
+  image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  image_info.pNext = NULL;
+  image_info.imageType = VK_IMAGE_TYPE_2D;
+  image_info.format = depth_format;
+  image_info.extent.width = width;
+  image_info.extent.height = height;
+  image_info.extent.depth = 1;
+  image_info.mipLevels = 1;
+  image_info.arrayLayers = 1;
+  image_info.samples = NUM_SAMPLES;
+  image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  image_info.queueFamilyIndexCount = 0;
+  image_info.pQueueFamilyIndices = NULL;
+  image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  image_info.flags = 0;
+
+  VkMemoryAllocateInfo mem_alloc = {};
+  mem_alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  mem_alloc.pNext = NULL;
+  mem_alloc.allocationSize = 0;
+  mem_alloc.memoryTypeIndex = 0;
+
+
+
+  VkResult res = vkCreateImage(device, &image_info, NULL, &depth_buffer.image);
+  if(res != VK_SUCCESS){
+    printf("Could not create depth buffer\n");
+    exit(0);
+  }
+
+  VkMemoryRequirements mem_reqs = {};
+  vkGetImageMemoryRequirements(device, depth_buffer.image, &mem_reqs);
+  mem_alloc.allocationSize = mem_reqs.size;
+
+  mem_alloc.memoryTypeIndex = get_memory_type_index(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+  res = vkAllocateMemory(device, &mem_alloc, NULL, &depth_buffer.mem);
+  if(res != VK_SUCCESS){
+    printf("Memory could not be allocated\n");
+    exit(0);
+  }
+
+  res = vkBindImageMemory(device, depth_buffer.image, depth_buffer.mem, 0);
+  if(res != VK_SUCCESS){
+    printf("Memory could not be bound\n");
+    exit(0);
+  }
+
+  VkImageViewCreateInfo view_info = {};
+  view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  view_info.pNext = NULL;
+  view_info.image = depth_buffer.image;
+  view_info.format = depth_format;
+  view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+  view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+  view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+  view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+  view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  view_info.subresourceRange.baseMipLevel = 0;
+  view_info.subresourceRange.levelCount = 1;
+  view_info.subresourceRange.baseArrayLayer = 0;
+  view_info.subresourceRange.layerCount = 1;
+  view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  view_info.flags = 0;
+
+  res = vkCreateImageView(device, &view_info, NULL, &depth_buffer.view);
+  if(res != VK_SUCCESS){
+    printf("Depth image view could not be created\n");
+    exit(0);
+  }
+
+  depth_buffer.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  return depth_buffer;
+}
+
+WingineImage Wingine::create_mappable_image(uint32_t width, uint32_t height){
+  return createImage(width, height, VK_IMAGE_LAYOUT_PREINITIALIZED,
+    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+    VK_IMAGE_TILING_LINEAR,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+  );
+}
+
+void Wingine::getImageContent(WingineImage image, uint8_t* data){
+  WingineImage mapIm = create_mappable_image(image.width, image.height);
+
+  copyImage(image, mapIm);
+
+  VkImageSubresource subres = {};
+  subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  subres.mipLevel = 0;
+  subres.arrayLayer = 0;
+  VkSubresourceLayout srLayout;
+  vkGetImageSubresourceLayout(device, mapIm.image, &subres, &srLayout);
+
+  uint8_t* tmp;
+  VkResult res = vkMapMemory(device, mapIm.mem, 0, mapIm.memorySize, 0, (void**)&tmp);
+  wgAssert(res == VK_SUCCESS, "Mapping memory in image content getting");
+  tmp += srLayout.offset;
+  uint32_t* dataRow = (uint32_t*)data;
+  for(uint32_t i = 0; i < mapIm.height; i++){
+    uint32_t*tp = (uint32_t*)tmp;
+    for(uint32_t j = 0; j < mapIm.width; j++){
+      *dataRow = *tp;
+      tp++;
+      dataRow++;
+    }
+    //memcpy(dataRow, tmp, mapIm.width*4);
+    tmp += srLayout.rowPitch;
+    //dataRow += mapIm.width * 4;
+  }
+
+  vkUnmapMemory(device, mapIm.mem);
+  destroyImage(mapIm);
 }
 
 //This will create a texture immutable from the CPU
@@ -1831,7 +2001,7 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.image.width = w;
   resultTexture.image.height = h;
 
-  //First, prepare staging image
+  /*//First, prepare staging image
   VkImageCreateInfo ici = {};
   ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   ici.pNext = NULL;
@@ -1859,12 +2029,9 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 
   VkImage mappableImage;
   VkDeviceMemory mappableMemory;
-  VkMemoryRequirements memReqs;
 
   res = vkCreateImage(device, &ici, NULL, &mappableImage);
   wgAssert(res == VK_SUCCESS, "Create image");
-
-  vkGetImageMemoryRequirements(device, mappableImage, &memReqs);
 
   memAlloc.allocationSize = memReqs.size;
 
@@ -1875,8 +2042,9 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   wgAssert(res == VK_SUCCESS, "Allocate image memory");
 
   res = vkBindImageMemory(device, mappableImage, mappableMemory, 0);
-  wgAssert(res == VK_SUCCESS, "Bind image memory");
-
+  wgAssert(res == VK_SUCCESS, "Bind image memory");*/
+  WingineImage wMappableImage = create_mappable_image(w, h);
+  VkImage mappableImage = wMappableImage.image;
 
   VkImageSubresource subres = {};
   subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1886,9 +2054,12 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   VkSubresourceLayout layout;
   void *data;
 
+  VkMemoryRequirements memReqs;
+  vkGetImageMemoryRequirements(device, mappableImage, &memReqs);
+
   vkGetImageSubresourceLayout(device, mappableImage, &subres, &layout);
 
-  res = vkMapMemory(device, mappableMemory, 0,memReqs.size, 0, &data);
+  res = vkMapMemory(device, wMappableImage.mem, 0,memReqs.size, 0, &data);
   wgAssert(res == VK_SUCCESS, "Map memory");
 
   unsigned char* currRow = (unsigned char*)data;
@@ -1897,14 +2068,14 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
     currRow += layout.rowPitch;
   }
 
-  vkUnmapMemory(device, mappableMemory);
+  vkUnmapMemory(device, wMappableImage.mem);
 
   //Now, create the actual image
   resultTexture.image = createImage(w,h,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-
-  copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED, resultTexture.image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
+  /*copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED,
+    w, h, resultTexture.image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
+  copyImage(wMappableImage, resultTexture.image);
 
   //Initialize sampler
   VkSamplerCreateInfo samplerInfo = {};
@@ -1931,8 +2102,9 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.image.imageInfo.imageView = resultTexture.image.view;
   resultTexture.image.imageInfo.sampler = resultTexture.sampler;
 
-  vkDestroyImage(device, mappableImage, NULL);
-  vkFreeMemory(device, mappableMemory, NULL);
+  //vkDestroyImage(device, mappableImage, NULL);
+  //vkFreeMemory(device, mappableMemory, NULL);
+  destroyImage(wMappableImage);
 
   return resultTexture;
 }
@@ -2001,8 +2173,12 @@ void Wingine::pushNewDrawSemaphore(){
   drawSemaphores.push_back(sem);
 }
 
-VkFramebuffer Wingine::getCurrentFramebuffer() const {
+WingineFramebuffer Wingine::getCurrentFramebuffer() const {
   return framebuffers[current_buffer];
+}
+
+WingineFramebuffer Wingine::getLastFramebuffer() const {
+  return framebuffers[(current_buffer - 1 + swapchain_image_count) % swapchain_image_count];
 }
 
 void Wingine::setScene(WingineScene& scene){
@@ -2185,7 +2361,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(){
   rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
 
   rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
-  rp_begin.framebuffer = wingine->getCurrentFramebuffer();
+  rp_begin.framebuffer = wingine->getCurrentFramebuffer().framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
   rp_begin.renderArea.extent.width = wingine->getScreenWidth();

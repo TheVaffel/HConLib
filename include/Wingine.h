@@ -26,6 +26,7 @@
 #define DEBUG
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT
+#define DEPTH_BUFFER_FORMAT VK_FORMAT_D16_UNORM
 
 #define NUM_DESCRIPTOR_SETS 1
 
@@ -86,6 +87,7 @@ struct WingineImage : WingineResource {
   VkDeviceMemory mem;
   VkImageView view;
   VkDescriptorImageInfo imageInfo;
+  int memorySize;
 
   virtual VkDescriptorType getDescriptorType(){
     return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -107,6 +109,12 @@ struct WingineTexture : WingineResource {
   virtual VkDescriptorImageInfo* getImageInfo(){
     return &image.imageInfo;
   }
+};
+
+struct WingineFramebuffer {
+  WingineImage image;
+  WingineImage depth_image;
+  VkFramebuffer framebuffer;
 };
 
 
@@ -281,16 +289,10 @@ class Wingine{
   VkSwapchainKHR swapchain;
   uint32_t swapchain_image_count;
   VkImage*swapchain_images;
-  VkImageView* swapchain_image_views;
 
   VkQueue graphics_queue;
   VkQueue present_queue;
   VkQueue compute_queue;
-
-  VkFormat depth_buffer_format;
-  VkImage depth_buffer_image;
-  VkDeviceMemory depth_buffer_memory;
-  VkImageView depth_buffer_view;
 
   uint32_t width;
   uint32_t height;
@@ -300,7 +302,7 @@ class Wingine{
 
   VkRenderPass render_pass_generic;
 
-  VkFramebuffer* framebuffers;
+  WingineFramebuffer* framebuffers;
 
   std::vector<VkSemaphore> drawSemaphores;
   uint32_t currSemaphore;
@@ -336,7 +338,6 @@ class Wingine{
 
   VkResult init_command_buffers();
   VkResult init_swapchain();
-  VkResult init_depth_buffer();
   VkResult init_descriptor_pool();
   VkResult init_render_passes();
   VkResult init_framebuffers();
@@ -346,7 +347,6 @@ class Wingine{
   void destroy_device();
   void destroy_command_buffers();
   void destroy_swapchain();
-  void destroy_depth_buffer();
   void destroy_render_passes();
   void destroy_descriptor_pool();
   void destroy_framebuffers();
@@ -368,6 +368,8 @@ class Wingine{
 
   void render_pass_setup_generic(WingineRenderPassSetup* setup);
 
+  void image_create_info_generic(VkImageCreateInfo* ici);
+
   void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout);
 
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
@@ -381,14 +383,23 @@ class Wingine{
 #else
              Window window, Display* display);
 #endif
+
+  WingineFramebuffer create_framebuffer_from_vk_image(VkImage image, uint32_t width, uint32_t height);
+  WingineImage create_image_from_vk_image(VkImage vkim, uint32_t w, uint32_t h, VkImageUsageFlags usage, uint32_t memProps);
+  WingineImage create_mappable_image(uint32_t width, uint32_t height);
+
  public:
 
-  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
+  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
+    int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
+  void copyImage(WingineImage& src, WingineImage& dst);
+  void copyFromFramebuffer(WingineFramebuffer src, WingineImage dst);
 
   int getScreenWidth() const;
   int getScreenHeight() const;
 
-  VkFramebuffer getCurrentFramebuffer() const;
+  WingineFramebuffer getCurrentFramebuffer() const;
+  WingineFramebuffer getLastFramebuffer() const;
 
   VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level);
   VkRenderPass createDefaultRenderPass(); // One color attachment, one depth attachment
@@ -397,9 +408,18 @@ class Wingine{
   VkResult setBuffer(const WingineBuffer&, const void*, uint32_t);
   void destroyBuffer(const WingineBuffer&);
 
-  WingineImage createImage(uint32_t w, uint32_t h, VkImageLayout, VkImageUsageFlags);
+  WingineImage createImage(uint32_t w, uint32_t h, VkImageLayout, VkImageUsageFlags,
+    VkImageTiling tiling=VK_IMAGE_TILING_OPTIMAL,
+    uint32_t memProps=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT); // Image is optimal-tiled by default and is not visible from host
+  WingineImage createGPUImage(uint32_t w, uint32_t h);
+
   void setLayout(WingineImage& wim, VkImageLayout newLayout);
   void destroyImage(WingineImage);
+  void getImageContent(WingineImage image, uint8_t* dst);
+  WingineImage createDepthBuffer(uint32_t width, uint32_t height);
+
+  WingineFramebuffer createFramebuffer(uint32_t width, uint32_t height);
+  void destroyFramebuffer(WingineFramebuffer framebuffer);
 
   //A single uniform. Basically just a lump of data to be accessed from shaders
   WingineUniform createUniform(uint32_t size);

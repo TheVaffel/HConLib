@@ -1,14 +1,22 @@
+#ifdef _WIN32
+#define _CRT_SECURE_NO_DEPRECATE
+#endif
+
 #include <Winval.h>
 #include <Wingine.h>
 #include <iostream>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include <external/stb_image_write.h>
+
 using namespace std;
 
 static const float test_vertices[] =
-  { 0.0f, 0.0f, 0.f, 1.0f,
-    1.0f, 0.0f, 0.f, 1.0f,
-    0.0f, 1.0f, 0.f, 1.0f,
-    1.0f, 1.0f, 0.f, 1.0f};
+  { 0.0f, 0.0f, 0.5f, 1.0f,
+    1.0f, 0.0f, 0.5f, 1.0f,
+    0.0f, 1.0f, 0.5f, 1.0f,
+    1.0f, 1.0f, 0.5f, 1.0f};
 
 static const float test_colors[] =
   { 1.0f, 0.0f, 0.0f, 0.0f,
@@ -94,14 +102,14 @@ const char* computeShaderText =
   "layout (local_size_x = 16, local_size_y = 16) in;\n"
   "void main() {\n"
   "  ivec2 coords = ivec2(gl_GlobalInvocationID.xy);\n"
-  "  imageStore(outputs, coords, vec4(coords/64.0, 0, 1));\n"
+  "  imageStore(outputs, coords, vec4(coords.x/1920.0, coords.y/1080.0, 0.0, 1));\n"
   "}";
 
 
 int main(){
-  const int texWidth = 64;
-  const int texHeight = 64;
-  unsigned char generic_pattern[4*texWidth*texHeight];
+  const int texWidth = 1000;
+  const int texHeight = 500;
+  unsigned char* generic_pattern = new unsigned char[4*texWidth*texHeight];
   for(int i = 0; i < texHeight; i++){
     for(int j = 0; j < texWidth; j++){
       ((int*)generic_pattern)[i*texWidth + j] = (((i/8)%2 == 0) ^ ((j/8)%2 == 0)) ? 0xFFFFFFFF : 0xFF000000;
@@ -117,15 +125,15 @@ int main(){
     int pop = 0;
     for(int j = 0; j < 3; j++){
       if(cubeNumbers[i] & (1 << j)){
-	cube_vertices[4*i + j] = 0.5f;
-	pop++;
+      	cube_vertices[4*i + j] = 0.5f;
+      	pop++;
       }else{
-	cube_vertices[4*i + j] = -0.5;
+      	cube_vertices[4*i + j] = -0.5;
       }
     }
     cube_vertices[4*i + 3] = 1.0f;
     cube_tex_coords[2*i] = pop & 1 ? 1.0f : 0.0f;
-    cube_tex_coords[2*i] = pop & 2 ? 1.0f : 0.0f;
+    cube_tex_coords[2*i + 1] = pop & 2 ? 1.0f : 0.0f;
   }
 
   int cube_indices[3*12];
@@ -202,16 +210,12 @@ int main(){
   WingineResourceSetLayout computeLayout = wg.createResourceSetLayout(1, desc, bits);
   WingineKernel kernel = wg.createKernel(computeShaderText, computeLayout);
 
-  WingineImage im = wg.createImage(64, 64, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-
+  WingineImage im = wg.createGPUImage(texWidth, texHeight);
   wg.setLayout(im, VK_IMAGE_LAYOUT_GENERAL);
   WingineResource* computeImageResource[] = {&im};
   WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,computeImageResource);
-  wg.executeKernel(kernel, kernelResources, 64, 64, 1);
-
-
-  wg.copyImage(64, 64, im.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, texture.image.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
+  wg.executeKernel(kernel, kernelResources, texWidth, texHeight, 1);
+  wg.copyImage(im, texture.image);
   WingineShader shaders[2] = {vertexShader, fragmentShader};
   WingineShader textureShaders[2] = {textureVertexShader, textureFragmentShader};
 
@@ -225,8 +229,7 @@ int main(){
   WingineRenderObject cubeObject(3*12, 2, cubeVertexAttribs, cubeIndexBuffer, textureSet);
 
   scene.addObject(object1, 0); //Object, pipeline number
-  //scene.addObject(object3, 1);
-
+  scene.addObject(object3, 1);
   scene.addObject(cubeObject, 1);
 
   wg.setScene(scene);
@@ -249,6 +252,16 @@ int main(){
   clock_t start_time = clock();
   int count = 0;
 
+  // For demo purposes:
+  /*uint8_t* image_data = new uint8_t[4 * 64*64];
+  wg.getImageContent(im, image_data);
+
+  stbi_write_jpg("texture_image.png", 64, 64, 4, image_data, 64*4);
+
+  delete[] image_data;*/
+
+  //WingineFramebuffer framebuffer = wg.createFramebuffer(64, 64);
+
   while(win.isOpen()){
     cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));
     offset = offset * rotation;
@@ -258,6 +271,10 @@ int main(){
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
     wg.setUniform(offsetUniform, &newOffset, sizeof(Matrix4));
     wg.renderScene();
+
+    WingineFramebuffer framebuffer = wg.getLastFramebuffer();
+    //wg.copyFromFramebuffer(framebuffer, texture.image);
+
     clock_t current_time = clock();
     long long int diff = current_time - start_time;
     long long w = 1000/60 - 1000*diff/CLOCKS_PER_SEC;
@@ -285,7 +302,6 @@ int main(){
   wg.destroyResourceSet(cameraSet);
   wg.destroyResourceSet(textureSet);
   wg.destroyResourceSet(kernelResources);
-
   wg.destroyKernel(kernel);
 
   wg.destroyResourceSetLayout(computeLayout);

@@ -1,1 +1,5 @@
 examples/bin/*
+examples/build
+build
+include/external/vulkan
+lib

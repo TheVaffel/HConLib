@@ -858,7 +858,8 @@ void Wingine::destroy_framebuffers(){
 
 void Wingine::destroyFramebuffer(WingineFramebuffer buffer){
   //vkDestroyImageView(device, buffer.image.view, NULL);
-  destroyImage(buffer.image);
+  if(buffer.image.image)
+    destroyImage(buffer.image);
   destroyImage(buffer.depth_image);
   vkDestroyFramebuffer(device, buffer.framebuffer, NULL);
 }
@@ -1790,8 +1791,8 @@ void Wingine::destroyImage(WingineImage w){
   vkFreeMemory(device, w.mem, NULL);
 }
 
-WingineDepthFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height){
-  WingineDepthFramebuffer framebuffer;
+WingineFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height){
+  WingineFramebuffer framebuffer;
   framebuffer.depth_image = createReadableDepthBuffer(width, height);
 
   VkImageView attachments[] = {framebuffer.depth_image.view};
@@ -1806,6 +1807,9 @@ WingineDepthFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t
   fb_info.layers = 1;
   VkResult res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
   wgAssert(res == VK_SUCCESS, "Creating framebuffer");
+
+  framebuffer.image.image = 0;
+
   return framebuffer;
 }
 
@@ -2212,9 +2216,13 @@ void Wingine::setScene(WingineScene& scene){
 }
 
 void Wingine::renderScene(){
+  renderScene(getCurrentFramebuffer());
+}
+
+void Wingine::renderScene(const WingineFramebuffer& framebuffer){
   for(uint32_t i = 0; i < currentScene->objectGroups.size(); i++){
     //if(currentScene->objectGroups[i].altered){ // We have to rerecord to get the right framebuffer :(
-    currentScene->objectGroups[i].startRecordingCommandBuffer();
+    currentScene->objectGroups[i].startRecordingCommandBuffer(framebuffer);
     for(uint32_t j = 0;j < currentScene->objectGroups[i].objects.size(); j++){
       //if(currentScene->objectGroups[i].objects[j].isAltered()){
 	currentScene->objectGroups[i].objects[j].recordCommandBuffer(currentScene->objectGroups[i].commandBuffer);
@@ -2349,7 +2357,7 @@ WingineObjectGroup::WingineObjectGroup(const Wingine& wg){
   wingine = &wg;
 }
 
-void WingineObjectGroup::startRecordingCommandBuffer(){
+void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& framebuffer){
   vkResetCommandBuffer(commandBuffer, 0);
 
   VkCommandBufferBeginInfo begin = {};
@@ -2387,7 +2395,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(){
   rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
 
   rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
-  rp_begin.framebuffer = wingine->getCurrentFramebuffer().framebuffer;
+  rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
   rp_begin.renderArea.extent.width = wingine->getScreenWidth();

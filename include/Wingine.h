@@ -117,11 +117,6 @@ struct WingineFramebuffer {
   VkFramebuffer framebuffer;
 };
 
-struct WingineDepthFramebuffer {
-  WingineImage depth_image;
-  VkFramebuffer framebuffer;
-};
-
 struct WingineResourceSetLayout{
   VkDescriptorSetLayout layout;
   int numResources;
@@ -229,7 +224,7 @@ public:
 
   void recordCommandBuffer();
 
-  void startRecordingCommandBuffer();
+  void startRecordingCommandBuffer(const WingineFramebuffer& framebuffer);
   void endRecordingCommandBuffer();
 };
 
@@ -427,8 +422,7 @@ class Wingine{
   void destroyFramebuffer(WingineFramebuffer framebuffer);
 
   WingineImage createReadableDepthBuffer(uint32_t width, uint32_t height);
-  WingineDepthFramebuffer createDepthFramebuffer(uint32_t width, uint32_t height);
-  void destroyDepthFramebuffer(WingineDepthFramebuffer framebuffer);
+  WingineFramebuffer createDepthFramebuffer(uint32_t width, uint32_t height);
 
   //A single uniform. Basically just a lump of data to be accessed from shaders
   WingineUniform createUniform(uint32_t size);
@@ -469,6 +463,7 @@ class Wingine{
 
   void setScene(WingineScene& scene);
   void renderScene();
+  void renderScene(const WingineFramebuffer& framebuffer);
 
 #ifdef WIN32
   Wingine(int width, int height, const char* title, HINSTANCE hinst, HWND hwnd);

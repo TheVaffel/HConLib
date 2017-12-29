@@ -488,4 +488,18 @@ class Wingine{
   ~Wingine();
 };
 
+typedef WingineBuffer WgBuffer;
+typedef WingineImage WgImage;
+typedef WingineShader WgShader;
+typedef WingineKernel WgKernel;
+typedef WingineCamera WgCamera;
+typedef WingineUniform WgUniform;
+typedef WingineTexture WgTexture;
+typedef WingineResourceSetLayout WgRSL;
+typedef WingineResource WgResource;
+typedef WingineResourceSet WgRS;
+typedef WingineScene WgScene;
+typedef WingineRenderObject WgRenderObject;
+typedef WingineRenderObject WgObject;
+
 #endif //INCLUDED_WINGINE

@@ -150,7 +150,7 @@ int main(){
   Wingine wg(win);
 
 
-  WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
+  WgBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
   wg.setBuffer( vertexBuffer, test_vertices, 4*4*sizeof(float));
 
   WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));

@@ -180,10 +180,10 @@ int main(){
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
 
-  VkDescriptorType desc[] = {WINGINE_RESOURCE_UNIFORM};
+  VkDescriptorType desc[] = {WG_RESOURCE_UNIFORM};
   WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
 
-  VkDescriptorType textDescriptorTypes[] = {WINGINE_RESOURCE_UNIFORM, WINGINE_RESOURCE_TEXTURE};
+  VkDescriptorType textDescriptorTypes[] = {WG_RESOURCE_UNIFORM, WG_RESOURCE_TEXTURE};
   WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
 
   WingineResource* cameraUniformResource = &cameraUniform;

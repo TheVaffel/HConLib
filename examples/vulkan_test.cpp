@@ -163,7 +163,6 @@ int main(){
 
   WingineBuffer cubeTextureCoordBuffer = wg.createVertexBuffer(8*2*sizeof(float), cube_tex_coords);
 
-
   VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
   VkShaderStageFlagBits textureResourceSetStageBits[2] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
 
@@ -171,10 +170,10 @@ int main(){
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
 
-  VkDescriptorType desc[] = {WG_RESOURCE_UNIFORM};
+  VkDescriptorType desc[] = {WG_RESOURCE_TYPE_UNIFORM};
   WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
 
-  VkDescriptorType textDescriptorTypes[] = {WG_RESOURCE_UNIFORM, WG_RESOURCE_TEXTURE};
+  VkDescriptorType textDescriptorTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
   WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
 
   WingineResource* cameraUniformResource = &cameraUniform;

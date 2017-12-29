@@ -1233,7 +1233,21 @@ void Wingine::destroy_vulkan(){
   destroy_instance();
 }
 
-WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, VkDescriptorType* types,  VkShaderStageFlagBits* stages){
+VkDescriptorType Wingine::get_descriptor_type(WgResourceType type){
+  switch(type){
+    case WG_RESOURCE_TYPE_TEXTURE:
+      return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    case WG_RESOURCE_TYPE_UNIFORM:
+      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    case WG_RESOURCE_TYPE_STORE_IMAGE:
+      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    default:
+      printf("Resource type not recognized\n");
+      exit(-1);
+  }
+}
+
+WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, WgResourceType* types,  VkShaderStageFlagBits* stages){
   WingineResourceSetLayout wgLayout;
 
   VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numResources];
@@ -1243,7 +1257,7 @@ WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, VkDe
     lbs[i].binding = i;
     lbs[i].descriptorCount = 1;
     lbs[i].stageFlags = stages[i];
-    lbs[i].descriptorType = types[i];
+    lbs[i].descriptorType = get_descriptor_type(types[i]);
     lbs[i].pImmutableSamplers = NULL;
   }
 
@@ -1302,6 +1316,14 @@ WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceL
 }
 
 void Wingine::destroyResourceSet(const WingineResourceSet& set){
+}
+
+WingineShader Wingine::createVertexShader(const char* shaderText){
+  return createShader(shaderText, VK_SHADER_STAGE_VERTEX_BIT);
+}
+
+WingineShader Wingine::createFragmentShader(const char* shaderText){
+  return createShader(shaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBits stageBit){

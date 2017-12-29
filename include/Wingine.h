@@ -41,9 +41,9 @@
 #define MAX_NUM_COMMANDS 100
 
 typedef enum WgResourceType{
-  WG_RESOURCE_TYPE_TEXTURE = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-  WG_RESOURCE_TYPE_UNIFORM = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-  WG_RESOURCE_TYPE_STORE_IMAGE = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+  WG_RESOURCE_TYPE_TEXTURE = 0,
+  WG_RESOURCE_TYPE_UNIFORM = 1,
+  WG_RESOURCE_TYPE_STORE_IMAGE = 2
 } WgResourceType;
 
 #define NUM_WG_ATTACHMENT_TYPES 2
@@ -365,6 +365,7 @@ class Wingine{
 
   uint32_t get_memory_type_index(uint32_t, VkFlags);
   uint32_t get_format_element_size(VkFormat format);
+  VkDescriptorType get_descriptor_type(WgResourceType type);
 
   void destroy_vulkan();
 
@@ -443,7 +444,7 @@ class Wingine{
 
   //A layout for resource sets
   // First evaluates stages for uniforms, then textures. Number of elements in stages = numUniforms + numTextures
-  WingineResourceSetLayout createResourceSetLayout(int numResources, VkDescriptorType* types, VkShaderStageFlagBits* stages);
+  WingineResourceSetLayout createResourceSetLayout(int numResources, WgResourceType* types, VkShaderStageFlagBits* stages);
   void destroyResourceSetLayout(WingineResourceSetLayout wrsl);
 
   //A set of uniforms and textures (to better utilize Vulkan's descriptor set abstraction) that "belong together"
@@ -451,6 +452,8 @@ class Wingine{
   void destroyResourceSet(const WingineResourceSet& resourceSet);
 
   WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
+  WingineShader createVertexShader(const char* shaderText);
+  WingineShader createFragmentShader(const char* shaderText);
   void destroyShader(WingineShader shader);
 
   WinginePipeline createPipeline(WingineResourceSetLayout resourceLayout,

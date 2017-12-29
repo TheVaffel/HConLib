@@ -170,10 +170,10 @@ int main(){
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
 
-  VkDescriptorType desc[] = {WG_RESOURCE_TYPE_UNIFORM};
+  WgResourceType desc[] = {WG_RESOURCE_TYPE_UNIFORM};
   WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
 
-  VkDescriptorType textDescriptorTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
+  WgResourceType textDescriptorTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
   WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
 
   WingineResource* cameraUniformResource = &cameraUniform;
@@ -194,7 +194,7 @@ int main(){
   WingineShader textureFragmentShader = wg.createShader(texFragShaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
 
   // #onlycomputethings
-  desc[0] = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  desc[0] = WG_RESOURCE_TYPE_STORE_IMAGE;
   bits[0] = VK_SHADER_STAGE_COMPUTE_BIT;
 
   WingineResourceSetLayout computeLayout = wg.createResourceSetLayout(1, desc, bits);

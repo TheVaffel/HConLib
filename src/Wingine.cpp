@@ -935,8 +935,14 @@ void Wingine::destroy_descriptor_pool(){
   vkDestroyDescriptorPool(device, descriptor_pool, NULL);
 }
 
+WingineBuffer Wingine::createVertexBuffer(uint32_t size, const void* data){
+  return createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size, data);
+}
+WingineBuffer Wingine::createIndexBuffer(uint32_t size, const void* data){
+  return createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size, data);
+}
 
-WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
+WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size, const void* data){
   WingineBuffer wBuffer;
   VkBufferCreateInfo buf_info = {};
   buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -976,6 +982,10 @@ WingineBuffer Wingine::createBuffer( uint32_t usage, uint32_t size){
   res = vkBindBufferMemory(device, wBuffer.buffer, wBuffer.memory, 0);
   if(res != VK_SUCCESS){
     printf("Could not bind buffer and memory\n");
+  }
+
+  if(data){
+    setBuffer(wBuffer, data, size);
   }
 
   return wBuffer;

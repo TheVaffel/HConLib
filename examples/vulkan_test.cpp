@@ -149,28 +149,19 @@ int main(){
   Winval win(1280, 720);
   Wingine wg(win);
 
+  WgBuffer vertexBuffer = wg.createVertexBuffer(4*4*sizeof(float), test_vertices);
 
-  WgBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
-  wg.setBuffer( vertexBuffer, test_vertices, 4*4*sizeof(float));
+  WingineBuffer colorBuffer = wg.createVertexBuffer(4*4*sizeof(float), test_colors);
 
-  WingineBuffer colorBuffer = wg.createBuffer( VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*4*sizeof(float));
-  wg.setBuffer( colorBuffer, test_colors, 4*4*sizeof(float));
+  WingineBuffer indexBuffer = wg.createIndexBuffer(3*2*sizeof(int32_t), test_indices);
 
-  WingineBuffer indexBuffer = wg.createBuffer( VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 3*2*sizeof(int32_t));
-  wg.setBuffer( indexBuffer, test_indices, 2*3*sizeof(uint32_t));
+  WingineBuffer textureCoordBuffer = wg.createVertexBuffer(4*2*sizeof(float), texture_coords);
 
-  WingineBuffer textureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4*2*sizeof(float));
-  wg.setBuffer(textureCoordBuffer, texture_coords, 2*4*sizeof(float));
+  WingineBuffer cubeVertexBuffer = wg.createVertexBuffer(8*4*sizeof(float), cube_vertices);
 
+  WingineBuffer cubeIndexBuffer = wg.createIndexBuffer(12*3*sizeof(int), cube_indices);
 
-  WingineBuffer cubeVertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 8*4*sizeof(float));
-  wg.setBuffer(cubeVertexBuffer, cube_vertices, 8*4*sizeof(float));
-
-  WingineBuffer cubeIndexBuffer = wg.createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 12*3*sizeof(int));
-  wg.setBuffer(cubeIndexBuffer, cube_indices, 12*3*sizeof(int));
-
-  WingineBuffer cubeTextureCoordBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 8*2*sizeof(float));
-  wg.setBuffer(cubeTextureCoordBuffer, cube_tex_coords, 8*2*sizeof(float));
+  WingineBuffer cubeTextureCoordBuffer = wg.createVertexBuffer(8*2*sizeof(float), cube_tex_coords);
 
 
   VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};

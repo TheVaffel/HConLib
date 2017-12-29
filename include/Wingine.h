@@ -411,7 +411,9 @@ class Wingine{
   VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level);
   VkRenderPass createDefaultRenderPass(); // One color attachment, one depth attachment
 
-  WingineBuffer createBuffer(uint32_t, uint32_t);
+  WingineBuffer createBuffer(uint32_t, uint32_t, const void* data = NULL);
+  WingineBuffer createVertexBuffer(uint32_t, const void* data = NULL);
+  WingineBuffer createIndexBuffer(uint32_t, const void* data = NULL);
   VkResult setBuffer(const WingineBuffer&, const void*, uint32_t);
   void destroyBuffer(const WingineBuffer&);
 

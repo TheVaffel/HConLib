@@ -44,6 +44,11 @@
 #define WG_RESOURCE_UNIFORM VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 #define WG_RESOURCE_STORE_IMAGE VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
 
+#define NUM_WG_ATTACHMENT_TYPES 2
+typedef enum WgAttachmentType {
+  WG_ATTACHMENT_TYPE_COLOR = 0x0,
+  WG_ATTACHMENT_TYPE_DEPTH = 0x1
+} WgAttachmentType;
 
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
@@ -139,7 +144,7 @@ struct WingineKernel{
 };
 
 struct WingineRenderPassSetup{
-  WingineRenderPassSetup(int numAttachments = 2);
+  WingineRenderPassSetup(int numAttachments, WgAttachmentType* types);
   ~WingineRenderPassSetup();
 
   VkAttachmentDescription* attachments;
@@ -147,6 +152,7 @@ struct WingineRenderPassSetup{
   VkSubpassDescription subpass;
   VkRenderPassCreateInfo createInfo;
   int numAttachments;
+  WgAttachmentType* attachmentTypes;
 };
 
 struct WinginePipeline{
@@ -159,7 +165,7 @@ struct WinginePipeline{
 };
 
 struct WinginePipelineSetup{
-  WinginePipelineSetup(int numColorAttachments = 1);
+  WinginePipelineSetup(int numAttachments, WgAttachmentType* types);
   ~WinginePipelineSetup();
 
   VkGraphicsPipelineCreateInfo createInfo;
@@ -443,7 +449,14 @@ class Wingine{
   WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
   void destroyShader(WingineShader shader);
 
-  WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear = false);
+  WinginePipeline createPipeline(WingineResourceSetLayout resourceLayout,
+    int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+    bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
+  WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders,
+    WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear = false);
+  WinginePipeline createDepthPipeline(WingineResourceSetLayout layout,
+    int numShaders,
+    WingineShader* shaders);
   void destroyPipeline(WinginePipeline pipeline);
 
   WingineTexture createTexture(int w, int h, unsigned char* data);

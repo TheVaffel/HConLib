@@ -47,21 +47,32 @@ Matrix4 WingineCamera::getRenderMatrix(){
   return ~total;
 }
 
-WinginePipelineSetup::WinginePipelineSetup(int numColorAttachments){
-  att_state = new VkPipelineColorBlendAttachmentState[numColorAttachments];
+WinginePipelineSetup::WinginePipelineSetup(int numAttachments, WgAttachmentType* types)
+  : renderPassSetup(numAttachments, types){
+  int numColorAtt = 0;
+  for(int i = 0; i < numAttachments; i++){
+    if(types[i] == WG_ATTACHMENT_TYPE_COLOR)
+      numColorAtt++;
+  }
+  att_state = new VkPipelineColorBlendAttachmentState[numColorAtt];
 }
 
 WinginePipelineSetup::~WinginePipelineSetup(){
   delete[] att_state;
 }
 
-WingineRenderPassSetup::WingineRenderPassSetup(int nAttachments){
+WingineRenderPassSetup::WingineRenderPassSetup(int nAttachments, WgAttachmentType* types){
   numAttachments = nAttachments;
+  attachmentTypes = new WgAttachmentType[nAttachments];
+  for(int i = 0; i < nAttachments; i++){
+    attachmentTypes[i] = types[i];
+  }
   attachments = new VkAttachmentDescription[numAttachments];
   references = new VkAttachmentReference[numAttachments];
 }
 
 WingineRenderPassSetup::~WingineRenderPassSetup(){
+  delete [] attachmentTypes;
   delete [] attachments;
   delete [] references;
 }
@@ -719,47 +730,78 @@ VkResult Wingine::init_descriptor_pool(){
 }
 
 void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
-  setup->attachments[0].format = format;
-  setup->attachments[0].samples = NUM_SAMPLES;
-  setup->attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-  setup->attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  setup->attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  setup->attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  setup->attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  setup->attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-  setup->attachments[0].flags = 0;
+  VkImageLayout finalLayoutMap[] =
+    {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+  VkImageLayout layoutMap[] =
+    {VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
-  setup->attachments[1].format = DEPTH_BUFFER_FORMAT;
-  setup->attachments[1].samples = NUM_SAMPLES;
-  setup->attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-  setup->attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  setup->attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  setup->attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  setup->attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  setup->attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-  setup->attachments[1].flags = 0;
+  int numOfType[NUM_WG_ATTACHMENT_TYPES];
 
-  setup->references[0].attachment = 0;
-  setup->references[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  if(setup->numAttachments > 1){
-    setup->references[1].attachment = 1;
-    setup->references[1].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  for(int i = 0; i < NUM_WG_ATTACHMENT_TYPES; i++){
+    numOfType[i] = 0;
   }
+
+  for(int i = 0; i < setup->numAttachments; i++){
+    setup->attachments[i].samples = NUM_SAMPLES;
+    setup->attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    setup->attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    setup->attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    setup->attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    setup->attachments[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    setup->attachments[i].finalLayout = finalLayoutMap[setup->attachmentTypes[i]];
+
+    setup->attachments[i].flags = 0;
+
+    switch(setup->attachmentTypes[i]){
+      case WG_ATTACHMENT_TYPE_COLOR:
+        setup->attachments[i].format = format;
+        break;
+      case WG_ATTACHMENT_TYPE_DEPTH:
+        setup->attachments[i].format = DEPTH_BUFFER_FORMAT;
+        break;
+      default:
+        printf("Unrecognized attachment type in render_pass_setup_generic\n");
+        printf("If you are adding a new attachment, make sure the rest of this"
+          " function makes sense\n");
+        exit(-1);
+    }
+
+    numOfType[setup->attachmentTypes[i]]++;
+  }
+
+  int currTop = 0;
+  int startForType[NUM_WG_ATTACHMENT_TYPES];
+  int currOfType[NUM_WG_ATTACHMENT_TYPES];
+  for(int i = 0; i < NUM_WG_ATTACHMENT_TYPES; i++){
+    startForType[i] = currTop;
+    currTop += numOfType[i];
+    currOfType[i] = 0; // Used in next loop
+  }
+
+  for(int i = 0; i < setup->numAttachments; i++){
+    int index = startForType[setup->attachmentTypes[i]] + currOfType[setup->attachmentTypes[i]];
+    setup->references[index].attachment = i;
+    setup->references[index].layout = layoutMap[setup->attachmentTypes[i]];
+    currOfType[setup->attachmentTypes[i]]++;
+  }
+
   setup->subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   setup->subpass.flags = 0;
   setup->subpass.inputAttachmentCount = 0;
   setup->subpass.pInputAttachments = NULL;
-  setup->subpass.colorAttachmentCount = 1;
-  setup->subpass.pColorAttachments = &setup->references[0];
+  setup->subpass.colorAttachmentCount = numOfType[WG_ATTACHMENT_TYPE_COLOR];
+  setup->subpass.pColorAttachments = &setup->references[startForType[WG_ATTACHMENT_TYPE_COLOR]];
   setup->subpass.pResolveAttachments = NULL;
-  setup->subpass.pDepthStencilAttachment = &setup->references[1];
+  setup->subpass.pDepthStencilAttachment = &setup->references[startForType[WG_ATTACHMENT_TYPE_DEPTH]];
   setup->subpass.preserveAttachmentCount = 0;
   setup->subpass.pPreserveAttachments = NULL;
 
   setup->createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   setup->createInfo.pNext = NULL;
   setup->createInfo.flags = 0;
-  setup->createInfo.attachmentCount = 2;
+  setup->createInfo.attachmentCount = setup->numAttachments;
   setup->createInfo.pAttachments = setup->attachments;
   setup->createInfo.subpassCount = 1;
   setup->createInfo.pSubpasses = &setup->subpass;
@@ -769,7 +811,9 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
 }
 
 VkResult Wingine::init_render_passes(){
-  WingineRenderPassSetup setup;
+  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
+                              WG_ATTACHMENT_TYPE_DEPTH};
+  WingineRenderPassSetup setup(2, types);
   render_pass_setup_generic(&setup);
 
   VkResult res = vkCreateRenderPass(device, &setup.createInfo, NULL, &render_pass_generic);
@@ -1136,7 +1180,9 @@ void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
 }
 
 void Wingine::create_pipeline_color_renderer( VkPipeline* pipeline){
-  WinginePipelineSetup setup;
+  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
+                              WG_ATTACHMENT_TYPE_DEPTH};
+  WinginePipelineSetup setup(2, types);
   pipeline_setup_color_renderer(&setup);
 
   VkResult res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &setup.createInfo, NULL, pipeline);
@@ -1147,7 +1193,9 @@ void Wingine::create_pipeline_color_renderer( VkPipeline* pipeline){
 }
 
 void Wingine::create_pipeline_color_renderer_single_buffer( VkPipeline* pipeline){
-  WinginePipelineSetup setup;
+  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
+                              WG_ATTACHMENT_TYPE_DEPTH};
+  WinginePipelineSetup setup(2,types);
   pipeline_setup_color_renderer(&setup);
 
   setup.vi_bindings[0].stride = 2*4*sizeof(float);
@@ -1293,18 +1341,19 @@ uint32_t Wingine::get_format_element_size(VkFormat format){
   }
 }
 
-WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear){
-
-  WinginePipelineSetup pipelineSetup;
+WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
+  int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+  bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+  WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
   wgAssert(numVertexAttribs <= MAX_VERTEX_ATTRIBUTES, "Max Vertex Attributes high enough");
   pipeline.numVertexAttribs = numVertexAttribs;
   pipeline_setup_generic(&pipelineSetup, numVertexAttribs);
+  pipelineSetup.renderPassSetup.numAttachments = numAttachments;
 
   if(clear){
-    pipelineSetup.renderPassSetup.attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    if(pipelineSetup.renderPassSetup.numAttachments > 1){
-      pipelineSetup.renderPassSetup.attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    for(int i = 0; i < numAttachments; i++){
+      pipelineSetup.renderPassSetup.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     }
   }
 
@@ -1314,7 +1363,6 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   }
 
   for(int i = 0; i < numVertexAttribs; i++){
-
     pipelineSetup.vi_bindings[i].binding = i;
     pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     pipelineSetup.vi_bindings[i].stride = get_format_element_size(attribTypes[i]);
@@ -1347,6 +1395,22 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   delete[] mods;
 
   return pipeline;
+}
+WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
+  int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+  bool clear){
+  WgAttachmentType attachTypes[2] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
+  return createPipeline(resourceLayout, numShaders, shaders, numVertexAttribs,
+    attribTypes, clear, 2, attachTypes);
+}
+
+// Includes only one shader. Assumes that position is the only vertex attribute
+WinginePipeline Wingine::createDepthPipeline(WingineResourceSetLayout resourceLayout,
+  int numShaders, WingineShader* shaders){
+    WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
+    VkFormat attribType = VK_FORMAT_R32G32B32A32_SFLOAT;
+    return createPipeline(resourceLayout, numShaders, shaders, 1, &attribType,
+        false, 1, &attachmentType);
 }
 
 void Wingine::destroyPipeline(WinginePipeline pipeline){
@@ -2401,7 +2465,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   rp_begin.pNext = NULL;
   rp_begin.renderPass = pipeline.compatibleRenderPass;
-  rp_begin.clearValueCount = shouldClearAttachments? 2 : 0; //TODO: Allow other than just two writing attachments
+  rp_begin.clearValueCount = shouldClearAttachments? pipeline.numAttachments : 0;
 
   rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
   rp_begin.framebuffer = framebuffer.framebuffer;

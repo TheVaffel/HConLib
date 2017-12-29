@@ -1283,6 +1283,16 @@ void Wingine::destroyShader(WingineShader shader){
   //delete[] shader.uniformSets;
 }
 
+uint32_t Wingine::get_format_element_size(VkFormat format){
+  switch(format){
+    case VK_FORMAT_R32G32B32A32_SFLOAT: return 4 * sizeof(float);
+    case VK_FORMAT_R32G32_SFLOAT: return 2 * sizeof(float);
+    default:
+      printf("Unrecognized format of vertex attrib\n");
+      exit(-1);
+  }
+}
+
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear){
 
   WinginePipelineSetup pipelineSetup;
@@ -1298,7 +1308,6 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
     }
   }
 
-  //Todo: Let vertex attribs be of variable size? (Currently 4*sizeof(float) only)
   VkPipelineShaderStageCreateInfo* mods = new VkPipelineShaderStageCreateInfo[numShaders];
   for(int i=  0; i < numShaders; i++){
     mods[i] = shaders[i].shader;
@@ -1308,7 +1317,7 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
 
     pipelineSetup.vi_bindings[i].binding = i;
     pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    pipelineSetup.vi_bindings[i].stride = attribTypes[i] == VK_FORMAT_R32G32B32A32_SFLOAT ? 4*sizeof(float) : 2 * sizeof(float);
+    pipelineSetup.vi_bindings[i].stride = get_format_element_size(attribTypes[i]);
 
     pipelineSetup.vi_attribs[i].binding = i;
     pipelineSetup.vi_attribs[i].location = i;

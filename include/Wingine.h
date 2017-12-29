@@ -355,6 +355,7 @@ class Wingine{
   VkResult init_global_layer_properties();
 
   uint32_t get_memory_type_index(uint32_t, VkFlags);
+  uint32_t get_format_element_size(VkFormat format);
 
   void destroy_vulkan();
 

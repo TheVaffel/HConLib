@@ -1378,6 +1378,7 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
+  pipeline.numAttachments = numAttachments;
   wgAssert(numVertexAttribs <= MAX_VERTEX_ATTRIBUTES, "Max Vertex Attributes high enough");
   pipeline.numVertexAttribs = numVertexAttribs;
   pipeline_setup_generic(&pipelineSetup, numVertexAttribs);
@@ -2321,20 +2322,19 @@ void Wingine::setScene(WingineScene& scene){
 }
 
 void Wingine::renderScene(){
-  renderScene(getCurrentFramebuffer());
+  WingineFramebuffer buf = getCurrentFramebuffer();
+  renderScene(buf);
+  //renderScene(getCurrentFramebuffer());
 }
 
 void Wingine::renderScene(const WingineFramebuffer& framebuffer){
   for(uint32_t i = 0; i < currentScene->objectGroups.size(); i++){
-    //if(currentScene->objectGroups[i].altered){ // We have to rerecord to get the right framebuffer :(
+
     currentScene->objectGroups[i].startRecordingCommandBuffer(framebuffer);
-    for(uint32_t j = 0;j < currentScene->objectGroups[i].objects.size(); j++){
-      //if(currentScene->objectGroups[i].objects[j].isAltered()){
-	currentScene->objectGroups[i].objects[j].recordCommandBuffer(currentScene->objectGroups[i].commandBuffer);
-	//}
+    for(uint32_t j = 0; j < currentScene->objectGroups[i].objects.size(); j++){
+	    currentScene->objectGroups[i].objects[j].recordCommandBuffer(currentScene->objectGroups[i].commandBuffer);
     }
     currentScene->objectGroups[i].endRecordingCommandBuffer();
-      //}
     submitDrawCommandBuffer(currentScene->objectGroups[i].commandBuffer);
   }
 
@@ -2400,13 +2400,13 @@ void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout,
 			  0, 1, &uniformSet.descriptorSet, 0, NULL);
-  VkBuffer* vertexBuffers = new VkBuffer[vertexAttribs.size()];
+  VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
+  VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];
   for(uint32_t i = 0; i< vertexAttribs.size(); i++){
     vertexBuffers[i] = vertexAttribs[i].buffer;
+    offsets[i] = 0;
   }
-  VkDeviceSize offsets[] = {0, 0};
   vkCmdBindVertexBuffers(cmd, 0, vertexAttribs.size(), vertexBuffers, offsets);
-  delete[] vertexBuffers;
 
   vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
@@ -2440,8 +2440,10 @@ WingineScene::~WingineScene(){
   }
 }
 
-void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes){
-  WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders, numVertexAttribs, attribTypes, objectGroups.size() == 0);
+void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
+  WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes){
+  WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders,
+    numVertexAttribs, attribTypes, objectGroups.size() == 0);
   WingineObjectGroup wog(*wg);
   wog.pipeline = p;
   wog.shouldClearAttachments = objectGroups.size() == 0;

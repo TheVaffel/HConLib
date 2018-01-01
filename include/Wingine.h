@@ -220,7 +220,7 @@ class WingineRenderObject{
 
 };
 
-struct WingineObjectGroup{ // Collection of all objects (in a scene) that are rendered with the same pipeline
+struct WingineObjectGroup{ // Collection of objects that are rendered with the same pipeline
 private:
   const Wingine* wingine;
 public:
@@ -505,6 +505,7 @@ typedef WingineTexture WgTexture;
 typedef WingineResourceSetLayout WgRSL;
 typedef WingineResource WgResource;
 typedef WingineResourceSet WgRS;
+typedef WingineResourceSet WgResourceSet;
 typedef WingineScene WgScene;
 typedef WingineRenderObject WgRenderObject;
 typedef WingineRenderObject WgObject;

@@ -123,6 +123,10 @@ if(WINVAL_LIB)
 		#vulkan_test
 		add_executable(vulkan_test vulkan_test.cpp)
 		target_link_libraries(vulkan_test ${wingine_libs})
+
+    #light_test
+    add_executable(light_test light_test.cpp)
+    target_link_libraries(light_test ${wingine_libs})
   else()
     message(">>>Found no Wingine library, not building Wingine dependent binaries")
 	endif()

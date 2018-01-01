@@ -802,6 +802,7 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
   setup->createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   setup->createInfo.pNext = NULL;
   setup->createInfo.flags = 0;
+  printf("Attachment count: %d\n", setup->numAttachments);
   setup->createInfo.attachmentCount = setup->numAttachments;
   setup->createInfo.pAttachments = setup->attachments;
   setup->createInfo.subpassCount = 1;
@@ -1387,12 +1388,14 @@ VkFormat Wingine::get_vkformat(WgAttribFormat att){
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats,
   bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+  printf("Constructing pipelinesetup\n");
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
   pipeline.numAttachments = numAttachments;
   wgAssert(numVertexAttribs <= MAX_VERTEX_ATTRIBUTES, "Max Vertex Attributes high enough");
   pipeline.numVertexAttribs = numVertexAttribs;
   pipeline_setup_generic(&pipelineSetup, numVertexAttribs);
+  printf("Setting renderPass\n");
   pipelineSetup.renderPassSetup.numAttachments = numAttachments;
 
   if(clear){
@@ -1424,15 +1427,17 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
 
   pipelineSetup.layoutCreateInfo.setLayoutCount = 1;
   pipelineSetup.layoutCreateInfo.pSetLayouts = &resourceLayout.layout;
-
+  printf("Creating pipeline layout\n");
   VkResult res = vkCreatePipelineLayout(device, &pipelineSetup.layoutCreateInfo, NULL, &pipeline.pipelineLayout);
-  wgAssert(res == VK_SUCCESS, "Create pipeline layout");
+  wgAssert(res == VK_SUCCESS, "Creating pipeline layout");
 
+  printf("Creating render pass\n");
   res = vkCreateRenderPass(device, &pipelineSetup.renderPassSetup.createInfo, NULL, &pipeline.compatibleRenderPass);
   wgAssert(res == VK_SUCCESS, "Creating pipelineLayout");
 
   pipelineSetup.createInfo.layout =  pipeline.pipelineLayout;
 
+  printf("Creating graphics pipeline\n");
   res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &pipelineSetup.createInfo, NULL, &pipeline.pipeline);
   wgAssert(res == VK_SUCCESS, "Creating pipeline");
 
@@ -2537,7 +2542,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.renderArea.offset.y = 0;
   rp_begin.renderArea.extent.width = wingine->getScreenWidth();
   rp_begin.renderArea.extent.height = wingine->getScreenHeight();
-
+  printf("Beginning command buffer\n");
   VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
   wgAssert(res == VK_SUCCESS, "Begin command buffer");
 

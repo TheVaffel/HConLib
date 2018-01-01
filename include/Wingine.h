@@ -52,6 +52,13 @@ typedef enum WgAttachmentType {
   WG_ATTACHMENT_TYPE_DEPTH = 0x1
 } WgAttachmentType;
 
+typedef enum WgAttribFormat {
+  WG_ATTRIB_FORMAT_1 = 1,
+  WG_ATTRIB_FORMAT_2 = 2,
+  WG_ATTRIB_FORMAT_3 = 3,
+  WG_ATTRIB_FORMAT_4 = 4
+} WgAttribFormat;
+
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
 
@@ -243,7 +250,8 @@ public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
   ~WingineScene();
-  void addPipeline(WingineResourceSetLayout layout, int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes);
+  void addPipeline(WingineResourceSetLayout layout, int numShaders,
+    WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes);
   void addObject(const WingineRenderObject& obj, int pipelineInd);
 
 };
@@ -364,7 +372,8 @@ class Wingine{
   VkResult init_global_layer_properties();
 
   uint32_t get_memory_type_index(uint32_t, VkFlags);
-  uint32_t get_format_element_size(VkFormat format);
+  uint32_t get_format_element_size(WgAttribFormat format);
+  VkFormat get_vkformat(WgAttribFormat att);
   VkDescriptorType get_descriptor_type(WgResourceType type);
 
   void destroy_vulkan();
@@ -457,10 +466,10 @@ class Wingine{
   void destroyShader(WingineShader shader);
 
   WinginePipeline createPipeline(WingineResourceSetLayout resourceLayout,
-    int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+    int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
     bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
   WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders,
-    WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes, bool clear = false);
+    WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes, bool clear = false);
   WinginePipeline createDepthPipeline(WingineResourceSetLayout layout,
     int numShaders,
     WingineShader* shaders);

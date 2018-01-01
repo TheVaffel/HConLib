@@ -184,8 +184,8 @@ int main(){
   WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
   WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};
 
-  VkFormat attribTypes[] = {VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT};
-  VkFormat attribTypesTexture[] = {VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32_SFLOAT};
+  WgAttribFormat attribTypes[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4};
+  WgAttribFormat attribTypesTexture[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_2};
 
   WingineShader vertexShader = wg.createVertexShader(vertShaderText);
   WingineShader fragmentShader = wg.createFragmentShader(fragShaderText);

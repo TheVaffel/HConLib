@@ -1363,18 +1363,28 @@ void Wingine::destroyShader(WingineShader shader){
   //delete[] shader.uniformSets;
 }
 
-uint32_t Wingine::get_format_element_size(VkFormat format){
-  switch(format){
-    case VK_FORMAT_R32G32B32A32_SFLOAT: return 4 * sizeof(float);
-    case VK_FORMAT_R32G32_SFLOAT: return 2 * sizeof(float);
+uint32_t Wingine::get_format_element_size(WgAttribFormat format){
+  return sizeof(float) * format;
+}
+
+VkFormat Wingine::get_vkformat(WgAttribFormat att){
+  switch(att){
+    case WG_ATTRIB_FORMAT_1:
+      return VK_FORMAT_R32_SFLOAT;
+    case WG_ATTRIB_FORMAT_2:
+      return VK_FORMAT_R32G32_SFLOAT;
+    case WG_ATTRIB_FORMAT_3:
+      return VK_FORMAT_R32G32B32_SFLOAT;
+    case WG_ATTRIB_FORMAT_4:
+      return VK_FORMAT_R32G32B32A32_SFLOAT;
     default:
-      printf("Unrecognized format of vertex attrib\n");
+      printf("Did not recognize WgAttributeFormat\n");
       exit(-1);
   }
 }
 
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats,
   bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
@@ -1398,11 +1408,11 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   for(int i = 0; i < numVertexAttribs; i++){
     pipelineSetup.vi_bindings[i].binding = i;
     pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    pipelineSetup.vi_bindings[i].stride = get_format_element_size(attribTypes[i]);
+    pipelineSetup.vi_bindings[i].stride = get_format_element_size(attribFormats[i]);
 
     pipelineSetup.vi_attribs[i].binding = i;
     pipelineSetup.vi_attribs[i].location = i;
-    pipelineSetup.vi_attribs[i].format = attribTypes[i];
+    pipelineSetup.vi_attribs[i].format = get_vkformat(attribFormats[i]);
     pipelineSetup.vi_attribs[i].offset = 0;
   }
 
@@ -1430,19 +1440,19 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   return pipeline;
 }
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes,
+  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
   bool clear){
   WgAttachmentType attachTypes[2] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
   return createPipeline(resourceLayout, numShaders, shaders, numVertexAttribs,
     attribTypes, clear, 2, attachTypes);
 }
 
-// Includes only one shader. Assumes that position is the only vertex attribute
+// Includes only one vertex attrib. Assumes that position is the only vertex attribute
 WinginePipeline Wingine::createDepthPipeline(WingineResourceSetLayout resourceLayout,
   int numShaders, WingineShader* shaders){
     WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
-    VkFormat attribType = VK_FORMAT_R32G32B32A32_SFLOAT;
-    return createPipeline(resourceLayout, numShaders, shaders, 1, &attribType,
+    WgAttribFormat format = WG_ATTRIB_FORMAT_4;
+    return createPipeline(resourceLayout, numShaders, shaders, 1, &format,
         false, 1, &attachmentType);
 }
 
@@ -2441,9 +2451,9 @@ WingineScene::~WingineScene(){
 }
 
 void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
-  WingineShader* shaders, int numVertexAttribs, VkFormat* attribTypes){
+  WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats){
   WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders,
-    numVertexAttribs, attribTypes, objectGroups.size() == 0);
+    numVertexAttribs, attribFormats, objectGroups.size() == 0);
   WingineObjectGroup wog(*wg);
   wog.pipeline = p;
   wog.shouldClearAttachments = objectGroups.size() == 0;

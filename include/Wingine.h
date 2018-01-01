@@ -198,24 +198,26 @@ struct WinginePipelineSetup{
 struct WingineObjectGroup;
 
 class WingineRenderObject{
+ protected:
   std::vector<WingineBuffer> vertexAttribs;
   WingineBuffer indexBuffer;
-  VkCommandBuffer commandBuffer;
-  WingineResourceSet uniformSet;
+  WingineResourceSet resourceSet;
   bool altered = true;
   const WinginePipeline* pipeline;
   WingineObjectGroup* objectGroup;
 
   int numDrawIndices;
   int indexOffset;
-
  public:
+  WingineRenderObject();
   WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
 
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
+  void setNumIndices(int num);
 
   void recordCommandBuffer(VkCommandBuffer& cmd);
+
   void setCommandBuffer(const VkCommandBuffer& cmd);
   VkCommandBuffer* getCommandBufferPointer();
 
@@ -251,10 +253,10 @@ public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
   ~WingineScene();
+  
   void addPipeline(WingineResourceSetLayout layout, int numShaders,
     WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes);
-  void addObject(const WingineRenderObject& obj, int pipelineInd);
-
+  void addObject(WingineRenderObject& obj, int pipelineInd);
 };
 
 class WingineCamera{
@@ -527,5 +529,29 @@ typedef WinginePipeline WgPipeline;
 typedef WingineObjectGroup WgOG;
 typedef WingineObjectGroup WgObjectGroup;
 typedef WingineFramebuffer WgFramebuffer;
+
+
+namespace wgutil {
+
+  struct Model : public WingineRenderObject {
+  protected:
+    Wingine* wingine;
+    std::vector<WingineResource*> resources;
+    //virtual void init();
+    //Model(Wingine wingine, int numInds, int numVertexAttribs);
+    //WingineResource* getResource(int index);
+    Model(Wingine& w);
+    ~Model();
+  public:
+    WingineResource* getResource(int index);
+  };
+
+  struct ColorModel : public Model { // Simple object with color attributes and a transformation matrix
+    ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData);
+  };
+  
+  ColorModel createCube(Wingine& wg, float s);
+  
+}
 
 #endif //INCLUDED_WINGINE

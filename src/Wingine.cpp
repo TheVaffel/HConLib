@@ -463,8 +463,8 @@ VkResult Wingine::init_surface(Window window, Display* display){
   VkXlibSurfaceCreateInfoKHR surface_info = {};
   surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
   surface_info.pNext = NULL;
-  surface_info.window = win->getWindow();
-  surface_info.dpy = win->getDisplay();
+  surface_info.window = window;
+  surface_info.dpy = display;
 
   VkResult res = vkCreateXlibSurfaceKHR(instance, &surface_info, NULL, &surface);
 
@@ -2398,13 +2398,17 @@ WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, Wing
     vertexAttribs.push_back(buffers[i]);
   }
   indexBuffer = iBuffer;
-  uniformSet = uSet;
+  resourceSet = uSet;
   numDrawIndices = numInds;
   indexOffset = 0;
 }
 
 void WingineRenderObject::setIndexOffset(int newIndex){
   indexOffset = newIndex;
+}
+
+void WingineRenderObject::setNumIndices(int num){
+  numDrawIndices = num;
 }
 
 void WingineRenderObject::setPipeline(const WinginePipeline& p){
@@ -2424,7 +2428,7 @@ void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
 void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
 
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout,
-			  0, 1, &uniformSet.descriptorSet, 0, NULL);
+			  0, 1, &resourceSet.descriptorSet, 0, NULL);
   VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
   VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];
   for(uint32_t i = 0; i< vertexAttribs.size(); i++){
@@ -2437,14 +2441,6 @@ void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
   vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
   //vkEndCommandBuffer(cmd);
   altered = false;
-}
-
-void WingineRenderObject::setCommandBuffer(const VkCommandBuffer& cmd){
-  commandBuffer = cmd;
-}
-
-VkCommandBuffer* WingineRenderObject::getCommandBufferPointer(){
-  return &commandBuffer;
 }
 
 void WingineRenderObject::setObjectGroup(WingineObjectGroup& wog){
@@ -2476,12 +2472,12 @@ void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
   objectGroups.push_back(wog);
 }
 
-void WingineScene::addObject(const WingineRenderObject& obj, int pipelineInd){
+void WingineScene::addObject(WingineRenderObject& obj, int pipelineInd){
   objectGroups[pipelineInd].objects.push_back(obj);
   int index = objectGroups[pipelineInd].objects.size()-1;
   objectGroups[pipelineInd].objects[index].setPipeline(objectGroups[pipelineInd].pipeline);
   objectGroups[pipelineInd].altered = true;
-  objectGroups[pipelineInd].objects[index].setCommandBuffer(wg->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY));
+  //objectGroups[pipelineInd].objects[index].setCommandBuffer(wg->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY));
   objectGroups[pipelineInd].objects[index].setObjectGroup(objectGroups[pipelineInd]);
 }
 
@@ -2559,4 +2555,124 @@ void WingineObjectGroup::endRecordingCommandBuffer(){
   VkResult res;
   res = vkEndCommandBuffer(commandBuffer);
   wgAssert(res == VK_SUCCESS, "End command buffer");
+}
+
+WingineRenderObject::WingineRenderObject(){
+}
+
+void* _place_in_heap(void * data, int size){
+  void* pp = malloc(size);
+  memcpy(pp, data, size);
+  return pp;
+}
+
+namespace wgutil {
+  /*Model::Model(Wingine& wg, int numInds, int numVertexAttribs){
+    vertexAttribs.resize(numVertexAttribs);
+    numDrawIndices = numInds;
+    indexOffset = 0;
+    wingine = wg;
+    }*/
+  Model::Model(Wingine& wg) {
+    wingine = &wg;
+  }
+
+  WingineResource* Model::getResource(int index){
+    return resources[index];
+  }
+
+  Model::~Model(){
+    for(uint32_t i = 0; i < vertexAttribs.size(); i++){
+      wingine->destroyBuffer(vertexAttribs[i]);
+    }
+
+    wingine->destroyBuffer(indexBuffer);
+
+    for(uint32_t i = 0 ; i < resources.size(); i++){
+      wingine->destroyUniform(*((WingineUniform*)resources[i]));
+    }
+
+    wingine->destroyResourceSet(resourceSet);
+  }
+
+  ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){
+
+    wingine = &wg;
+
+    WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4 * sizeof(float) * numVertices);
+    wg.setBuffer(vertexBuffer, vertexData, numVertices * 4 * sizeof(float));
+
+    WingineBuffer colorBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4 * sizeof(float) * numVertices);
+    wg.setBuffer(colorBuffer, colorData, numVertices * 4 * sizeof(float));
+
+    WingineBuffer indBuffer = wg.createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(int32_t) * numInds);
+    wg.setBuffer(indBuffer, indices, numInds * sizeof(uint32_t));
+
+    WgResourceType desc = WG_RESOURCE_TYPE_UNIFORM;
+    VkShaderStageFlagBits bit = VK_SHADER_STAGE_VERTEX_BIT;
+    WingineResourceSetLayout matrixLayout = wg.createResourceSetLayout(1, &desc, &bit);
+    WingineUniform matrixUniform = wg.createUniform(sizeof(Matrix4));
+    WingineResource* res = &matrixUniform;
+    WingineResourceSet matrixSet = wg.createResourceSet(matrixLayout, &res);
+
+    vertexAttribs.push_back(vertexBuffer);
+    vertexAttribs.push_back(colorBuffer);
+
+    indexBuffer = indBuffer;
+
+    numDrawIndices = numInds;
+    resourceSet = matrixSet;
+
+    WingineResource * rp = (WingineResource*)_place_in_heap(&matrixUniform, sizeof(matrixUniform));
+    
+    resources.push_back(rp);
+
+    wingine->destroyResourceSetLayout(matrixLayout);
+    
+  }
+  
+  ColorModel createCube(Wingine& wg, float s){
+    float vertexData[24 * 4];
+
+    float hs = s/2;
+
+    float d0[] = {-1, 1, -1, 1};
+    float d1[] = {-1, -1, 1, 1};
+    int i0[] = {0, 0, 1, 1, 2, 2};
+    int i1[] = {1, 2, 2, 0, 0, 1};
+    int i2[] = {2, 1, 0, 2, 1, 0};
+    
+    for(int i = 0; i < 6; i++){
+      for(int j = 0; j < 4; j++){
+	vertexData[4 * 4 * i + 4 * j + i0[i]] = (i % 2 ? -1 : 1) * hs;
+	vertexData[4 * 4 * i + 4 * j + i1[i]] = d0[j] * hs;
+	vertexData[4 * 4 * i + 4 * j + i2[i]] = d1[j] * hs;
+	vertexData[4 * 4 * i + 4 * j + 3] = 1.0f;
+      }
+    }
+
+    float colorData[24 * 4];
+    for(int i = 0; i < 4 * 24 ; i++){
+      if(i%4 == 3){
+	colorData[i] = 1.0f;
+      }else{
+	colorData[i] = 0.5f;
+      }
+    }
+
+    int32_t indexData[3 * 12];
+    for(int i = 0; i < 6; i++){
+      indexData[3 * 2 * i + 0] = i * 4 + 0;
+      indexData[3 * 2 * i + 1] = i * 4 + 2;
+      indexData[3 * 2 * i + 2] = i * 4 + 1;
+
+      indexData[3 * 2 * i + 3] = i * 4 + 1;
+      indexData[3 * 2 * i + 4] = i * 4 + 2;
+      indexData[3 * 2 * i + 5] = i * 4 + 3;
+    }
+
+    ColorModel model(wg, 36, indexData, 24, vertexData, colorData);
+
+    return model;
+  }
 }

@@ -205,8 +205,12 @@ int main(){
   WingineBuffer cubeVertexAttribs[2] = {cubeVertexBuffer, cubeTextureCoordBuffer};
   WingineRenderObject cubeObject(3*12, 2, cubeVertexAttribs, cubeIndexBuffer, textureSet);
 
+  wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
+
   scene.addObject(object1, 0); //Object, pipeline number
   scene.addObject(object3, 1);
+  scene.addObject(cube1, 0);
+  
   scene.addObject(cubeObject, 1);
 
   wg.setScene(scene);
@@ -261,6 +265,7 @@ int main(){
     Matrix4 cMatrix = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
     wg.setUniform(offsetUniform, &newOffset, sizeof(Matrix4));
+    wg.setUniform(*(WingineUniform*)cube1.getResource(0), &cMatrix, sizeof(Matrix4));
     wg.renderScene();
 
     //WingineFramebuffer framebuffer = wg.getLastFramebuffer();

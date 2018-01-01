@@ -276,6 +276,7 @@ VkResult Wingine::find_device(){
   vkEnumeratePhysicalDevices(instance, &device_count, NULL);
   VkPhysicalDevice* pDevs = new VkPhysicalDevice[device_count];
   res = vkEnumeratePhysicalDevices(instance, &device_count, pDevs);
+  wgAssert(res == VK_SUCCESS, "Finding devices");
   printf("Number of devices: %d\n", device_count);
 
 
@@ -1453,7 +1454,7 @@ WinginePipeline Wingine::createDepthPipeline(WingineResourceSetLayout resourceLa
     WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
     WgAttribFormat format = WG_ATTRIB_FORMAT_4;
     return createPipeline(resourceLayout, numShaders, shaders, 1, &format,
-        false, 1, &attachmentType);
+        true, 1, &attachmentType);
 }
 
 void Wingine::destroyPipeline(WinginePipeline pipeline){
@@ -1907,15 +1908,16 @@ void Wingine::destroyImage(WingineImage w){
   vkFreeMemory(device, w.mem, NULL);
 }
 
-WingineFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height){
+WingineFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height, WinginePipeline& pipeline){
   WingineFramebuffer framebuffer;
   framebuffer.depth_image = createReadableDepthBuffer(width, height);
+
 
   VkImageView attachments[] = {framebuffer.depth_image.view};
   VkFramebufferCreateInfo fb_info = {};
   fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   fb_info.pNext = NULL;
-  fb_info.renderPass = render_pass_generic;
+  fb_info.renderPass = pipeline.compatibleRenderPass;
   fb_info.attachmentCount = 1;
   fb_info.pAttachments = attachments;
   fb_info.width = width;
@@ -2268,7 +2270,7 @@ void Wingine::stage_next_image(){
 			      VK_NULL_HANDLE,
 			      imageAcquiredFence,
 			      &current_buffer);
-  res = vkQueueWaitIdle(graphics_queue);
+  res = vkQueueWaitIdle(graphics_queue); // This is a bit of a show stopper
   currSemaphore = 0;
 
   if(res != VK_SUCCESS){
@@ -2331,21 +2333,34 @@ void Wingine::setScene(WingineScene& scene){
   currentScene = &scene;
 }
 
+void Wingine::renderObjectGroup(WingineObjectGroup& group){
+  renderObjectGroup(group, getCurrentFramebuffer());
+}
+
+void Wingine::renderObjectGroup(WingineObjectGroup& group,
+  const WingineFramebuffer& framebuffer){
+  printf("Starting record\n");
+  group.startRecordingCommandBuffer(framebuffer);
+  printf("Started record\n");
+  for(uint32_t i = 0; i < group.objects.size(); i++){
+    printf("In rendering loop\n");
+    group.objects[i].recordCommandBuffer(group.commandBuffer);
+  }
+  group.endRecordingCommandBuffer();
+  printf("Submitting\n");
+  submitDrawCommandBuffer(group.commandBuffer);
+  printf("Submitted\n");
+}
+
 void Wingine::renderScene(){
-  WingineFramebuffer buf = getCurrentFramebuffer();
-  renderScene(buf);
-  //renderScene(getCurrentFramebuffer());
+  //WingineFramebuffer buf = getCurrentFramebuffer();
+  //renderScene(buf);
+  renderScene(getCurrentFramebuffer());
 }
 
 void Wingine::renderScene(const WingineFramebuffer& framebuffer){
   for(uint32_t i = 0; i < currentScene->objectGroups.size(); i++){
-
-    currentScene->objectGroups[i].startRecordingCommandBuffer(framebuffer);
-    for(uint32_t j = 0; j < currentScene->objectGroups[i].objects.size(); j++){
-	    currentScene->objectGroups[i].objects[j].recordCommandBuffer(currentScene->objectGroups[i].commandBuffer);
-    }
-    currentScene->objectGroups[i].endRecordingCommandBuffer();
-    submitDrawCommandBuffer(currentScene->objectGroups[i].commandBuffer);
+    renderObjectGroup(currentScene->objectGroups[i], framebuffer);
   }
 
   present();
@@ -2470,7 +2485,16 @@ void WingineScene::addObject(const WingineRenderObject& obj, int pipelineInd){
   objectGroups[pipelineInd].objects[index].setObjectGroup(objectGroups[pipelineInd]);
 }
 
-WingineObjectGroup::WingineObjectGroup(const Wingine& wg){
+void WingineObjectGroup::addObject(const WingineRenderObject& obj){
+  objects.push_back(obj);
+  int ind = objects.size() - 1;
+  objects[ind].setPipeline(pipeline);
+  altered = true;
+  //objects[ind].setCommandBuffer(wingine->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY));
+  objects[ind].setObjectGroup(*this);
+}
+
+WingineObjectGroup::WingineObjectGroup(Wingine& wg){
   wingine = &wg;
 }
 

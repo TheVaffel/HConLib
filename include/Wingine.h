@@ -224,14 +224,13 @@ class WingineRenderObject{
 
   void setObjectGroup(WingineObjectGroup& wog);
   bool isAltered();
-
 };
 
 struct WingineObjectGroup{ // Collection of objects that are rendered with the same pipeline
 private:
-  const Wingine* wingine;
+  Wingine* wingine;
 public:
-  WingineObjectGroup(const Wingine& wg);
+  WingineObjectGroup(Wingine& wg);
   bool altered  = true;
   bool shouldClearAttachments;
   WinginePipeline pipeline;
@@ -242,6 +241,8 @@ public:
 
   void startRecordingCommandBuffer(const WingineFramebuffer& framebuffer);
   void endRecordingCommandBuffer();
+
+  void addObject(const WingineRenderObject& obj);
 };
 
 class WingineScene{
@@ -444,7 +445,8 @@ class Wingine{
   void destroyFramebuffer(WingineFramebuffer framebuffer);
 
   WingineImage createReadableDepthBuffer(uint32_t width, uint32_t height);
-  WingineFramebuffer createDepthFramebuffer(uint32_t width, uint32_t height);
+  WingineFramebuffer createDepthFramebuffer(uint32_t width, uint32_t height,
+    WinginePipeline& pipeline);
 
   //A single uniform. Basically just a lump of data to be accessed from shaders
   WingineUniform createUniform(uint32_t size);
@@ -493,6 +495,9 @@ class Wingine{
   void setCamera(WingineCamera& camera);
 
   void setScene(WingineScene& scene);
+  void renderObjectGroup(WingineObjectGroup&);
+  void renderObjectGroup(WingineObjectGroup&,
+    const WingineFramebuffer& framebuffer);
   void renderScene();
   void renderScene(const WingineFramebuffer& framebuffer);
 
@@ -518,5 +523,9 @@ typedef WingineResourceSet WgResourceSet;
 typedef WingineScene WgScene;
 typedef WingineRenderObject WgRenderObject;
 typedef WingineRenderObject WgObject;
+typedef WinginePipeline WgPipeline;
+typedef WingineObjectGroup WgOG;
+typedef WingineObjectGroup WgObjectGroup;
+typedef WingineFramebuffer WgFramebuffer;
 
 #endif //INCLUDED_WINGINE

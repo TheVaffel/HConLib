@@ -1237,6 +1237,10 @@ WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, WgRe
   WingineResourceSetLayout wgLayout;
 
   VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numResources];
+  wgLayout.types = new WgResourceType[numResources];
+  for(int i = 0; i < numResources; i++){
+    wgLayout.types[i] = types[i];
+  }
 
   for(int i = 0; i < numResources; i++){
     lbs[i] = {};
@@ -1265,6 +1269,7 @@ WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, WgRe
 }
 
 void Wingine::destroyResourceSetLayout(WingineResourceSetLayout wrsl){
+  delete[] wrsl.types;
   vkDestroyDescriptorSetLayout(device,wrsl.layout,NULL);
 }
 
@@ -1290,7 +1295,7 @@ WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceL
     writes[i].pNext = NULL;
     writes[i].dstSet = resourceSet.descriptorSet;
     writes[i].descriptorCount = 1;
-    writes[i].descriptorType = resources[i]->getDescriptorType();
+    writes[i].descriptorType = get_descriptor_type(resourceLayout.types[i]);
     writes[i].pBufferInfo = resources[i]->getBufferInfo();
     writes[i].pImageInfo = resources[i]->getImageInfo();
     writes[i].dstArrayElement = 0;
@@ -2017,7 +2022,7 @@ WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32
 
 // The usage flags are a bit of a chaos
 WingineImage Wingine::createReadableDepthBuffer(uint32_t width, uint32_t height){
-  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+  return createDepthBuffer(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
 WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
@@ -2116,6 +2121,8 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_
   depth_buffer.layout = VK_IMAGE_LAYOUT_UNDEFINED;
   depth_buffer.width = width;
   depth_buffer.height = height;
+  depth_buffer.imageInfo.imageView = depth_buffer.view;
+  
   return depth_buffer;
 }
 
@@ -2160,6 +2167,47 @@ void Wingine::getImageContent(WingineImage image, uint8_t* data){
   destroyImage(mapIm);
 }
 
+WingineTexture Wingine::createDepthTexture(int w, int h){
+  VkResult res;
+
+  WingineTexture resultTexture;
+
+  resultTexture.image.width = w;
+  resultTexture.image.height = h;
+
+  //Now, create the actual image
+  resultTexture.image = createDepthBuffer(w,h, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+  //Initialize sampler
+  VkSamplerCreateInfo samplerInfo = {};
+  samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  samplerInfo.magFilter = VK_FILTER_NEAREST;
+  samplerInfo.minFilter = VK_FILTER_NEAREST;
+  samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  samplerInfo.mipLodBias = 0.0f;
+  samplerInfo.anisotropyEnable = VK_FALSE;
+  samplerInfo.maxAnisotropy = 1;
+  samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+  samplerInfo.minLod = 0.0f;
+  samplerInfo.maxLod = 0.0f;
+  samplerInfo.compareEnable = VK_FALSE;
+  samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+
+  res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
+  wgAssert(res == VK_SUCCESS, "Creating image sampler");
+
+  resultTexture.image.imageInfo.imageLayout = resultTexture.image.layout;
+  resultTexture.image.imageInfo.imageView = resultTexture.image.view;
+  resultTexture.image.imageInfo.sampler = resultTexture.sampler;
+
+
+
+  return resultTexture;
+}
+
 //This will create a texture immutable from the CPU
 WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
 {
@@ -2170,48 +2218,7 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.image.width = w;
   resultTexture.image.height = h;
 
-  /*//First, prepare staging image
-  VkImageCreateInfo ici = {};
-  ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  ici.pNext = NULL;
-  ici.imageType = VK_IMAGE_TYPE_2D;
-  ici.format = VK_FORMAT_R8G8B8A8_UNORM;
-  ici.extent.width = w;
-  ici.extent.height = h;
-  ici.extent.depth = 1;
-  ici.mipLevels = 1;
-  ici.arrayLayers = 1;
-  ici.samples = NUM_SAMPLES;
-  ici.tiling = VK_IMAGE_TILING_LINEAR;
-  ici.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-  ici.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-  ici.queueFamilyIndexCount = 0;
-  ici.pQueueFamilyIndices = NULL;
-  ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  ici.flags = 0;
-
-  VkMemoryAllocateInfo memAlloc = {};
-  memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  memAlloc.pNext = NULL;
-  memAlloc.allocationSize = 0;
-  memAlloc.memoryTypeIndex = 0;
-
-  VkImage mappableImage;
-  VkDeviceMemory mappableMemory;
-
-  res = vkCreateImage(device, &ici, NULL, &mappableImage);
-  wgAssert(res == VK_SUCCESS, "Create image");
-
-  memAlloc.allocationSize = memReqs.size;
-
-  memAlloc.memoryTypeIndex = get_memory_type_index(memReqs.memoryTypeBits,
-						   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-						   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  res = vkAllocateMemory(device, &memAlloc, NULL, &mappableMemory);
-  wgAssert(res == VK_SUCCESS, "Allocate image memory");
-
-  res = vkBindImageMemory(device, mappableImage, mappableMemory, 0);
-  wgAssert(res == VK_SUCCESS, "Bind image memory");*/
+  
   WingineImage wMappableImage = create_mappable_image(w, h);
   VkImage mappableImage = wMappableImage.image;
 

@@ -1,6 +1,6 @@
 //Vulkan integration for Winval
 
-//Huge thanks to LunarG's Vulkan tutorial, from which most of this is stolen - https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html
+//Huge thanks to LunarG's Vulkan tutorial, from which most of the is stolen - https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html
 
 #ifndef INCLUDED_WINGINE
 #define INCLUDED_WINGINE
@@ -26,7 +26,7 @@
 #define DEBUG
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT
-#define DEPTH_BUFFER_FORMAT VK_FORMAT_D16_UNORM
+#define DEPTH_BUFFER_FORMAT VK_FORMAT_D32_SFLOAT
 
 #define NUM_DESCRIPTOR_SETS 1
 
@@ -135,6 +135,7 @@ struct WingineFramebuffer {
 struct WingineResourceSetLayout{
   VkDescriptorSetLayout layout;
   int numResources;
+  WgResourceType *types;
 };
 
 struct WingineResourceSet{
@@ -396,13 +397,15 @@ class Wingine{
 
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
   void stage_next_image();
-
+  
   void pushNewDrawSemaphore();
 
-  void initVulkan(int width, int height, const char* title,
 #if WIN32
-             HINSTANCE hinstance, HWND hwnd);
+  
+  void initVulkan(int width, int height, const char* title,
+		  HINSTANCE hinstance, HWND hwnd);
 #else
+  void initVulkan(int width, int height, const char* title,
              Window window, Display* display);
 #endif
 
@@ -412,13 +415,13 @@ class Wingine{
 
  public:
 
-void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
-	       int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout,
+  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
+		 int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout,
 		 VkImageAspectFlagBits aspect);
-void copyColorImage(WingineImage& src, WingineImage& dst);
-void copyDepthImage(WingineImage& src, WingineImage& dst);
+  void copyColorImage(WingineImage& src, WingineImage& dst);
+  void copyDepthImage(WingineImage& src, WingineImage& dst);
   void copyColorFromFramebuffer(WingineFramebuffer src, WingineImage dst);
-void copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst);
+  void copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst);
 
   int getScreenWidth() const;
   int getScreenHeight() const;
@@ -436,8 +439,8 @@ void copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst);
   void destroyBuffer(const WingineBuffer&);
 
   WingineImage createImage(uint32_t w, uint32_t h, VkImageLayout, VkImageUsageFlags,
-    VkImageTiling tiling=VK_IMAGE_TILING_OPTIMAL,
-    uint32_t memProps=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT); // Image is optimal-tiled by default and is not visible from host
+			   VkImageTiling tiling=VK_IMAGE_TILING_OPTIMAL,
+			   uint32_t memProps=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT); // Image is optimal-tiled by default and is not visible from host
   WingineImage createGPUImage(uint32_t w, uint32_t h);
 
   void setLayout(WingineImage& wim, VkImageLayout newLayout);
@@ -482,6 +485,7 @@ void copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst);
     WingineShader* shaders);
   void destroyPipeline(WinginePipeline pipeline);
 
+  WingineTexture createDepthTexture(int w, int h);
   WingineTexture createTexture(int w, int h, unsigned char* data);
   void destroyTexture(WingineTexture&);
 

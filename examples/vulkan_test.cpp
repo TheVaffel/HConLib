@@ -255,7 +255,7 @@ int main(){
   WingineResource* computeImageResource[] = {&im};
   WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,computeImageResource);
   wg.executeKernel(kernel, kernelResources, texWidth, texHeight, 1);
-  wg.copyImage(im, texture.image);
+  wg.copyColorImage(im, texture.image);
 
   while(win.isOpen()){
     cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));

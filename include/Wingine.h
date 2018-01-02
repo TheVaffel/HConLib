@@ -35,6 +35,7 @@
 
 #define MAX_COLOR_ATTACHMENTS 4
 #define MAX_VERTEX_ATTRIBUTES 10
+#define MAX_DESCRIPTOR_SETS 3
 #define UNIFORM_DESCRIPTOR_POOL_SIZE 50
 #define TEXTURE_DESCRIPTOR_POOL_SIZE 10
 #define IMAGE_STORE_DESCRIPTOR_POOL_SIZE 10
@@ -171,7 +172,8 @@ struct WinginePipeline{
   int numVertexAttribs;
   VkRenderPass compatibleRenderPass;
   int numAttachments;
-  VkDescriptorSetLayout descriptorSetLayout;
+  int numDescriptorSetLayouts;
+  VkDescriptorSetLayout* descriptorSetLayouts;
 };
 
 struct WinginePipelineSetup{
@@ -202,7 +204,8 @@ class WingineRenderObject{
  protected:
   std::vector<WingineBuffer> vertexAttribs;
   WingineBuffer indexBuffer;
-  WingineResourceSet resourceSet;
+  int numResourceSets;
+  WingineResourceSet* resourceSets;
   bool altered = true;
   const WinginePipeline* pipeline;
   WingineObjectGroup* objectGroup;
@@ -211,8 +214,9 @@ class WingineRenderObject{
   int indexOffset;
  public:
   WingineRenderObject();
-  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
-
+  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, WingineResourceSet& rSet);
+  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, int numResourceSets, WingineResourceSet* rSets);
+  
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
   void setNumIndices(int num);
@@ -227,6 +231,7 @@ class WingineRenderObject{
 
   void setObjectGroup(WingineObjectGroup& wog);
   bool isAltered();
+  void destroy();
 };
 
 struct WingineObjectGroup{ // Collection of objects that are rendered with the same pipeline
@@ -254,7 +259,9 @@ public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
   ~WingineScene();
-  
+  void addPipeline(int numLayouts, WingineResourceSetLayout* layouts,
+		   int numShaders, WingineShader* shaders,
+		   int numVertexAttribs, WgAttribFormat* attribFormats);
   void addPipeline(WingineResourceSetLayout layout, int numShaders,
     WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes);
   void addObject(WingineRenderObject& obj, int pipelineInd);
@@ -475,20 +482,29 @@ class Wingine{
   WingineShader createFragmentShader(const char* shaderText);
   void destroyShader(WingineShader shader);
 
+
+  WinginePipeline createPipeline(int numResourceLayouts, WingineResourceSetLayout* resourceLayouts,
+    int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
+    bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
   WinginePipeline createPipeline(WingineResourceSetLayout resourceLayout,
     int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
     bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
   WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders,
     WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes, bool clear = false);
   WinginePipeline createDepthPipeline(WingineResourceSetLayout layout,
-    int numShaders,
-    WingineShader* shaders);
+				      int numShaders,
+				      WingineShader* shaders);
+  WinginePipeline createDepthPipeline(int numLayouts, WingineResourceSetLayout* layouts,
+				      int numShaders,
+				      WingineShader* shaders);
   void destroyPipeline(WinginePipeline pipeline);
 
   WingineTexture createDepthTexture(int w, int h);
   WingineTexture createTexture(int w, int h, unsigned char* data);
   void destroyTexture(WingineTexture&);
 
+  void destroyObject(WingineRenderObject&);
+  
   WingineKernel createKernel(const char* kernelText, WingineResourceSetLayout layout);
   void executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ);
   void destroyKernel(WingineKernel kernel);

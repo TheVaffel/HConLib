@@ -101,12 +101,15 @@ Wingine::Wingine(const Winval& win){
 #endif // WIN32
 }
 
-void Wingine::initVulkan(int inWidth, int inHeight, const char* title,
+
 #ifdef WIN32
-                       HINSTANCE hinstance, HWND hwnd){
+void Wingine::initVulkan(int inWidth, int inHeight, const char* title,
+			 HINSTANCE hinstance, HWND hwnd)
 #else // WIN32
-                       Window window, Display* display){
+  void Wingine::initVulkan(int inWidth, int inHeight, const char* title,
+			   Window window, Display* display)
 #endif // WIN32
+{
 
   init_instance(inWidth, inHeight, title);
 
@@ -1374,9 +1377,10 @@ VkFormat Wingine::get_vkformat(WgAttribFormat att){
   }
 }
 
-WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats,
-  bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+WinginePipeline Wingine::createPipeline(int numResourceLayouts, WingineResourceSetLayout* resourceLayouts,
+					int numShaders, WingineShader* shaders,
+					int numVertexAttribs, WgAttribFormat* attribFormats,
+					bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
   printf("Constructing pipelinesetup\n");
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
@@ -1413,11 +1417,15 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   pipelineSetup.createInfo.pStages = mods;
   pipelineSetup.createInfo.stageCount = numShaders;
 
-  pipeline.descriptorSetLayout = resourceLayout.layout;
+  pipeline.numDescriptorSetLayouts = numResourceLayouts;
+  pipeline.descriptorSetLayouts = new VkDescriptorSetLayout[numResourceLayouts];
+  for(int i = 0; i < numResourceLayouts; i++){
+    pipeline.descriptorSetLayouts[i] = resourceLayouts[i].layout;
+  }
 
-  pipelineSetup.layoutCreateInfo.setLayoutCount = 1;
-  pipelineSetup.layoutCreateInfo.pSetLayouts = &resourceLayout.layout;
-  printf("Creating pipeline layout\n");
+  pipelineSetup.layoutCreateInfo.setLayoutCount = numResourceLayouts;
+  pipelineSetup.layoutCreateInfo.pSetLayouts = pipeline.descriptorSetLayouts;
+  printf("Creating pipeline layout with %d resources\n", pipelineSetup.layoutCreateInfo.setLayoutCount);
   VkResult res = vkCreatePipelineLayout(device, &pipelineSetup.layoutCreateInfo, NULL, &pipeline.pipelineLayout);
   wgAssert(res == VK_SUCCESS, "Creating pipeline layout");
 
@@ -1437,6 +1445,13 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
 
   return pipeline;
 }
+
+WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
+  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats,
+  bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+  return createPipeline(1, &resourceLayout, numShaders, shaders, numVertexAttribs, attribFormats,
+			clear, numAttachments, attachmentTypes);
+}
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
   bool clear){
@@ -1445,19 +1460,25 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
     attribTypes, clear, 2, attachTypes);
 }
 
+WinginePipeline Wingine::createDepthPipeline(int numResourceSets, WingineResourceSetLayout* resourceLayouts,
+					     int numShaders, WingineShader* shaders){
+  WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
+  WgAttribFormat format = WG_ATTRIB_FORMAT_4;
+  return createPipeline(numResourceSets, resourceLayouts, numShaders, shaders, 1, &format,
+			true, 1, &attachmentType);
+}
+
 // Includes only one vertex attrib. Assumes that position is the only vertex attribute
 WinginePipeline Wingine::createDepthPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders){
-    WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
-    WgAttribFormat format = WG_ATTRIB_FORMAT_4;
-    return createPipeline(resourceLayout, numShaders, shaders, 1, &format,
-        true, 1, &attachmentType);
+					     int numShaders, WingineShader* shaders){
+  return createDepthPipeline(1, &resourceLayout, numShaders, shaders);
 }
 
 void Wingine::destroyPipeline(WinginePipeline pipeline){
   vkDestroyPipelineLayout(device, pipeline.pipelineLayout, NULL);
   vkDestroyRenderPass(device, pipeline.compatibleRenderPass, NULL);
   vkDestroyPipeline(device, pipeline.pipeline, NULL);
+  delete[] pipeline.descriptorSetLayouts;
 }
 
 WingineKernel Wingine::createKernel(const char* kernelText, WingineResourceSetLayout resourceLayout){
@@ -2190,10 +2211,10 @@ WingineTexture Wingine::createDepthTexture(int w, int h){
   samplerInfo.mipLodBias = 0.0f;
   samplerInfo.anisotropyEnable = VK_FALSE;
   samplerInfo.maxAnisotropy = 1;
-  samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+  samplerInfo.compareOp = VK_COMPARE_OP_LESS;
   samplerInfo.minLod = 0.0f;
   samplerInfo.maxLod = 0.0f;
-  samplerInfo.compareEnable = VK_FALSE;
+  samplerInfo.compareEnable = VK_TRUE;
   samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
   res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
@@ -2420,14 +2441,38 @@ void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
   currSemaphore++;
 }
 
-WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet){
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, WingineResourceSet& uSet) : WingineRenderObject(numInds, numVertexAttribs, buffers, iBuffer, 1, &uSet) {
+  /*for(int i = 0; i < numVertexAttribs; i++){
+    vertexAttribs.push_back(buffers[i]);
+  }
+  indexBuffer = iBuffer;
+  resourceSets = new WingineResourceSet[1];
+  resourceSets[0] = uSet;
+  numDrawIndices = numInds;
+  indexOffset = 0;*/
+}
+
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, int numRS, WingineResourceSet* rSets){
+  printf("NumRS: %d\n", numRS);
+  numResourceSets = numRS;
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
   }
   indexBuffer = iBuffer;
-  resourceSet = uSet;
+  resourceSets = new WingineResourceSet[numResourceSets];
+  for(int i = 0; i < numResourceSets; i++){
+    resourceSets[i] = rSets[i];
+  }
   numDrawIndices = numInds;
   indexOffset = 0;
+}
+
+void WingineRenderObject::destroy(){
+  delete[] resourceSets;
+}
+
+void Wingine::destroyObject(WingineRenderObject& obj){
+  obj.destroy();
 }
 
 void WingineRenderObject::setIndexOffset(int newIndex){
@@ -2453,9 +2498,14 @@ void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
 }
 
 void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
-
+  wgAssert(MAX_DESCRIPTOR_SETS > numResourceSets, "Enough descriptor sets\n");
+  VkDescriptorSet sets[MAX_DESCRIPTOR_SETS];
+  printf("Num resource sets: %d\n", numResourceSets);
+  for(int i = 0; i < numResourceSets; i++){
+    sets[i] = resourceSets[i].descriptorSet;
+  }
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout,
-			  0, 1, &resourceSet.descriptorSet, 0, NULL);
+			  0, numResourceSets, sets, 0, NULL);
   VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
   VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];
   for(uint32_t i = 0; i< vertexAttribs.size(); i++){
@@ -2466,7 +2516,7 @@ void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
 
   vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
-  //vkEndCommandBuffer(cmd);
+  
   altered = false;
 }
 
@@ -2488,13 +2538,21 @@ WingineScene::~WingineScene(){
   }
 }
 
-void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
-  WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats){
-  WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders,
-    numVertexAttribs, attribFormats, objectGroups.size() == 0);
+void WingineScene::addPipeline(int numLayouts, WingineResourceSetLayout* layouts,
+			       int numShaders, WingineShader* shaders,
+			       int numVertexAttribs, WgAttribFormat* attribFormats){
+  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
+  WinginePipeline p =  wg->createPipeline(numLayouts, layouts, numShaders, shaders,
+					  numVertexAttribs, attribFormats, objectGroups.size() == 0,
+					  2, types);
   WingineObjectGroup wog(*wg, p);
   wog.shouldClearAttachments = objectGroups.size() == 0;
   objectGroups.push_back(wog);
+}
+
+void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
+  WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats){
+  addPipeline(1, &layout, numShaders, shaders, numVertexAttribs, attribFormats);
 }
 
 void WingineScene::addObject(WingineRenderObject& obj, int pipelineInd){
@@ -2559,7 +2617,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.renderPass = pipeline.compatibleRenderPass;
   rp_begin.clearValueCount = shouldClearAttachments? pipeline.numAttachments : 0;
 
-  rp_begin.pClearValues = clear_values; // Hopefully, this is ignored if render pass does no clearing
+  rp_begin.pClearValues = clear_values; 
   rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
@@ -2621,7 +2679,10 @@ namespace wgutil {
       wingine->destroyUniform(*((WingineUniform*)resources[i]));
     }
 
-    wingine->destroyResourceSet(resourceSet);
+    for(int i = 0; i < numResourceSets; i++){ 
+      wingine->destroyResourceSet(resourceSets[i]);
+    }
+    delete[] resourceSets;
   }
 
   ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){
@@ -2650,7 +2711,10 @@ namespace wgutil {
     indexBuffer = indBuffer;
 
     numDrawIndices = numInds;
-    resourceSet = matrixSet;
+
+    numResourceSets = 1;
+    resourceSets = new WingineResourceSet[numResourceSets];
+    resourceSets[0] = matrixSet;
 
     WingineResource * rp = (WingineResource*)_place_in_heap(&matrixUniform, sizeof(matrixUniform));
     

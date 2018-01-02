@@ -54,11 +54,17 @@ WinginePipelineSetup::WinginePipelineSetup(int numAttachments, WgAttachmentType*
     if(types[i] == WG_ATTACHMENT_TYPE_COLOR)
       numColorAtt++;
   }
-  att_state = new VkPipelineColorBlendAttachmentState[numColorAtt];
+  if(numColorAtt)
+    att_state = new VkPipelineColorBlendAttachmentState[numColorAtt];
+  else {
+    att_state = NULL;
+    cb.attachmentCount = 0;
+  }
 }
 
 WinginePipelineSetup::~WinginePipelineSetup(){
-  delete[] att_state;
+  if(att_state)
+    delete[] att_state;
 }
 
 WingineRenderPassSetup::WingineRenderPassSetup(int nAttachments, WgAttachmentType* types){
@@ -647,33 +653,6 @@ VkResult Wingine::init_swapchain(){
     exit(0);
   }
 
-  //return res;
-
-  /*swapchain_image_views = new VkImageView[swapchain_image_count];
-  for(uint32_t i = 0; i < swapchain_image_count; i++){
-    VkImageViewCreateInfo color_image_view = {};
-    color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    color_image_view.pNext = NULL;
-    color_image_view.flags = 0;
-    color_image_view.image = swapchain_images[i];
-    color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    color_image_view.format = format;
-    color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
-    color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
-    color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
-    color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
-    color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    color_image_view.subresourceRange.baseMipLevel = 0;
-    color_image_view.subresourceRange.levelCount = 1;
-    color_image_view.subresourceRange.baseArrayLayer = 0;
-    color_image_view.subresourceRange.layerCount = 1;
-
-    res = vkCreateImageView(device, &color_image_view, NULL, &swapchain_image_views[i]);
-    if(res != VK_SUCCESS){
-      printf("Could not create image view for image %d\n", i);
-    }
-  }*/
-
   VkFenceCreateInfo fenceInfo;
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.pNext = NULL;
@@ -793,6 +772,7 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
   setup->subpass.inputAttachmentCount = 0;
   setup->subpass.pInputAttachments = NULL;
   setup->subpass.colorAttachmentCount = numOfType[WG_ATTACHMENT_TYPE_COLOR];
+  printf("Number of color attachs: %d\n", numOfType[WG_ATTACHMENT_TYPE_COLOR]);
   setup->subpass.pColorAttachments = &setup->references[startForType[WG_ATTACHMENT_TYPE_COLOR]];
   setup->subpass.pResolveAttachments = NULL;
   setup->subpass.pDepthStencilAttachment = &setup->references[startForType[WG_ATTACHMENT_TYPE_DEPTH]];
@@ -1098,16 +1078,20 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
   setup->cb.pNext = NULL;
   setup->cb.flags = 0;
 
-  setup->att_state[0].colorWriteMask = 0xf;
-  setup->att_state[0].blendEnable = VK_TRUE;
-  setup->att_state[0].alphaBlendOp = VK_BLEND_OP_ADD;
-  setup->att_state[0].colorBlendOp = VK_BLEND_OP_ADD;
-  setup->att_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-  setup->att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-  setup->att_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-  setup->att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-
-  setup->cb.attachmentCount = 1;
+  if(setup->att_state){
+    setup->att_state[0].colorWriteMask = 0xf;
+    setup->att_state[0].blendEnable = VK_TRUE;
+    setup->att_state[0].alphaBlendOp = VK_BLEND_OP_ADD;
+    setup->att_state[0].colorBlendOp = VK_BLEND_OP_ADD;
+    setup->att_state[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    setup->att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    setup->att_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    setup->att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  
+    setup->cb.attachmentCount = 1;
+  }else{
+    setup->cb.attachmentCount = 0;
+  }
   setup->cb.pAttachments = setup->att_state;
   setup->cb.logicOpEnable = VK_FALSE;
   setup->cb.logicOp = VK_LOGIC_OP_NO_OP;
@@ -1396,6 +1380,7 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
   pipeline.numVertexAttribs = numVertexAttribs;
   pipeline_setup_generic(&pipelineSetup, numVertexAttribs);
   printf("Setting renderPass\n");
+  printf("Renderpass colattach: %d\n", pipelineSetup.renderPassSetup.createInfo.pSubpasses[0].colorAttachmentCount);
   pipelineSetup.renderPassSetup.numAttachments = numAttachments;
 
   if(clear){
@@ -1433,13 +1418,15 @@ WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
 
   printf("Creating render pass\n");
   res = vkCreateRenderPass(device, &pipelineSetup.renderPassSetup.createInfo, NULL, &pipeline.compatibleRenderPass);
-  wgAssert(res == VK_SUCCESS, "Creating pipelineLayout");
+  wgAssert(res == VK_SUCCESS, "Creating render pass");
 
   pipelineSetup.createInfo.layout =  pipeline.pipelineLayout;
+  pipelineSetup.createInfo.renderPass = pipeline.compatibleRenderPass;
 
   printf("Creating graphics pipeline\n");
   res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &pipelineSetup.createInfo, NULL, &pipeline.pipeline);
   wgAssert(res == VK_SUCCESS, "Creating pipeline");
+  printf("Created at last\n");
 
   delete[] mods;
 
@@ -1694,7 +1681,8 @@ void Wingine::setLayout(WingineImage& wim, VkImageLayout newLayout){
 }
 
 void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
-  int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout){
+			int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout,
+			VkImageAspectFlagBits aspect){
   VkResult res;
 
   VkCommandBufferBeginInfo cmd_begin = {};
@@ -1717,9 +1705,9 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   wgAssert(res == VK_SUCCESS, "Begin command buffer for copying texture image");
 
   // Set the layouts of the images for transfer
-  wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  wg_cmd_set_image_layout(free_command_buffer, srcImage, aspect, srcStartLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, aspect, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   // Transfer
   /*VkImageCopy copy;
@@ -1745,7 +1733,7 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   */
 
   VkImageBlit region = {};
-  region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.srcSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
   region.srcSubresource.mipLevel = 0;
   region.srcSubresource.baseArrayLayer = 0;
   region.srcSubresource.layerCount = 1;
@@ -1755,7 +1743,7 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   region.srcOffsets[1].y = h;
   region.srcOffsets[1].z = 1;
 
-  region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.dstSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
   region.dstSubresource.mipLevel = 0;
   region.dstSubresource.baseArrayLayer = 0;
   region.dstSubresource.layerCount = 1;
@@ -1765,14 +1753,17 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   region.dstOffsets[1].y = h2;
   region.dstOffsets[1].z = 1;
 
+  VkFilter filter = aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
+    VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+
   vkCmdBlitImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-    dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+    dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, filter);
   // Set the layouts of the images for use later
   if(srcEndLayout != VK_IMAGE_LAYOUT_UNDEFINED){
-    wg_cmd_set_image_layout(free_command_buffer, srcImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout);
+    wg_cmd_set_image_layout(free_command_buffer, srcImage, aspect, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout);
   }
 
-  wg_cmd_set_image_layout(free_command_buffer, dstImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstEndLayout);
+  wg_cmd_set_image_layout(free_command_buffer, dstImage, aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, dstEndLayout);
 
   res = vkEndCommandBuffer(free_command_buffer);
   wgAssert(res == VK_SUCCESS, "End free command buffer");
@@ -1798,7 +1789,7 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   } while (res == VK_TIMEOUT);
 }
 
-void Wingine::copyImage(WingineImage& src, WingineImage& dst){
+void Wingine::copyColorImage(WingineImage& src, WingineImage& dst){
 
   VkImageLayout srcEndLayout = src.layout;
   VkImageLayout dstEndLayout = dst.layout;
@@ -1811,13 +1802,35 @@ void Wingine::copyImage(WingineImage& src, WingineImage& dst){
     dstEndLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
   copyImage(src.width, src.height, src.image, src.layout, srcEndLayout,
-      dst.width, dst.height, dst.image, dst.layout, dstEndLayout);
+	    dst.width, dst.height, dst.image, dst.layout, dstEndLayout, VK_IMAGE_ASPECT_COLOR_BIT);
   src.layout = srcEndLayout;
   dst.layout = dstEndLayout;
 }
 
-void Wingine::copyFromFramebuffer(WingineFramebuffer src, WingineImage dst){
-  copyImage(src.image, dst);
+void Wingine::copyDepthImage(WingineImage& src, WingineImage& dst){
+
+  VkImageLayout srcEndLayout = src.layout;
+  VkImageLayout dstEndLayout = dst.layout;
+
+  if(srcEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
+    srcEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  if(dstEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || dstEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
+    dstEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+  copyImage(src.width, src.height, src.image, src.layout, srcEndLayout,
+	    dst.width, dst.height, dst.image, dst.layout, dstEndLayout, VK_IMAGE_ASPECT_DEPTH_BIT);
+  src.layout = srcEndLayout;
+  dst.layout = dstEndLayout;
+}
+
+void Wingine::copyColorFromFramebuffer(WingineFramebuffer src, WingineImage dst){
+  copyColorImage(src.image, dst);
+}
+
+void Wingine::copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst){
+  copyDepthImage(src.depth_image, dst);
 }
 
 WingineImage Wingine::createImage(uint32_t w, uint32_t h, VkImageLayout layout, VkImageUsageFlags usage,
@@ -1915,7 +1928,7 @@ void Wingine::destroyImage(WingineImage w){
 
 WingineFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t height, WinginePipeline& pipeline){
   WingineFramebuffer framebuffer;
-  framebuffer.depth_image = createReadableDepthBuffer(width, height);
+  framebuffer.depth_image = createDepthBuffer(width, height);
 
 
   VkImageView attachments[] = {framebuffer.depth_image.view};
@@ -2002,12 +2015,13 @@ WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32
   return framebuffer;
 }
 
+// The usage flags are a bit of a chaos
 WingineImage Wingine::createReadableDepthBuffer(uint32_t width, uint32_t height){
-  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
 WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height){
-  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+  return createDepthBuffer(width, height, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 }
 
 WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_t usage){
@@ -2100,6 +2114,8 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_
   }
 
   depth_buffer.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_buffer.width = width;
+  depth_buffer.height = height;
   return depth_buffer;
 }
 
@@ -2114,7 +2130,7 @@ WingineImage Wingine::create_mappable_image(uint32_t width, uint32_t height){
 void Wingine::getImageContent(WingineImage image, uint8_t* data){
   WingineImage mapIm = create_mappable_image(image.width, image.height);
 
-  copyImage(image, mapIm);
+  copyColorImage(image, mapIm);
 
   VkImageSubresource subres = {};
   subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -2226,9 +2242,8 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   //Now, create the actual image
   resultTexture.image = createImage(w,h,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-  /*copyImage(w, h, mappableImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_UNDEFINED,
-    w, h, resultTexture.image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
-  copyImage(wMappableImage, resultTexture.image);
+  
+  copyColorImage(wMappableImage, resultTexture.image);
 
   //Initialize sampler
   VkSamplerCreateInfo samplerInfo = {};
@@ -2470,10 +2485,8 @@ void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
   WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats){
   WinginePipeline p =  wg->createPipeline(layout, numShaders, shaders,
     numVertexAttribs, attribFormats, objectGroups.size() == 0);
-  WingineObjectGroup wog(*wg);
-  wog.pipeline = p;
+  WingineObjectGroup wog(*wg, p);
   wog.shouldClearAttachments = objectGroups.size() == 0;
-  wog.commandBuffer = wg->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   objectGroups.push_back(wog);
 }
 
@@ -2495,8 +2508,11 @@ void WingineObjectGroup::addObject(const WingineRenderObject& obj){
   objects[ind].setObjectGroup(*this);
 }
 
-WingineObjectGroup::WingineObjectGroup(Wingine& wg){
+WingineObjectGroup::WingineObjectGroup(Wingine& wg, WinginePipeline& newPipeline){
   wingine = &wg;
+  pipeline = newPipeline;
+  shouldClearAttachments = true;
+  commandBuffer = wg.createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
 void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& framebuffer){
@@ -2548,9 +2564,10 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
 
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
+  printf("Binding pipeline\n");
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
+  printf("Beginning render pass\n");
   vkCmdBeginRenderPass(commandBuffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 

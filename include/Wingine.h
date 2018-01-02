@@ -232,7 +232,7 @@ struct WingineObjectGroup{ // Collection of objects that are rendered with the s
 private:
   Wingine* wingine;
 public:
-  WingineObjectGroup(Wingine& wg);
+  WingineObjectGroup(Wingine& wg, WinginePipeline& pipeline);
   bool altered  = true;
   bool shouldClearAttachments;
   WinginePipeline pipeline;
@@ -412,10 +412,13 @@ class Wingine{
 
  public:
 
-  void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
-    int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout);
-  void copyImage(WingineImage& src, WingineImage& dst);
-  void copyFromFramebuffer(WingineFramebuffer src, WingineImage dst);
+void copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLayout, VkImageLayout srcEndLayout,
+	       int w2, int h2, VkImage dstImage, VkImageLayout dstStartLayout, VkImageLayout dstEndLayout,
+		 VkImageAspectFlagBits aspect);
+void copyColorImage(WingineImage& src, WingineImage& dst);
+void copyDepthImage(WingineImage& src, WingineImage& dst);
+  void copyColorFromFramebuffer(WingineFramebuffer src, WingineImage dst);
+void copyDepthFromFramebuffer(WingineFramebuffer src, WingineImage dst);
 
   int getScreenWidth() const;
   int getScreenHeight() const;
@@ -511,25 +514,6 @@ class Wingine{
   ~Wingine();
 };
 
-typedef WingineBuffer WgBuffer;
-typedef WingineImage WgImage;
-typedef WingineShader WgShader;
-typedef WingineKernel WgKernel;
-typedef WingineCamera WgCamera;
-typedef WingineUniform WgUniform;
-typedef WingineTexture WgTexture;
-typedef WingineResourceSetLayout WgRSL;
-typedef WingineResource WgResource;
-typedef WingineResourceSet WgRS;
-typedef WingineResourceSet WgResourceSet;
-typedef WingineScene WgScene;
-typedef WingineRenderObject WgRenderObject;
-typedef WingineRenderObject WgObject;
-typedef WinginePipeline WgPipeline;
-typedef WingineObjectGroup WgOG;
-typedef WingineObjectGroup WgObjectGroup;
-typedef WingineFramebuffer WgFramebuffer;
-
 
 namespace wgutil {
 
@@ -553,5 +537,24 @@ namespace wgutil {
   ColorModel createCube(Wingine& wg, float s);
   
 }
+
+typedef WingineBuffer WgBuffer;
+typedef WingineImage WgImage;
+typedef WingineShader WgShader;
+typedef WingineKernel WgKernel;
+typedef WingineCamera WgCamera;
+typedef WingineUniform WgUniform;
+typedef WingineTexture WgTexture;
+typedef WingineResourceSetLayout WgRSL;
+typedef WingineResource WgResource;
+typedef WingineResourceSet WgRS;
+typedef WingineResourceSet WgResourceSet;
+typedef WingineScene WgScene;
+typedef WingineRenderObject WgRenderObject;
+typedef WingineRenderObject WgObject;
+typedef WinginePipeline WgPipeline;
+typedef WingineObjectGroup WgOG;
+typedef WingineObjectGroup WgObjectGroup;
+typedef WingineFramebuffer WgFramebuffer;
 
 #endif //INCLUDED_WINGINE

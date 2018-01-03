@@ -822,7 +822,7 @@ VkResult Wingine::init_framebuffers(){
   framebuffers = new WingineFramebuffer[swapchain_image_count];
 
   for(uint32_t i = 0; i < swapchain_image_count; i++){
-    framebuffers[i] = create_framebuffer_from_vk_image(swapchain_images[i], width, height);
+    framebuffers[i] = create_framebuffer_from_vk_image(swapchain_images[i], width, height, true);
   }
 
   return VK_SUCCESS;
@@ -1020,7 +1020,7 @@ void Wingine::image_create_info_generic(VkImageCreateInfo* ici){
   ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   ici->pNext = NULL;
   ici->imageType = VK_IMAGE_TYPE_2D;
-  ici->format = VK_FORMAT_R8G8B8A8_UNORM;
+  ici->format = VK_FORMAT_B8G8R8A8_UNORM;
   ici->extent.width = width;
   ici->extent.height = height;
   ici->extent.depth = 1;
@@ -1090,7 +1090,7 @@ void Wingine::pipeline_setup_generic(WinginePipelineSetup* setup, int numVertexA
     setup->att_state[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     setup->att_state[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     setup->att_state[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-  
+
     setup->cb.attachmentCount = 1;
   }else{
     setup->cb.attachmentCount = 0;
@@ -1690,7 +1690,7 @@ void Wingine::setLayout(WingineImage& wim, VkImageLayout newLayout){
   viewInfo.pNext = NULL;
   viewInfo.image = wim.image;
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  viewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
   viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -1736,54 +1736,62 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   wg_cmd_set_image_layout(free_command_buffer, dstImage, aspect, dstStartLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   // Transfer
-  /*VkImageCopy copy;
-  copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copy.srcSubresource.mipLevel = 0;
-  copy.srcSubresource.baseArrayLayer = 0;
-  copy.srcSubresource.layerCount = 1;
-  copy.srcOffset.x = 0;
-  copy.srcOffset.y = 0;
-  copy.srcOffset.z = 0;
-  copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copy.dstSubresource.mipLevel = 0;
-  copy.dstSubresource.baseArrayLayer = 0;
-  copy.dstSubresource.layerCount = 1;
-  copy.dstOffset.x = 0;
-  copy.dstOffset.y = 0;
-  copy.dstOffset.z = 0;
-  copy.extent.width = w;
-  copy.extent.height = h;
-  copy.extent.depth = 1;
 
-  vkCmdCopyImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
-  */
+  if(aspect == VK_IMAGE_ASPECT_DEPTH_BIT){
+    if(w != w2 || h != h2){
+      printf("Cannot copy depth image to a differently sized image");
+      exit(-1);
+    }
+    VkImageCopy copy;
+    copy.srcSubresource.aspectMask = aspect;
+    copy.srcSubresource.mipLevel = 0;
+    copy.srcSubresource.baseArrayLayer = 0;
+    copy.srcSubresource.layerCount = 1;
+    copy.srcOffset.x = 0;
+    copy.srcOffset.y = 0;
+    copy.srcOffset.z = 0;
+    copy.dstSubresource.aspectMask = aspect;
+    copy.dstSubresource.mipLevel = 0;
+    copy.dstSubresource.baseArrayLayer = 0;
+    copy.dstSubresource.layerCount = 1;
+    copy.dstOffset.x = 0;
+    copy.dstOffset.y = 0;
+    copy.dstOffset.z = 0;
+    copy.extent.width = w;
+    copy.extent.height = h;
+    copy.extent.depth = 1;
 
-  VkImageBlit region = {};
-  region.srcSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
-  region.srcSubresource.mipLevel = 0;
-  region.srcSubresource.baseArrayLayer = 0;
-  region.srcSubresource.layerCount = 1;
-  region.srcOffsets[0].x = 0;
-  region.srcOffsets[0].y = 0;
-  region.srcOffsets[1].x = w;
-  region.srcOffsets[1].y = h;
-  region.srcOffsets[1].z = 1;
+    vkCmdCopyImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+  }else{
+    VkImageBlit region = {};
+    region.srcSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel = 0;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount = 1;
+    region.srcOffsets[0].x = 0;
+    region.srcOffsets[0].y = 0;
+    region.srcOffsets[1].x = w;
+    region.srcOffsets[1].y = h;
+    region.srcOffsets[1].z = 1;
 
-  region.dstSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
-  region.dstSubresource.mipLevel = 0;
-  region.dstSubresource.baseArrayLayer = 0;
-  region.dstSubresource.layerCount = 1;
-  region.dstOffsets[0].x = 0;
-  region.dstOffsets[0].y = 0;
-  region.dstOffsets[1].x = w2;
-  region.dstOffsets[1].y = h2;
-  region.dstOffsets[1].z = 1;
+    region.dstSubresource.aspectMask = aspect; //VK_IMAGE_ASPECT_COLOR_BIT;
+    region.dstSubresource.mipLevel = 0;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount = 1;
+    region.dstOffsets[0].x = 0;
+    region.dstOffsets[0].y = 0;
+    region.dstOffsets[1].x = w2;
+    region.dstOffsets[1].y = h2;
+    region.dstOffsets[1].z = 1;
 
-  VkFilter filter = aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
-    VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+    VkFilter filter = aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) ?
+      VK_FILTER_NEAREST : VK_FILTER_LINEAR;
 
-  vkCmdBlitImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-    dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, filter);
+    vkCmdBlitImage(free_command_buffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, filter);
+  }
+
+
   // Set the layouts of the images for use later
   if(srcEndLayout != VK_IMAGE_LAYOUT_UNDEFINED){
     wg_cmd_set_image_layout(free_command_buffer, srcImage, aspect, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcEndLayout);
@@ -1928,7 +1936,7 @@ WingineImage Wingine::create_image_from_vk_image(VkImage vkim, uint32_t w, uint3
   viewInfo.pNext = NULL;
   viewInfo.image = image.image;
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+  viewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
   viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
   viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
   viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -1989,38 +1997,46 @@ WingineFramebuffer Wingine::createFramebuffer(uint32_t width, uint32_t height){
   VkResult res = vkCreateImage(device, &ici, NULL, &vim);
   wgAssert(res == VK_SUCCESS, "Create image");
 
-  return create_framebuffer_from_vk_image(vim, width, height);
+  return create_framebuffer_from_vk_image(vim, width, height, false);
 }
 
-WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32_t width, uint32_t height){
+WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32_t width, uint32_t height,
+        bool hasMemory){
   WingineImage colIm;
-  colIm.width = width;
-  colIm.height = height;
-  colIm.image = vim;
-  VkImageViewCreateInfo color_image_view = {};
+  if(!hasMemory){
+    colIm = create_image_from_vk_image(vim, width, height,
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-  color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  color_image_view.pNext = NULL;
-  color_image_view.flags = 0;
-  color_image_view.image = vim;
-  color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  color_image_view.format = format;
-  color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
-  color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
-  color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
-  color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
-  color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  color_image_view.subresourceRange.baseMipLevel = 0;
-  color_image_view.subresourceRange.levelCount = 1;
-  color_image_view.subresourceRange.baseArrayLayer = 0;
-  color_image_view.subresourceRange.layerCount = 1;
+  }else{
+    colIm.width = width;
+    colIm.height = height;
+    colIm.image = vim;
+    VkImageViewCreateInfo color_image_view = {};
 
-  VkResult res = vkCreateImageView(device, &color_image_view, NULL, &colIm.view);
+    color_image_view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    color_image_view.pNext = NULL;
+    color_image_view.flags = 0;
+    color_image_view.image = vim;
+    color_image_view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    color_image_view.format = format;
+    color_image_view.components.r = VK_COMPONENT_SWIZZLE_R;
+    color_image_view.components.g = VK_COMPONENT_SWIZZLE_G;
+    color_image_view.components.b = VK_COMPONENT_SWIZZLE_B;
+    color_image_view.components.a = VK_COMPONENT_SWIZZLE_A;
+    color_image_view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    color_image_view.subresourceRange.baseMipLevel = 0;
+    color_image_view.subresourceRange.levelCount = 1;
+    color_image_view.subresourceRange.baseArrayLayer = 0;
+    color_image_view.subresourceRange.layerCount = 1;
+
+    VkResult res = vkCreateImageView(device, &color_image_view, NULL, &colIm.view);
+  }
+
 
   colIm.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   colIm.imageInfo.imageView = colIm.view;
   colIm.imageInfo.imageLayout = colIm.layout;
-  wgAssert(res == VK_SUCCESS, "Creating image view to framebuffer");
 
   WingineFramebuffer framebuffer;
   framebuffer.image = colIm;
@@ -2036,7 +2052,7 @@ WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32
   fb_info.width = width;
   fb_info.height = height;
   fb_info.layers = 1;
-  res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
+  VkResult res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
   wgAssert(res == VK_SUCCESS, "Creating framebuffer");
   return framebuffer;
 }
@@ -2143,7 +2159,7 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_
   depth_buffer.width = width;
   depth_buffer.height = height;
   depth_buffer.imageInfo.imageView = depth_buffer.view;
-  
+
   return depth_buffer;
 }
 
@@ -2239,7 +2255,7 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.image.width = w;
   resultTexture.image.height = h;
 
-  
+
   WingineImage wMappableImage = create_mappable_image(w, h);
   VkImage mappableImage = wMappableImage.image;
 
@@ -2270,7 +2286,7 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   //Now, create the actual image
   resultTexture.image = createImage(w,h,VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-  
+
   copyColorImage(wMappableImage, resultTexture.image);
 
   //Initialize sampler
@@ -2516,7 +2532,7 @@ void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
 
   vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
   vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
-  
+
   altered = false;
 }
 
@@ -2617,7 +2633,7 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.renderPass = pipeline.compatibleRenderPass;
   rp_begin.clearValueCount = shouldClearAttachments? pipeline.numAttachments : 0;
 
-  rp_begin.pClearValues = clear_values; 
+  rp_begin.pClearValues = clear_values;
   rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
@@ -2679,7 +2695,7 @@ namespace wgutil {
       wingine->destroyUniform(*((WingineUniform*)resources[i]));
     }
 
-    for(int i = 0; i < numResourceSets; i++){ 
+    for(int i = 0; i < numResourceSets; i++){
       wingine->destroyResourceSet(resourceSets[i]);
     }
     delete[] resourceSets;
@@ -2717,13 +2733,13 @@ namespace wgutil {
     resourceSets[0] = matrixSet;
 
     WingineResource * rp = (WingineResource*)_place_in_heap(&matrixUniform, sizeof(matrixUniform));
-    
+
     resources.push_back(rp);
 
     wingine->destroyResourceSetLayout(matrixLayout);
-    
+
   }
-  
+
   ColorModel createCube(Wingine& wg, float s){
     float vertexData[24 * 4];
 
@@ -2734,7 +2750,7 @@ namespace wgutil {
     int i0[] = {0, 0, 1, 1, 2, 2};
     int i1[] = {1, 2, 2, 0, 0, 1};
     int i2[] = {2, 1, 0, 2, 1, 0};
-    
+
     for(int i = 0; i < 6; i++){
       for(int j = 0; j < 4; j++){
 	vertexData[4 * 4 * i + 4 * j + i0[i]] = (i % 2 ? -1 : 1) * hs;

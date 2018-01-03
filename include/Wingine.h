@@ -26,7 +26,7 @@
 #define DEBUG
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT
-#define DEPTH_BUFFER_FORMAT VK_FORMAT_D32_SFLOAT
+#define DEPTH_BUFFER_FORMAT VK_FORMAT_D16_UNORM
 
 #define NUM_DESCRIPTOR_SETS 1
 
@@ -216,7 +216,7 @@ class WingineRenderObject{
   WingineRenderObject();
   WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, WingineResourceSet& rSet);
   WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, int numResourceSets, WingineResourceSet* rSets);
-  
+
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
   void setNumIndices(int num);
@@ -404,11 +404,11 @@ class Wingine{
 
   void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
   void stage_next_image();
-  
+
   void pushNewDrawSemaphore();
 
 #if WIN32
-  
+
   void initVulkan(int width, int height, const char* title,
 		  HINSTANCE hinstance, HWND hwnd);
 #else
@@ -416,7 +416,7 @@ class Wingine{
              Window window, Display* display);
 #endif
 
-  WingineFramebuffer create_framebuffer_from_vk_image(VkImage image, uint32_t width, uint32_t height);
+  WingineFramebuffer create_framebuffer_from_vk_image(VkImage image, uint32_t width, uint32_t height, bool hasMemory);
   WingineImage create_image_from_vk_image(VkImage vkim, uint32_t w, uint32_t h, VkImageUsageFlags usage, uint32_t memProps);
   WingineImage create_mappable_image(uint32_t width, uint32_t height);
 
@@ -504,7 +504,7 @@ class Wingine{
   void destroyTexture(WingineTexture&);
 
   void destroyObject(WingineRenderObject&);
-  
+
   WingineKernel createKernel(const char* kernelText, WingineResourceSetLayout layout);
   void executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ);
   void destroyKernel(WingineKernel kernel);
@@ -553,9 +553,9 @@ namespace wgutil {
   struct ColorModel : public Model { // Simple object with color attributes and a transformation matrix
     ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData);
   };
-  
+
   ColorModel createCube(Wingine& wg, float s);
-  
+
 }
 
 typedef WingineBuffer WgBuffer;

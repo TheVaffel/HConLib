@@ -19,6 +19,7 @@ const char *vertShaderText =
   "layout (location = 0) in vec4 pos;\n"
   "layout (location = 1) in vec4 normal;\n"
   "layout (location = 0) out vec4 light_vertex;\n"
+  "layout (location = 1) out vec4 pos1;\n"
   //"layout (location = 0) out float lightness;\n"
   "out gl_PerVertex { \n"
   "    vec4 gl_Position;\n"
@@ -26,6 +27,7 @@ const char *vertShaderText =
   "void main() {\n"
   "   vec4 newPos = myBufferVals.mvp * pos;\n"
   "   light_vertex = lightVals.mvp * pos;\n"
+  "   pos1 = newPos;\n"
   //"   vec4 addVec = vec4(0.5, 0.5, -5, 0.0);\n"
   //"   gl_Position = newPos + addVec;\n"
   "   gl_Position = newPos\n;"
@@ -38,15 +40,16 @@ const char *fragShaderText =
   "#extension GL_ARB_separate_shader_objects : enable\n"
   "#extension GL_ARB_shading_language_420pack : enable\n"
   "layout (location = 0) in vec4 light_vert;\n"
+  "layout (location = 1) in vec4 pos1_vert;\n"
   //"layout (location = 0) in float lightness;\n"
   "layout (location = 0) out vec4 outColor;\n"
   "layout (set = 1, binding = 1) uniform sampler2DShadow depthMap;\n"
   "void main() {\n"
   "  \n"
-  "  float visible = texture(depthMap, vec3(light_vert.xy/light_vert.w, light_vert.z - 7.1));//.7851));\n"
-  "  outColor = visible * vec4(0.5f, 0.5f, 0.5f, 0.0f) + vec4(0.3f, 0.3f, 0.3f, 1.0f);\n"
-  //"  outColor = vec4(0.3f, 0.3f, 0.3f, 1.0f);\n"
-  //"  outColor.w = 1.0f;\n"
+  "  float visible = texture(depthMap, vec3(light_vert.xy/light_vert.w, light_vert.z - 6.99));\n"
+  //"  outColor = visible * vec4(0.5f, 0.5f, 0.5f, 0.0f) + vec4(0.3f, 0.3f, 0.3f, 1.0f);\n"
+  "  outColor = length(pos1_vert.xy - gl_FragCoord.xy) * vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+  "  outColor.w = 1.0f;\n"
   "}\n";
 
 
@@ -70,9 +73,10 @@ const char *fragShaderDepthText =
   "#version 400\n"
   "#extension GL_ARB_separate_shader_objects : enable\n"
   "#extension GL_ARB_shading_language_420pack : enable\n"
-  //"layout (location = 0) out float depth;\n"
+  "layout (location = 0) out vec4 outCol;\n"
   "void main() {\n"
   //"  depth = gl_FragCoord.z;\n"
+  "  outCol = vec4(1.0, 0.0, 0.0, 1.0);\n"
   "}\n";
 
 const float floor_vertices[] = {
@@ -160,11 +164,11 @@ int main(){
 
   WgAttribFormat attribTypes[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4};
 
-  
+
   WgBuffer cubeVertexAttribs[] = {cubeVertexBuffer, cubeNormalBuffer};
   WgBuffer floorVertexAttribs[] = {floorVertexBuffer, floorNormalBuffer};
 
-  
+
 
   // Depth rendering
   WgUniform lightTransformUniform = wg.createUniform(sizeof(Matrix4));
@@ -174,10 +178,10 @@ int main(){
   WgResourceType lightResourceTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
   WgResource* lightResources[] = {&lightTransformUniform, &depthImage};
   WgResource* lightTransformResource[] = {&lightTransformUniform};
-  
-  
+
+
   WgRSL lightLayout = wg.createResourceSetLayout(2, lightResourceTypes, lightResourceSetStageBits);
-  
+
   printf("Creating depth shaders\n");
   WgShader idVertexShader = wg.createVertexShader(vertShaderIdText);
   printf("Creating depth frag shader\n");
@@ -185,12 +189,14 @@ int main(){
 
   WgShader depthShaders[] = {idVertexShader, depthFragShader};
   WgRSL depthSetLayouts[] = {rsl, lightLayout};
-  WgPipeline depthPipeline = wg.createDepthPipeline(rsl, 2, depthShaders);
+  //WgPipeline depthPipeline = wg.createDepthPipeline(rsl, 2, depthShaders);
+  WgPipeline depthPipeline = wg.createPipeline(rsl, 2, depthShaders, 1, &attribTypes[0], true);
 
-  
-  
 
-  WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
+
+  //WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
+  printf("Creating framebuffer\n");
+  WingineFramebuffer depthFramebuffer = wg.createFramebuffer(width, height);
   printf("Created framebuffer\n");
 
   WgResourceSet lightTransformSet = wg.createResourceSet(rsl, lightTransformResource);
@@ -205,10 +211,11 @@ int main(){
 
   WgObject cube(3 * 12, 2, cubeVertexAttribs, cubeIndexBuffer, 2, lightSets);
   WgObject floor(3 * 2, 2, floorVertexAttribs, floorIndexBuffer, 2, lightSets);
-  
-  scene.addObject(cube, 0);
+
+
   scene.addObject(floor, 0);
-  
+  scene.addObject(cube, 0);
+
   WgObjectGroup depthObjectGroup(wg, depthPipeline);
   depthObjectGroup.addObject(lightCube);
   depthObjectGroup.addObject(lightFloor);
@@ -240,7 +247,7 @@ int main(){
     wg.setUniform(lightTransformUniform, &lightMat, sizeof(Matrix4));
 
     wg.renderObjectGroup(depthObjectGroup, depthFramebuffer);
-    
+
     wg.copyDepthFromFramebuffer(depthFramebuffer, depthImage.image);
     printf("Rendered shadow map, rendering the rest\n");
     wg.renderScene();
@@ -278,6 +285,9 @@ int main(){
 
   wg.destroyObject(cube);
   wg.destroyObject(floor);
+
+  wg.destroyObject(lightCube);
+  wg.destroyObject(lightFloor);
 
   return 0;
 }

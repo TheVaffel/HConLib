@@ -103,6 +103,10 @@ if(WINVAL_LIB)
   	add_executable(cartoonifycam cartoonifycam.cpp)
   	target_link_libraries(cartoonifycam HCam ${winval_libs})
 
+    #filtering
+    add_executable(filtering filtering.cpp)
+    target_link_libraries(filtering HCam ${winval_libs})
+
   	find_library(TURBO_JPEG_LIB NAMES turbojpeg)
   	if(TURBO_JPEG_LIB)
   		message(">>>Found turbojpeg, compiling cam.cpp with turbo support")

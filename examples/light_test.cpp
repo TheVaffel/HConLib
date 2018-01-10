@@ -11,28 +11,19 @@ const char *vertShaderText =
   "layout (std140, binding = 0) uniform bufferVals {\n"
   "    mat4 mvp;\n"
   "} myBufferVals;\n"
-  "    \n"
   "layout (std140, set = 1, binding = 0) uniform ll {\n"
-  "    \n"
   "    mat4 mvp;\n"
   "} lightVals;\n"
   "layout (location = 0) in vec4 pos;\n"
   "layout (location = 1) in vec4 normal;\n"
   "layout (location = 0) out vec4 light_vertex;\n"
-  "layout (location = 1) out vec4 pos1;\n"
-  //"layout (location = 0) out float lightness;\n"
   "out gl_PerVertex { \n"
   "    vec4 gl_Position;\n"
   "};\n"
   "void main() {\n"
   "   vec4 newPos = myBufferVals.mvp * pos;\n"
   "   light_vertex = lightVals.mvp * pos;\n"
-  "   pos1 = newPos;\n"
-  //"   vec4 addVec = vec4(0.5, 0.5, -5, 0.0);\n"
-  //"   gl_Position = newPos + addVec;\n"
   "   gl_Position = newPos\n;"
-  //"   gl_Position = pos;"
-  //"   lightness = dot(-normalize(newPos), normalize(myBufferVals.mvp * normal));\n"
   "}\n";
 
 const char *fragShaderText =
@@ -40,16 +31,13 @@ const char *fragShaderText =
   "#extension GL_ARB_separate_shader_objects : enable\n"
   "#extension GL_ARB_shading_language_420pack : enable\n"
   "layout (location = 0) in vec4 light_vert;\n"
-  "layout (location = 1) in vec4 pos1_vert;\n"
-  //"layout (location = 0) in float lightness;\n"
   "layout (location = 0) out vec4 outColor;\n"
-  "layout (set = 1, binding = 1) uniform sampler2DShadow depthMap;\n"
+  "layout (set = 1, binding = 1) uniform sampler2D depthMap;\n"
   "void main() {\n"
-  "  \n"
-  "  float visible = texture(depthMap, vec3(light_vert.xy/light_vert.w, light_vert.z - 6.99));\n"
-  //"  outColor = visible * vec4(0.5f, 0.5f, 0.5f, 0.0f) + vec4(0.3f, 0.3f, 0.3f, 1.0f);\n"
-  "  outColor = length(pos1_vert.xy - gl_FragCoord.xy) * vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
-  "  outColor.w = 1.0f;\n"
+  "  float sub = 0.98;\n"
+  "  float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x "
+  " > light_vert.z/light_vert.w - 0.0001? 1.0: 0.1;\n"
+  "  outColor = visible * vec4(1, 1, 1, 0.0) + vec4(0.0, 0.0, 0.0, 1.0);\n"
   "}\n";
 
 
@@ -136,7 +124,6 @@ int main(){
   for(int i = 0; i < 6 * 4; i++){
     cube_vertices[4 * i + 1] += 0.5f;
   }
-  printf("Starting\n");
   WgBuffer floorVertexBuffer = wg.createVertexBuffer(4*4*sizeof(float), floor_vertices);
   WgBuffer floorNormalBuffer = wg.createVertexBuffer(4 * 4 * sizeof(float), floor_normals);
   WgBuffer floorIndexBuffer = wg.createIndexBuffer(2 * 3 * sizeof(uint32_t), floor_indices);
@@ -154,9 +141,7 @@ int main(){
   WgResource* cameraResource = &cameraUniform;
   WgResourceSet cameraSet = wg.createResourceSet(rsl, &cameraResource);
 
-  printf("Creating normal shaders\n");
   WgShader vertexShader = wg.createVertexShader(vertShaderText);
-  printf("Creating shadowhandling fragment shader\n");
   WgShader fragmentShader = wg.createFragmentShader(fragShaderText);
   WgShader shaders[] = {vertexShader, fragmentShader};
 
@@ -182,9 +167,7 @@ int main(){
 
   WgRSL lightLayout = wg.createResourceSetLayout(2, lightResourceTypes, lightResourceSetStageBits);
 
-  printf("Creating depth shaders\n");
   WgShader idVertexShader = wg.createVertexShader(vertShaderIdText);
-  printf("Creating depth frag shader\n");
   WgShader depthFragShader = wg.createFragmentShader(fragShaderDepthText);
 
   WgShader depthShaders[] = {idVertexShader, depthFragShader};
@@ -195,9 +178,7 @@ int main(){
 
 
   //WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
-  printf("Creating framebuffer\n");
   WingineFramebuffer depthFramebuffer = wg.createFramebuffer(width, height);
-  printf("Created framebuffer\n");
 
   WgResourceSet lightTransformSet = wg.createResourceSet(rsl, lightTransformResource);
   WgResourceSet lightSet = wg.createResourceSet(lightLayout, lightResources);
@@ -220,7 +201,7 @@ int main(){
   depthObjectGroup.addObject(lightCube);
   depthObjectGroup.addObject(lightFloor);
 
-  WgCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
+  WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
   Vector3 camPos(4, 5, -6);
   cam.setLookAt(camPos,
     Vector3(0, 0, 0),
@@ -228,8 +209,9 @@ int main(){
 
   wg.setScene(scene);
 
-  WgCamera lightCamera(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
-  Vector3 lightPos(-4, 4, -5);
+  WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
+  Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.02f);
+  Vector3 lightPos(-3, 7, 5);
   lightCamera.setLookAt(lightPos,
     Vector3(0, 0, 0),
     Vector3(0, 1, 0));
@@ -239,7 +221,12 @@ int main(){
   while(win.isOpen()){
     count++;
 
-    cam.setPosition(camPos + 0.5f*camPos*sin(0.03f*count));
+    lightPos = lightRot * lightPos;
+    lightCamera.setLookAt(lightPos,
+    Vector3(0, 0, 0),
+    Vector3(0, 1, 0));
+
+    cam.setPosition(camPos + 0.3f*camPos*sin(0.03f*count));
     Matrix4 cmat = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cmat, sizeof(Matrix4));
 
@@ -249,7 +236,6 @@ int main(){
     wg.renderObjectGroup(depthObjectGroup, depthFramebuffer);
 
     wg.copyDepthFromFramebuffer(depthFramebuffer, depthImage.image);
-    printf("Rendered shadow map, rendering the rest\n");
     wg.renderScene();
 
     win.sleepMilliseconds(50);

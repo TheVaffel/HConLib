@@ -775,7 +775,6 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
   setup->subpass.inputAttachmentCount = 0;
   setup->subpass.pInputAttachments = NULL;
   setup->subpass.colorAttachmentCount = numOfType[WG_ATTACHMENT_TYPE_COLOR];
-  printf("Number of color attachs: %d\n", numOfType[WG_ATTACHMENT_TYPE_COLOR]);
   setup->subpass.pColorAttachments = &setup->references[startForType[WG_ATTACHMENT_TYPE_COLOR]];
   setup->subpass.pResolveAttachments = NULL;
   setup->subpass.pDepthStencilAttachment = &setup->references[startForType[WG_ATTACHMENT_TYPE_DEPTH]];
@@ -785,7 +784,6 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
   setup->createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   setup->createInfo.pNext = NULL;
   setup->createInfo.flags = 0;
-  printf("Attachment count: %d\n", setup->numAttachments);
   setup->createInfo.attachmentCount = setup->numAttachments;
   setup->createInfo.pAttachments = setup->attachments;
   setup->createInfo.subpassCount = 1;
@@ -803,7 +801,7 @@ VkResult Wingine::init_render_passes(){
 
   VkResult res = vkCreateRenderPass(device, &setup.createInfo, NULL, &render_pass_generic);
   if(res != VK_SUCCESS){
-    printf("Creating generic render pass\n");
+    printf("Could not create generic render pass\n");
     exit(0);
   }
 
@@ -1381,15 +1379,12 @@ WinginePipeline Wingine::createPipeline(int numResourceLayouts, WingineResourceS
 					int numShaders, WingineShader* shaders,
 					int numVertexAttribs, WgAttribFormat* attribFormats,
 					bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
-  printf("Constructing pipelinesetup\n");
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
   pipeline.numAttachments = numAttachments;
   wgAssert(numVertexAttribs <= MAX_VERTEX_ATTRIBUTES, "Max Vertex Attributes high enough");
   pipeline.numVertexAttribs = numVertexAttribs;
   pipeline_setup_generic(&pipelineSetup, numVertexAttribs);
-  printf("Setting renderPass\n");
-  printf("Renderpass colattach: %d\n", pipelineSetup.renderPassSetup.createInfo.pSubpasses[0].colorAttachmentCount);
   pipelineSetup.renderPassSetup.numAttachments = numAttachments;
 
   if(clear){
@@ -1425,21 +1420,17 @@ WinginePipeline Wingine::createPipeline(int numResourceLayouts, WingineResourceS
 
   pipelineSetup.layoutCreateInfo.setLayoutCount = numResourceLayouts;
   pipelineSetup.layoutCreateInfo.pSetLayouts = pipeline.descriptorSetLayouts;
-  printf("Creating pipeline layout with %d resources\n", pipelineSetup.layoutCreateInfo.setLayoutCount);
   VkResult res = vkCreatePipelineLayout(device, &pipelineSetup.layoutCreateInfo, NULL, &pipeline.pipelineLayout);
   wgAssert(res == VK_SUCCESS, "Creating pipeline layout");
 
-  printf("Creating render pass\n");
   res = vkCreateRenderPass(device, &pipelineSetup.renderPassSetup.createInfo, NULL, &pipeline.compatibleRenderPass);
   wgAssert(res == VK_SUCCESS, "Creating render pass");
 
   pipelineSetup.createInfo.layout =  pipeline.pipelineLayout;
   pipelineSetup.createInfo.renderPass = pipeline.compatibleRenderPass;
 
-  printf("Creating graphics pipeline\n");
   res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &pipelineSetup.createInfo, NULL, &pipeline.pipeline);
   wgAssert(res == VK_SUCCESS, "Creating pipeline");
-  printf("Created at last\n");
 
   delete[] mods;
 
@@ -2218,8 +2209,8 @@ WingineTexture Wingine::createDepthTexture(int w, int h){
   //Initialize sampler
   VkSamplerCreateInfo samplerInfo = {};
   samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-  samplerInfo.magFilter = VK_FILTER_NEAREST;
-  samplerInfo.minFilter = VK_FILTER_NEAREST;
+  samplerInfo.magFilter = VK_FILTER_LINEAR;
+  samplerInfo.minFilter = VK_FILTER_LINEAR;
   samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
   samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -2229,8 +2220,8 @@ WingineTexture Wingine::createDepthTexture(int w, int h){
   samplerInfo.maxAnisotropy = 1;
   samplerInfo.compareOp = VK_COMPARE_OP_LESS;
   samplerInfo.minLod = 0.0f;
-  samplerInfo.maxLod = 0.0f;
-  samplerInfo.compareEnable = VK_TRUE;
+  samplerInfo.maxLod = 1.0f;
+  samplerInfo.compareEnable = VK_FALSE;
   samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
   res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
@@ -2314,8 +2305,6 @@ WingineTexture Wingine::createTexture(int w, int h, unsigned char* imageBuffer)
   resultTexture.image.imageInfo.imageView = resultTexture.image.view;
   resultTexture.image.imageInfo.sampler = resultTexture.sampler;
 
-  //vkDestroyImage(device, mappableImage, NULL);
-  //vkFreeMemory(device, mappableMemory, NULL);
   destroyImage(wMappableImage);
 
   return resultTexture;
@@ -2403,17 +2392,12 @@ void Wingine::renderObjectGroup(WingineObjectGroup& group){
 
 void Wingine::renderObjectGroup(WingineObjectGroup& group,
   const WingineFramebuffer& framebuffer){
-  printf("Starting record\n");
   group.startRecordingCommandBuffer(framebuffer);
-  printf("Started record\n");
   for(uint32_t i = 0; i < group.objects.size(); i++){
-    printf("In rendering loop\n");
     group.objects[i].recordCommandBuffer(group.commandBuffer);
   }
   group.endRecordingCommandBuffer();
-  printf("Submitting\n");
   submitDrawCommandBuffer(group.commandBuffer);
-  printf("Submitted\n");
 }
 
 void Wingine::renderScene(){
@@ -2469,7 +2453,6 @@ WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, Wing
 }
 
 WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, int numRS, WingineResourceSet* rSets){
-  printf("NumRS: %d\n", numRS);
   numResourceSets = numRS;
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
@@ -2516,7 +2499,6 @@ void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
 void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
   wgAssert(MAX_DESCRIPTOR_SETS > numResourceSets, "Enough descriptor sets\n");
   VkDescriptorSet sets[MAX_DESCRIPTOR_SETS];
-  printf("Num resource sets: %d\n", numResourceSets);
   for(int i = 0; i < numResourceSets; i++){
     sets[i] = resourceSets[i].descriptorSet;
   }
@@ -2614,16 +2596,16 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   clear_values[1].depthStencil.stencil = 0;
 
   VkViewport viewport;
-  viewport.height = (float)wingine->getScreenHeight();
-  viewport.width = (float)wingine->getScreenWidth();
+  viewport.height = (float)framebuffer.image.height;
+  viewport.width = (float)framebuffer.image.width;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
   viewport.x = 0;
   viewport.y = 0;
 
   VkRect2D scissor;
-  scissor.extent.width = wingine->getScreenWidth();
-  scissor.extent.height = wingine->getScreenHeight();
+  scissor.extent.width = framebuffer.image.width;
+  scissor.extent.height = framebuffer.image.height;
   scissor.offset.x = 0;
   scissor.offset.y = 0;
 
@@ -2637,18 +2619,16 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
-  rp_begin.renderArea.extent.width = wingine->getScreenWidth();
-  rp_begin.renderArea.extent.height = wingine->getScreenHeight();
-  printf("Beginning command buffer\n");
+  rp_begin.renderArea.extent.width = framebuffer.image.width;
+  rp_begin.renderArea.extent.height = framebuffer.image.height;
+
   VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
   wgAssert(res == VK_SUCCESS, "Begin command buffer");
 
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-  printf("Binding pipeline\n");
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
-  printf("Beginning render pass\n");
   vkCmdBeginRenderPass(commandBuffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 

@@ -2022,6 +2022,7 @@ WingineFramebuffer Wingine::create_framebuffer_from_vk_image(VkImage vim, uint32
     color_image_view.subresourceRange.layerCount = 1;
 
     VkResult res = vkCreateImageView(device, &color_image_view, NULL, &colIm.view);
+    wgAssert(res == VK_SUCCESS, "Creating image view for vk_image");
   }
 
 

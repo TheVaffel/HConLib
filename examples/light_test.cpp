@@ -54,8 +54,8 @@ const char *vertShaderIdText =
        };
        void main() {
 	 vec4 newPos = myBufferVals.mvp * pos;
-	 gl_Position = newPos			\
-	   }
+	 gl_Position = newPos;
+       }
        );
 
 const char *fragShaderDepthText =

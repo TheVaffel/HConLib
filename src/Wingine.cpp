@@ -1966,6 +1966,7 @@ WingineFramebuffer Wingine::createDepthFramebuffer(uint32_t width, uint32_t heig
   fb_info.width = width;
   fb_info.height = height;
   fb_info.layers = 1;
+
   VkResult res = vkCreateFramebuffer(device, &fb_info, NULL, &framebuffer.framebuffer);
   wgAssert(res == VK_SUCCESS, "Creating framebuffer");
 
@@ -2588,25 +2589,38 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   begin.flags = 0;
   begin.pInheritanceInfo = NULL;
 
-  VkClearValue clear_values[2];
-  clear_values[0].color.float32[0] = 0.2f;
-  clear_values[0].color.float32[1] = 0.2f;
-  clear_values[0].color.float32[2] = 0.2f;
-  clear_values[0].color.float32[3] = 1.0f;
-  clear_values[1].depthStencil.depth = 1.0f;
-  clear_values[1].depthStencil.stencil = 0;
+  VkClearValue clear_values[pipeline.numAttachments];
 
+  int framebuffer_width, framebuffer_height;
+  
+  if(framebuffer.image.image){
+    framebuffer_width = framebuffer.image.width;
+    framebuffer_height = framebuffer.image.height;
+    
+    clear_values[0].color.float32[0] = 0.2f;
+    clear_values[0].color.float32[1] = 0.2f;
+    clear_values[0].color.float32[2] = 0.2f;
+    clear_values[0].color.float32[3] = 1.0f;
+    clear_values[1].depthStencil.depth = 1.0f;
+    clear_values[1].depthStencil.stencil = 0;
+  }else{
+    framebuffer_width = framebuffer.depth_image.width;
+    framebuffer_height = framebuffer.depth_image.height;
+
+    clear_values[0].depthStencil.depth = 1.0f;
+  }
+  
   VkViewport viewport;
-  viewport.height = (float)framebuffer.image.height;
-  viewport.width = (float)framebuffer.image.width;
+  viewport.width = (float)framebuffer_width;
+  viewport.height = (float)framebuffer_height;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
   viewport.x = 0;
   viewport.y = 0;
 
   VkRect2D scissor;
-  scissor.extent.width = framebuffer.image.width;
-  scissor.extent.height = framebuffer.image.height;
+  scissor.extent.width = framebuffer_width;
+  scissor.extent.height = framebuffer_height;
   scissor.offset.x = 0;
   scissor.offset.y = 0;
 
@@ -2620,8 +2634,8 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
   rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
-  rp_begin.renderArea.extent.width = framebuffer.image.width;
-  rp_begin.renderArea.extent.height = framebuffer.image.height;
+  rp_begin.renderArea.extent.width = framebuffer_width;
+  rp_begin.renderArea.extent.height = framebuffer_height;
 
   VkResult res = vkBeginCommandBuffer(commandBuffer, &begin);
   wgAssert(res == VK_SUCCESS, "Begin command buffer");

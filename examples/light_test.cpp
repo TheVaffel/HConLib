@@ -34,7 +34,6 @@ const char *fragShaderText =
        layout (location = 0) out vec4 outColor;
        layout (set = 1, binding = 1) uniform sampler2D depthMap;
        void main() {
-	 float sub = 0.98;
 	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
 	   > light_vert.z/light_vert.w - 0.0001? 1.0: 0.0;
 	 float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
@@ -47,22 +46,14 @@ const char *vertShaderIdText =
   GLSL(
        layout (std140, binding = 0) uniform bufferVals {
 	 mat4 mvp;
-       } myBufferVals;
+       } transform;
        layout (location = 0) in vec4 pos;
        out gl_PerVertex { 
 	 vec4 gl_Position;
        };
        void main() {
-	 vec4 newPos = myBufferVals.mvp * pos;
+	 vec4 newPos = transform.mvp * pos;
 	 gl_Position = newPos;
-       }
-       );
-
-const char *fragShaderDepthText =
-  GLSL(
-       layout (location = 0) out vec4 outCol;
-       void main() {
-	 outCol = vec4(1.0, 0.0, 0.0, 1.0);
        }
        );
 
@@ -167,17 +158,11 @@ int main(){
   WgRSL lightLayout = wg.createResourceSetLayout(2, lightResourceTypes, lightResourceSetStageBits);
 
   WgShader idVertexShader = wg.createVertexShader(vertShaderIdText);
-  WgShader depthFragShader = wg.createFragmentShader(fragShaderDepthText);
 
-  WgShader depthShaders[] = {idVertexShader, depthFragShader};
+  WgShader depthShaders[] = {idVertexShader};
   WgRSL depthSetLayouts[] = {rsl, lightLayout};
-  //WgPipeline depthPipeline = wg.createDepthPipeline(rsl, 2, depthShaders);
-  WgPipeline depthPipeline = wg.createPipeline(rsl, 2, depthShaders, 1, &attribTypes[0], true);
-
-
-
-  //WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
-  WingineFramebuffer depthFramebuffer = wg.createFramebuffer(width, height);
+  WgPipeline depthPipeline = wg.createDepthPipeline(rsl, 1, depthShaders);
+  WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
 
   WgResourceSet lightTransformSet = wg.createResourceSet(rsl, lightTransformResource);
   WgResourceSet lightSet = wg.createResourceSet(lightLayout, lightResources);
@@ -259,7 +244,6 @@ int main(){
 
   // Depth things
   wg.destroyShader(idVertexShader);
-  wg.destroyShader(depthFragShader);
   wg.destroyUniform(lightTransformUniform);
   wg.destroyPipeline(depthPipeline);
   wg.destroyFramebuffer(depthFramebuffer);

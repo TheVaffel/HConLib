@@ -5,71 +5,66 @@
 using namespace std;
 
 const char *vertShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (std140, binding = 0) uniform bufferVals {\n"
-  "    mat4 mvp;\n"
-  "} myBufferVals;\n"
-  "layout (std140, set = 1, binding = 0) uniform ll {\n"
-  "    mat4 mvp;\n"
-  "} lightVals;\n"
-  "layout (location = 0) in vec4 pos;\n"
-  "layout (location = 1) in vec4 normal;\n"
-  "layout (location = 0) out vec4 light_vertex;\n"
-  "layout (location = 1) out vec4 outNormal;\n"
-  "out gl_PerVertex { \n"
-  "    vec4 gl_Position;\n"
-  "};\n"
-  "void main() {\n"
-  "   vec4 newPos = myBufferVals.mvp * pos;\n"
-  "   light_vertex = lightVals.mvp * pos;\n"
-  "   outNormal = lightVals.mvp * normal;\n"
-  "   gl_Position = newPos\n;"
-  "}\n";
+  GLSL(
+       layout (std140, binding = 0) uniform bufferVals {
+	 mat4 mvp;
+       } transform;
+       layout (std140, set = 1, binding = 0) uniform ll {
+	 mat4 mvp;
+       } lightVals;
+       layout (location = 0) in vec4 pos;
+       layout (location = 1) in vec4 normal;
+       layout (location = 0) out vec4 light_vertex;
+       layout (location = 1) out vec4 outNormal;
+       out gl_PerVertex { 
+	 vec4 gl_Position;
+       };
+       void main() {
+	 vec4 newPos = transform.mvp * pos;
+	 light_vertex = lightVals.mvp * pos;
+	 outNormal = lightVals.mvp * normal;
+	 gl_Position = newPos;
+       }
+       );
 
 const char *fragShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (location = 0) in vec4 light_vert;\n"
-  "layout (location = 1) in vec4 light_normal;\n"
-  "layout (location = 0) out vec4 outColor;\n"
-  "layout (set = 1, binding = 1) uniform sampler2D depthMap;\n"
-  "void main() {\n"
-  "  float sub = 0.98;\n"
-  "  float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x "
-  " > light_vert.z/light_vert.w - 0.0001? 1.0: 0.0;\n"
-  "  float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));\n"
-  "  outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);\n"
-  "}\n";
+  GLSL(
+       layout (location = 0) in vec4 light_vert;
+       layout (location = 1) in vec4 light_normal;
+       layout (location = 0) out vec4 outColor;
+       layout (set = 1, binding = 1) uniform sampler2D depthMap;
+       void main() {
+	 float sub = 0.98;
+	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
+	   > light_vert.z/light_vert.w - 0.0001? 1.0: 0.0;
+	 float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
+	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
+       }
+       );
 
 
 const char *vertShaderIdText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (std140, binding = 0) uniform bufferVals {\n"
-  "    mat4 mvp;\n"
-  "} myBufferVals;\n"
-  "layout (location = 0) in vec4 pos;\n"
-  "out gl_PerVertex { \n"
-  "    vec4 gl_Position;\n"
-  "};\n"
-  "void main() {\n"
-  "   vec4 newPos = myBufferVals.mvp * pos;\n"
-  "   gl_Position = newPos\n;"
-  "}\n";
+  GLSL(
+       layout (std140, binding = 0) uniform bufferVals {
+	 mat4 mvp;
+       } myBufferVals;
+       layout (location = 0) in vec4 pos;
+       out gl_PerVertex { 
+	 vec4 gl_Position;
+       };
+       void main() {
+	 vec4 newPos = myBufferVals.mvp * pos;
+	 gl_Position = newPos			\
+	   }
+       );
 
 const char *fragShaderDepthText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (location = 0) out vec4 outCol;\n"
-  "void main() {\n"
-  //"  depth = gl_FragCoord.z;\n"
-  "  outCol = vec4(1.0, 0.0, 0.0, 1.0);\n"
-  "}\n";
+  GLSL(
+       layout (location = 0) out vec4 outCol;
+       void main() {
+	 outCol = vec4(1.0, 0.0, 0.0, 1.0);
+       }
+       );
 
 const float floor_vertices[] = {
   -5.0f, 0.0f, -5.0f, 1.0f,

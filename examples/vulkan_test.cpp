@@ -35,75 +35,67 @@ static const uint32_t test_indices[] =
     0, 3, 2};
 
 const char *vertShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (std140, binding = 0) uniform bufferVals {\n"
-  "    mat4 mvp;\n"
-  "} myBufferVals;\n"
-  "layout (location = 0) in vec4 pos;\n"
-  "layout (location = 1) in vec4 inColor;\n"
-  "layout (location = 0) out vec4 outColor;\n"
-  "out gl_PerVertex { \n"
-  "    vec4 gl_Position;\n"
-  "};\n"
-  "void main() {\n"
-  "   outColor = inColor;\n"
-  "   gl_Position = myBufferVals.mvp * pos;\n"
-  "}\n";
+  GLSL(
+       layout (std140, binding = 0) uniform bufferVals {
+	 mat4 mvp;
+       } myBufferVals;
+       layout (location = 0) in vec4 pos;
+       layout (location = 1) in vec4 inColor;
+       layout (location = 0) out vec4 outColor;
+       out gl_PerVertex { 
+	 vec4 gl_Position;
+       };
+       void main() {
+	 outColor = inColor;
+	 gl_Position = myBufferVals.mvp * pos;
+       }
+       );
 
 const char *fragShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (location = 0) in vec4 color;\n"
-  "layout (location = 0) out vec4 outColor;\n"
-  "void main() {\n"
-  "  outColor = color;\n"
-  "  //outColor = vec4(1.f, 1.f, 1.f, 0)*(1-gl_FragCoord.w*6) + vec4(0, 0, 0, 1);\n"
-  "}\n";
+  GLSL(
+       layout (location = 0) in vec4 color;
+       layout (location = 0) out vec4 outColor;
+       void main() {
+	 outColor = color;
+       }
+       );
 
 const char *texVertShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (std140, binding = 0) uniform bufferVals {\n"
-  "    mat4 mvp;\n"
-  "} myBufferVals;\n"
-  "layout (location = 0) in vec4 pos;\n"
-  "layout (location = 1) in vec2 texCoord;\n"
-  "layout (location = 0) out vec2 outTexCoord;\n"
-  "out gl_PerVertex { \n"
-  "    vec4 gl_Position;\n"
-  "};\n"
-  "void main() {\n"
-  "   outTexCoord = texCoord;\n"
-  "   gl_Position = myBufferVals.mvp * pos;\n"
-  "}\n";
+  GLSL(
+       layout (std140, binding = 0) uniform bufferVals {
+	 mat4 mvp;
+       } myBufferVals;
+       layout (location = 0) in vec4 pos;
+       layout (location = 1) in vec2 texCoord;
+       layout (location = 0) out vec2 outTexCoord;
+       out gl_PerVertex { 
+	 vec4 gl_Position;
+       };
+       void main() {
+	 outTexCoord = texCoord;
+	 gl_Position = myBufferVals.mvp * pos;
+       }
+       );
 
 const char* texFragShaderText =
-  "#version 400\n"
-  "#extension GL_ARB_separate_shader_objects : enable\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "layout (binding = 1) uniform sampler2D tex;\n"
-  "layout (location = 0) in vec2 texCoord;\n"
-  "layout (location = 0) out vec4 outColor;\n"
-  "void main() {\n"
-  "  outColor = textureLod(tex, texCoord, 0.0);\n"
-  "}\n";
+  GLSL(
+       layout (binding = 1) uniform sampler2D tex;
+       layout (location = 0) in vec2 texCoord;
+       layout (location = 0) out vec4 outColor;
+       void main() {
+	 outColor = textureLod(tex, texCoord, 0.0);
+       }
+       );
 
 const char* computeShaderText =
-  "#version 450\n"
-  "#extension GL_ARB_shading_language_420pack : enable\n"
-  "#extension GL_ARB_compute_shader : enable\n"
-
-  "layout(binding = 0, rgba32f) uniform image2D outputs;\n"
-
-  "layout (local_size_x = 16, local_size_y = 16) in;\n"
-  "void main() {\n"
-  "  ivec2 coords = ivec2(gl_GlobalInvocationID.xy);\n"
-  "  imageStore(outputs, coords, vec4(coords.x/1920.0, coords.y/1080.0, 0.0, 1));\n"
-  "}";
+  GLSL(
+       layout(binding = 0, rgba32f) uniform image2D outputs;
+       layout (local_size_x = 16, local_size_y = 16) in;
+       void main() {
+	 ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+	 imageStore(outputs, coords, vec4(coords.x/1920.0, coords.y/1080.0, 0.0, 1));
+       }
+       );
 
 
 int main(){

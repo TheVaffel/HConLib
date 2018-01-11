@@ -577,4 +577,6 @@ typedef WingineObjectGroup WgOG;
 typedef WingineObjectGroup WgObjectGroup;
 typedef WingineFramebuffer WgFramebuffer;
 
+#define GLSL(src) "#version  400\n#extension GL_ARB_separate_shader_objects : enable\n#extension GL_ARB_shading_language_420pack : enable\n"#src
+
 #endif //INCLUDED_WINGINE

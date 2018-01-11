@@ -24,7 +24,7 @@ void toRGB(uint8_t* src, uint8_t* dst, int w, int h){
   }
 }
 
-void filterGray2D(uint8_t* src, uint8_t* dst, int w, int h, const float* kernel, int k, int offset){
+void filterGray2D(uint8_t* src, uint8_t* dst, int w, int h, const float* kernel, int k, int offset, float coeff){
   for(int i = 1; i < h-1; i++){
     for(int j = 1; j < w-1; j++){
       float sum = 0;
@@ -33,7 +33,7 @@ void filterGray2D(uint8_t* src, uint8_t* dst, int w, int h, const float* kernel,
           sum += src[(i + ki) * w + (j + kj)]*kernel[(ki + k/2) * k + (kj + k/2)];
         }
       }
-      dst[i * w + j] = max(min((int)sum + offset, 255), 0);
+      dst[i * w + j] = max(min((int)(sum*coeff) + offset, 255), 0);
     }
   }
 }
@@ -42,13 +42,38 @@ int main(){
   const int w = 640, h = 480;
 
   const int kw = 3;
-
-  const int offset = 128;
+  
+  /*const int nTimes = 1;
+  const int offset = 0;
+  const float coeff = 1.0f;
   const float kernel[kw * kw] = {0, 0, 0,
-                                 0, 1, -1,
+                                 0, 1, 0,
                                  0, 0, 0};
-
-  HCam hcam(w, h);
+    */                             
+  /*const int nTimes = 3;
+  const int offset = 0;
+  const float coeff = 1.0f/9.0f;
+  const float kernel[kw * kw] = {1, 1, 1,
+                                 1, 1, 1,
+                                 1, 1, 1};
+  */
+  /*const int offset = 0;
+  const int nTimes = 1;
+  const float coeff = 1.0f/16.0f;
+  const float kernel[kw * kw] = {1, 2, 1,
+                                 2, 4, 2,
+                                 1, 2, 1};
+  */
+  
+  const int nTimes = 1;
+  const int offset = 128;
+  const float coeff = 1.0f;
+  const float kernel[kw * kw] = {0, 0, 0,
+                                 -1, 0, 1,
+                                 0, 0, 0};
+  
+  
+  HCam hcam(w, h, "/dev/video1");
   Winval win(w, h);
 
   uint8_t* rgb_buffer = new uint8_t[w * h * 4];
@@ -60,9 +85,15 @@ int main(){
     hcam.capture_image(rgb_buffer);
     toGray(rgb_buffer, gray_buffer, w, h);
 
-    filterGray2D(gray_buffer, gray_temp, w, h, kernel, kw, offset);
+    uint8_t* bufs[] = {gray_buffer, gray_temp};
+    int i;
+    for(i = 0; i < nTimes; i++){
+      filterGray2D(bufs[i&1], bufs[(i&1)^1], w, h, kernel, kw, offset, coeff);
+    }
 
-    toRGB(gray_temp, rgb_buffer, w, h);
+    //filterGray2D(gray_buffer, gray_temp, w, h, kernel, kw, offset, coeff);
+
+    toRGB(bufs[nTimes&1], rgb_buffer, w, h);
     win.drawBuffer(rgb_buffer, w, h);
 
     win.flushEvents();

@@ -47,7 +47,11 @@ Matrix4 WingineCamera::getRenderMatrix(){
   return ~total;
 }
 
-WinginePipelineSetup::WinginePipelineSetup(int numAttachments, WgAttachmentType* types)
+
+WinginePipelineSetup::WinginePipelineSetup(std::initializer_list<WgAttachmentType> types)
+  : WinginePipelineSetup(types.size(), std::begin(types)) {};
+
+WinginePipelineSetup::WinginePipelineSetup(int numAttachments, const WgAttachmentType* types)
   : renderPassSetup(numAttachments, types){
   int numColorAtt = 0;
   for(int i = 0; i < numAttachments; i++){
@@ -67,7 +71,11 @@ WinginePipelineSetup::~WinginePipelineSetup(){
     delete[] att_state;
 }
 
-WingineRenderPassSetup::WingineRenderPassSetup(int nAttachments, WgAttachmentType* types){
+WingineRenderPassSetup::WingineRenderPassSetup(std::initializer_list<WgAttachmentType> types)
+  : WingineRenderPassSetup(types.size(), std::begin(types)){
+}
+
+WingineRenderPassSetup::WingineRenderPassSetup(int nAttachments, const WgAttachmentType* types){
   numAttachments = nAttachments;
   attachmentTypes = new WgAttachmentType[nAttachments];
   for(int i = 0; i < nAttachments; i++){
@@ -794,9 +802,8 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
 }
 
 VkResult Wingine::init_render_passes(){
-  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
-                              WG_ATTACHMENT_TYPE_DEPTH};
-  WingineRenderPassSetup setup(2, types);
+  WingineRenderPassSetup setup({WG_ATTACHMENT_TYPE_COLOR,
+			 WG_ATTACHMENT_TYPE_DEPTH});
   render_pass_setup_generic(&setup);
 
   VkResult res = vkCreateRenderPass(device, &setup.createInfo, NULL, &render_pass_generic);
@@ -1177,9 +1184,8 @@ void Wingine::pipeline_setup_color_renderer( WinginePipelineSetup* setup){
 }
 
 void Wingine::create_pipeline_color_renderer( VkPipeline* pipeline){
-  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
-                              WG_ATTACHMENT_TYPE_DEPTH};
-  WinginePipelineSetup setup(2, types);
+  WinginePipelineSetup setup({WG_ATTACHMENT_TYPE_COLOR,
+	WG_ATTACHMENT_TYPE_DEPTH});
   pipeline_setup_color_renderer(&setup);
 
   VkResult res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &setup.createInfo, NULL, pipeline);
@@ -1190,9 +1196,8 @@ void Wingine::create_pipeline_color_renderer( VkPipeline* pipeline){
 }
 
 void Wingine::create_pipeline_color_renderer_single_buffer( VkPipeline* pipeline){
-  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR,
-                              WG_ATTACHMENT_TYPE_DEPTH};
-  WinginePipelineSetup setup(2,types);
+  WinginePipelineSetup setup({WG_ATTACHMENT_TYPE_COLOR,
+	WG_ATTACHMENT_TYPE_DEPTH});
   pipeline_setup_color_renderer(&setup);
 
   setup.vi_bindings[0].stride = 2*4*sizeof(float);
@@ -1234,7 +1239,13 @@ VkDescriptorType Wingine::get_descriptor_type(WgResourceType type){
   }
 }
 
-WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, WgResourceType* types,  VkShaderStageFlagBits* stages){
+WingineResourceSetLayout Wingine::createResourceSetLayout(std::initializer_list<WgResourceType> types,
+							  std::initializer_list<VkShaderStageFlagBits> stages){
+  wgAssert(types.size() == stages.size(), "Arguments to createResourceSetLayout has different arguments");
+  return createResourceSetLayout(types.size(), std::begin(types), std::begin(stages));
+}
+
+WingineResourceSetLayout Wingine::createResourceSetLayout(int numResources, const WgResourceType* types,  const VkShaderStageFlagBits* stages){
   WingineResourceSetLayout wgLayout;
 
   VkDescriptorSetLayoutBinding* lbs = new VkDescriptorSetLayoutBinding[numResources];
@@ -1274,7 +1285,12 @@ void Wingine::destroyResourceSetLayout(WingineResourceSetLayout wrsl){
   vkDestroyDescriptorSetLayout(device,wrsl.layout,NULL);
 }
 
-WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineResource** resources){
+WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout layout,
+					      std::initializer_list<WingineResource*> resources){
+  return createResourceSet(layout, std::begin(resources));
+}
+
+WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineResource* const* resources){
   WingineResourceSet resourceSet;
 
   //Create descriptor set and initialize descriptors
@@ -1375,10 +1391,21 @@ VkFormat Wingine::get_vkformat(WgAttribFormat att){
   }
 }
 
-WinginePipeline Wingine::createPipeline(int numResourceLayouts, WingineResourceSetLayout* resourceLayouts,
-					int numShaders, WingineShader* shaders,
-					int numVertexAttribs, WgAttribFormat* attribFormats,
-					bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+WinginePipeline Wingine::createPipeline(std::initializer_list<WingineResourceSetLayout> resourceLayouts,
+					std::initializer_list<WingineShader> shaders,
+					std::initializer_list<WgAttribFormat> attribFormats,
+					bool clear, std::initializer_list<WgAttachmentType> attachmentTypes){
+  return createPipeline(resourceLayouts.size(), std::begin(resourceLayouts),
+			shaders.size(), std::begin(shaders),
+			attribFormats.size(), std::begin(attribFormats),
+			clear, attachmentTypes.size(), std::begin(attachmentTypes));
+						  
+}
+
+WinginePipeline Wingine::createPipeline(int numResourceLayouts, const WingineResourceSetLayout* resourceLayouts,
+					int numShaders, const WingineShader* shaders,
+					int numVertexAttribs, const WgAttribFormat* attribFormats,
+					bool clear, int numAttachments, const WgAttachmentType* attachmentTypes){
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
   pipeline.numAttachments = numAttachments;
@@ -1438,21 +1465,34 @@ WinginePipeline Wingine::createPipeline(int numResourceLayouts, WingineResourceS
 }
 
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats,
-  bool clear, int numAttachments, WgAttachmentType* attachmentTypes){
+  int numShaders, const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribFormats,
+  bool clear, int numAttachments, const WgAttachmentType* attachmentTypes){
   return createPipeline(1, &resourceLayout, numShaders, shaders, numVertexAttribs, attribFormats,
 			clear, numAttachments, attachmentTypes);
 }
+
+WinginePipeline Wingine::createPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+					std::initializer_list<WingineShader> shaders,
+					std::initializer_list<WgAttribFormat> attribTypes,
+					bool clear){
+  return createPipeline(layouts, shaders, attribTypes, clear, {WG_ATTACHMENT_TYPE_COLOR,
+	WG_ATTACHMENT_TYPE_DEPTH});
+}
 WinginePipeline Wingine::createPipeline(WingineResourceSetLayout resourceLayout,
-  int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
+  int numShaders, const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes,
   bool clear){
   WgAttachmentType attachTypes[2] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
   return createPipeline(resourceLayout, numShaders, shaders, numVertexAttribs,
     attribTypes, clear, 2, attachTypes);
 }
 
-WinginePipeline Wingine::createDepthPipeline(int numResourceSets, WingineResourceSetLayout* resourceLayouts,
-					     int numShaders, WingineShader* shaders){
+WinginePipeline Wingine::createDepthPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+				    std::initializer_list<WingineShader> shaders){
+  return createDepthPipeline(layouts.size(), std::begin(layouts),
+			     shaders.size(), std::begin(shaders));
+}
+WinginePipeline Wingine::createDepthPipeline(int numResourceSets, const WingineResourceSetLayout* resourceLayouts,
+					     int numShaders, const WingineShader* shaders){
   WgAttachmentType attachmentType = WG_ATTACHMENT_TYPE_DEPTH;
   WgAttribFormat format = WG_ATTRIB_FORMAT_4;
   return createPipeline(numResourceSets, resourceLayouts, numShaders, shaders, 1, &format,
@@ -1461,7 +1501,7 @@ WinginePipeline Wingine::createDepthPipeline(int numResourceSets, WingineResourc
 
 // Includes only one vertex attrib. Assumes that position is the only vertex attribute
 WinginePipeline Wingine::createDepthPipeline(WingineResourceSetLayout resourceLayout,
-					     int numShaders, WingineShader* shaders){
+					     int numShaders, const WingineShader* shaders){
   return createDepthPipeline(1, &resourceLayout, numShaders, shaders);
 }
 
@@ -2443,18 +2483,14 @@ void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
   currSemaphore++;
 }
 
-WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, WingineResourceSet& uSet) : WingineRenderObject(numInds, numVertexAttribs, buffers, iBuffer, 1, &uSet) {
-  /*for(int i = 0; i < numVertexAttribs; i++){
-    vertexAttribs.push_back(buffers[i]);
-  }
-  indexBuffer = iBuffer;
-  resourceSets = new WingineResourceSet[1];
-  resourceSets[0] = uSet;
-  numDrawIndices = numInds;
-  indexOffset = 0;*/
+
+WingineRenderObject::WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& iBuffer, std::initializer_list<WingineResourceSet> rSets) : WingineRenderObject(numInds, vertexBuffers.size(), std::begin(vertexBuffers), iBuffer, rSets.size(), std::begin(rSets)) {
 }
 
-WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& iBuffer, int numRS, WingineResourceSet* rSets){
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet) : WingineRenderObject(numInds, numVertexAttribs, buffers, iBuffer, 1, &uSet) {
+}
+
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& iBuffer, int numRS, const WingineResourceSet* rSets){
   numResourceSets = numRS;
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
@@ -2538,9 +2574,17 @@ WingineScene::~WingineScene(){
   }
 }
 
-void WingineScene::addPipeline(int numLayouts, WingineResourceSetLayout* layouts,
-			       int numShaders, WingineShader* shaders,
-			       int numVertexAttribs, WgAttribFormat* attribFormats){
+void WingineScene::addPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+			       std::initializer_list<WingineShader> shaders,
+			       std:: initializer_list<WgAttribFormat> attribFormats){
+  addPipeline(layouts.size(), std::begin(layouts),
+	      shaders.size(), std::begin(shaders),
+	      attribFormats.size(), std::begin(attribFormats));
+}
+
+void WingineScene::addPipeline(int numLayouts, const WingineResourceSetLayout* layouts,
+			       int numShaders, const WingineShader* shaders,
+			       int numVertexAttribs, const WgAttribFormat* attribFormats){
   WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
   WinginePipeline p =  wg->createPipeline(numLayouts, layouts, numShaders, shaders,
 					  numVertexAttribs, attribFormats, objectGroups.size() == 0,
@@ -2551,7 +2595,7 @@ void WingineScene::addPipeline(int numLayouts, WingineResourceSetLayout* layouts
 }
 
 void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
-  WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribFormats){
+  const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribFormats){
   addPipeline(1, &layout, numShaders, shaders, numVertexAttribs, attribFormats);
 }
 

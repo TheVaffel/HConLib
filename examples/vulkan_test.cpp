@@ -155,29 +155,20 @@ int main(){
 
   WingineBuffer cubeTextureCoordBuffer = wg.createVertexBuffer(8*2*sizeof(float), cube_tex_coords);
 
-  VkShaderStageFlagBits bits[1] = {VK_SHADER_STAGE_VERTEX_BIT};
-  VkShaderStageFlagBits textureResourceSetStageBits[2] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
-
   WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
   WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
 
-  WgResourceType desc[] = {WG_RESOURCE_TYPE_UNIFORM};
-  WingineResourceSetLayout resourceLayout = wg.createResourceSetLayout(1, desc, bits);
+  WingineResourceSetLayout resourceLayout =
+    wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM},
+			       {VK_SHADER_STAGE_VERTEX_BIT});
 
-  WgResourceType textDescriptorTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
-  WingineResourceSetLayout textureResourceLayout = wg.createResourceSetLayout(2, textDescriptorTypes, textureResourceSetStageBits);
+  WingineResourceSetLayout textureResourceLayout =
+    wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE},
+			       {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT});
 
-  WingineResource* cameraUniformResource = &cameraUniform;
-  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, &cameraUniformResource);
-  WingineResource* resources[] = {&offsetUniform, &texture};
-  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, resources);
-
-  WingineBuffer vertexAttribs[2] = {vertexBuffer, colorBuffer};
-  WingineBuffer textureVertexAttribs[2] = {vertexBuffer, textureCoordBuffer};
-
-  WgAttribFormat attribTypes[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4};
-  WgAttribFormat attribTypesTexture[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_2};
+  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, {&cameraUniform});
+  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, {&offsetUniform, &texture});
 
   WingineShader vertexShader = wg.createVertexShader(vertShaderText);
   WingineShader fragmentShader = wg.createFragmentShader(fragShaderText);
@@ -185,17 +176,21 @@ int main(){
   WingineShader textureVertexShader = wg.createVertexShader(texVertShaderText);
   WingineShader textureFragmentShader = wg.createFragmentShader(texFragShaderText);
 
-  WingineShader shaders[2] = {vertexShader, fragmentShader};
-  WingineShader textureShaders[2] = {textureVertexShader, textureFragmentShader};
-
   WingineScene scene(wg);
-  scene.addPipeline(resourceLayout, 2, shaders, 2, attribTypes); //pipelineLayout, num shaders, shaders, num vertex attribs, vertex attrib types
-  scene.addPipeline(textureResourceLayout, 2, textureShaders, 2, attribTypesTexture);
-  WingineRenderObject object1(6, 2, vertexAttribs, indexBuffer, cameraSet); //Num drawIndices, num vertex attribs, vertex attribs, index buffer, resourceset
-  WingineRenderObject object3(6, 2, textureVertexAttribs, indexBuffer, textureSet);
+  scene.addPipeline({resourceLayout},
+		    {vertexShader, fragmentShader},
+		    {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4});
+  
+  scene.addPipeline({textureResourceLayout},
+		    {textureVertexShader, textureFragmentShader},
+		    {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_2});
+  WingineRenderObject object1(6, {vertexBuffer, colorBuffer},
+			      indexBuffer, {cameraSet}); 
+  WingineRenderObject object3(6, {vertexBuffer, textureCoordBuffer},
+			      indexBuffer,
+			      {textureSet});
 
-  WingineBuffer cubeVertexAttribs[2] = {cubeVertexBuffer, cubeTextureCoordBuffer};
-  WingineRenderObject cubeObject(3*12, 2, cubeVertexAttribs, cubeIndexBuffer, textureSet);
+  WingineRenderObject cubeObject(3*12, {cubeVertexBuffer, cubeTextureCoordBuffer}, cubeIndexBuffer, {textureSet});
 
   wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
 
@@ -236,16 +231,13 @@ int main(){
   //WingineFramebuffer framebuffer = wg.createFramebuffer(64, 64);
 
   // #onlycomputethings
-  desc[0] = WG_RESOURCE_TYPE_STORE_IMAGE;
-  bits[0] = VK_SHADER_STAGE_COMPUTE_BIT;
-
-  WingineResourceSetLayout computeLayout = wg.createResourceSetLayout(1, desc, bits);
+  WingineResourceSetLayout computeLayout = wg.createResourceSetLayout({WG_RESOURCE_TYPE_STORE_IMAGE}, {VK_SHADER_STAGE_COMPUTE_BIT});
   WingineKernel kernel = wg.createKernel(computeShaderText, computeLayout);
 
   WingineImage im = wg.createGPUImage(texWidth, texHeight);
   wg.setLayout(im, VK_IMAGE_LAYOUT_GENERAL);
-  WingineResource* computeImageResource[] = {&im};
-  WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,computeImageResource);
+  
+  WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,{&im});
   wg.executeKernel(kernel, kernelResources, texWidth, texHeight, 1);
   wg.copyColorImage(im, texture.image);
 

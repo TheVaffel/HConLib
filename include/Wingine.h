@@ -155,7 +155,8 @@ struct WingineKernel{
 };
 
 struct WingineRenderPassSetup{
-  WingineRenderPassSetup(int numAttachments, WgAttachmentType* types);
+  WingineRenderPassSetup(int numAttachments, const WgAttachmentType* types);
+  WingineRenderPassSetup(std::initializer_list<WgAttachmentType> types);
   ~WingineRenderPassSetup();
 
   VkAttachmentDescription* attachments;
@@ -177,7 +178,8 @@ struct WinginePipeline{
 };
 
 struct WinginePipelineSetup{
-  WinginePipelineSetup(int numAttachments, WgAttachmentType* types);
+  WinginePipelineSetup(int numAttachments, const WgAttachmentType* types);
+  WinginePipelineSetup(std::initializer_list<WgAttachmentType> types);
   ~WinginePipelineSetup();
 
   VkGraphicsPipelineCreateInfo createInfo;
@@ -214,8 +216,9 @@ class WingineRenderObject{
   int indexOffset;
  public:
   WingineRenderObject();
-  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, WingineResourceSet& rSet);
-  WingineRenderObject(int numInds, int numVertexAttribs, WingineBuffer* buffers, const WingineBuffer& indexBuffer, int numResourceSets, WingineResourceSet* rSets);
+  WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& indexBuffer, std::initializer_list<WingineResourceSet> rSets);
+  WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
+  WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& indexBuffer, int numResourceSets, const WingineResourceSet* rSets);
 
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
@@ -259,11 +262,14 @@ public:
   std::vector<WingineObjectGroup> objectGroups;
   WingineScene(Wingine& wg);
   ~WingineScene();
-  void addPipeline(int numLayouts, WingineResourceSetLayout* layouts,
-		   int numShaders, WingineShader* shaders,
-		   int numVertexAttribs, WgAttribFormat* attribFormats);
+  void addPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+		   std::initializer_list<WingineShader> shaders,
+		   std:: initializer_list<WgAttribFormat> attribFormats);
+  void addPipeline(int numLayouts, const WingineResourceSetLayout* layouts,
+		   int numShaders, const WingineShader* shaders,
+		   int numVertexAttribs, const WgAttribFormat* attribFormats);
   void addPipeline(WingineResourceSetLayout layout, int numShaders,
-    WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes);
+    const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes);
   void addObject(WingineRenderObject& obj, int pipelineInd);
 };
 
@@ -470,11 +476,16 @@ class Wingine{
 
   //A layout for resource sets
   // First evaluates stages for uniforms, then textures. Number of elements in stages = numUniforms + numTextures
-  WingineResourceSetLayout createResourceSetLayout(int numResources, WgResourceType* types, VkShaderStageFlagBits* stages);
+  WingineResourceSetLayout createResourceSetLayout(std::initializer_list<WgResourceType> types,
+						   std::initializer_list<VkShaderStageFlagBits> stages);
+  WingineResourceSetLayout createResourceSetLayout(int numResources, const WgResourceType* types, const VkShaderStageFlagBits* stages);
   void destroyResourceSetLayout(WingineResourceSetLayout wrsl);
 
   //A set of uniforms and textures (to better utilize Vulkan's descriptor set abstraction) that "belong together"
-  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineResource **resources);
+  WingineResourceSet createResourceSet(WingineResourceSetLayout layout,
+				       std::initializer_list<WingineResource*> resources);
+  // Second type is a bit mystical, but oh well
+  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineResource* const* resources);
   void destroyResourceSet(const WingineResourceSet& resourceSet);
 
   WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
@@ -482,21 +493,30 @@ class Wingine{
   WingineShader createFragmentShader(const char* shaderText);
   void destroyShader(WingineShader shader);
 
-
-  WinginePipeline createPipeline(int numResourceLayouts, WingineResourceSetLayout* resourceLayouts,
-    int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
-    bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
+  WinginePipeline createPipeline(std::initializer_list<WingineResourceSetLayout> resourceLayouts,
+				 std::initializer_list<WingineShader> shaders,
+				 std::initializer_list<WgAttribFormat> attribFormats,
+				 bool clear, std::initializer_list<WgAttachmentType> attachmentTypes);
+  WinginePipeline createPipeline(int numResourceLayouts, const WingineResourceSetLayout* resourceLayouts,
+    int numShaders, const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes,
+    bool clear, int numAttachments, const WgAttachmentType* attachmentTypes);
   WinginePipeline createPipeline(WingineResourceSetLayout resourceLayout,
-    int numShaders, WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes,
-    bool clear, int numAttachments, WgAttachmentType* attachmentTypes);
+    int numShaders, const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes,
+    bool clear, int numAttachments, const WgAttachmentType* attachmentTypes);
   WinginePipeline createPipeline(WingineResourceSetLayout layout, int numShaders,
-    WingineShader* shaders, int numVertexAttribs, WgAttribFormat* attribTypes, bool clear = false);
+    const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes, bool clear = false);
+  WinginePipeline createPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+				 std::initializer_list<WingineShader> shaders,
+				 std::initializer_list<WgAttribFormat> attribTypes,
+				 bool clear);
+  WinginePipeline createDepthPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
+				      std::initializer_list<WingineShader> shaders);
   WinginePipeline createDepthPipeline(WingineResourceSetLayout layout,
 				      int numShaders,
-				      WingineShader* shaders);
-  WinginePipeline createDepthPipeline(int numLayouts, WingineResourceSetLayout* layouts,
+				      const WingineShader* shaders);
+  WinginePipeline createDepthPipeline(int numLayouts, const WingineResourceSetLayout* layouts,
 				      int numShaders,
-				      WingineShader* shaders);
+				      const WingineShader* shaders);
   void destroyPipeline(WinginePipeline pipeline);
 
   WingineTexture createDepthTexture(int w, int h);
@@ -509,10 +529,6 @@ class Wingine{
   void executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ);
   void destroyKernel(WingineKernel kernel);
 
-  void renderColor(const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model);
-  void render(const WingineBuffer* vertexAttribs, const WingineBuffer& indices, const WinginePipeline& pipeline, bool clear);
-
-  void synchronizeDrawing();
   void present();
 
   void submitDrawCommandBuffer(const VkCommandBuffer& buffer);

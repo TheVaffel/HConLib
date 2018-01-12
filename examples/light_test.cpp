@@ -124,58 +124,39 @@ int main(){
 
   WgUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
 
-  VkShaderStageFlagBits resourceSetStageBits[] = {VK_SHADER_STAGE_VERTEX_BIT};
-  WgResourceType resourceTypes[] = {WG_RESOURCE_TYPE_UNIFORM};
-  WgRSL rsl = wg.createResourceSetLayout(1, resourceTypes, resourceSetStageBits);
+  WgRSL rsl = wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM}, {VK_SHADER_STAGE_VERTEX_BIT});
 
-  WgResource* cameraResource = &cameraUniform;
-  WgResourceSet cameraSet = wg.createResourceSet(rsl, &cameraResource);
+  WgResourceSet cameraSet = wg.createResourceSet(rsl, {&cameraUniform});
 
   WgShader vertexShader = wg.createVertexShader(vertShaderText);
   WgShader fragmentShader = wg.createFragmentShader(fragShaderText);
-  WgShader shaders[] = {vertexShader, fragmentShader};
 
   WingineScene scene(wg);
-
-  WgAttribFormat attribTypes[] = {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4};
-
-
-  WgBuffer cubeVertexAttribs[] = {cubeVertexBuffer, cubeNormalBuffer};
-  WgBuffer floorVertexAttribs[] = {floorVertexBuffer, floorNormalBuffer};
-
-
 
   // Depth rendering
   WgUniform lightTransformUniform = wg.createUniform(sizeof(Matrix4));
 
   WgTexture depthImage = wg.createDepthTexture(width, height);
-  VkShaderStageFlagBits lightResourceSetStageBits[] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
-  WgResourceType lightResourceTypes[] = {WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE};
-  WgResource* lightResources[] = {&lightTransformUniform, &depthImage};
-  WgResource* lightTransformResource[] = {&lightTransformUniform};
 
-
-  WgRSL lightLayout = wg.createResourceSetLayout(2, lightResourceTypes, lightResourceSetStageBits);
+  WgRSL lightLayout = wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE},
+						 {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT});
 
   WgShader idVertexShader = wg.createVertexShader(vertShaderIdText);
 
-  WgShader depthShaders[] = {idVertexShader};
-  WgRSL depthSetLayouts[] = {rsl, lightLayout};
-  WgPipeline depthPipeline = wg.createDepthPipeline(rsl, 1, depthShaders);
+  WgPipeline depthPipeline = wg.createDepthPipeline({rsl}, {idVertexShader});
   WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
 
-  WgResourceSet lightTransformSet = wg.createResourceSet(rsl, lightTransformResource);
-  WgResourceSet lightSet = wg.createResourceSet(lightLayout, lightResources);
+  WgResourceSet lightTransformSet = wg.createResourceSet(rsl, {&lightTransformUniform});
+  WgResourceSet lightSet = wg.createResourceSet(lightLayout, {&lightTransformUniform, &depthImage});
 
-  WgResourceSet lightSets[] = {cameraSet, lightSet};
-  WgObject lightCube(3 * 12, 2, cubeVertexAttribs, cubeIndexBuffer, lightTransformSet);
-  WgObject lightFloor(3 * 2, 2, floorVertexAttribs, floorIndexBuffer, lightTransformSet);
+  WgObject lightCube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer, {lightTransformSet});
+  WgObject lightFloor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer, {lightTransformSet});
 
 
-  scene.addPipeline(2, depthSetLayouts, 2, shaders, 2, attribTypes);
+  scene.addPipeline({rsl, lightLayout}, {vertexShader, fragmentShader}, {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4});
 
-  WgObject cube(3 * 12, 2, cubeVertexAttribs, cubeIndexBuffer, 2, lightSets);
-  WgObject floor(3 * 2, 2, floorVertexAttribs, floorIndexBuffer, 2, lightSets);
+  WgObject cube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer, {cameraSet, lightSet});
+  WgObject floor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer, {cameraSet, lightSet});
 
 
   scene.addObject(floor, 0);
@@ -188,8 +169,8 @@ int main(){
   WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
   Vector3 camPos(4, 5, -6);
   cam.setLookAt(camPos,
-    Vector3(0, 0, 0),
-    Vector3(0, 1, 0));
+		Vector3(0, 0, 0),
+		Vector3(0, 1, 0));
 
   wg.setScene(scene);
 
@@ -197,8 +178,8 @@ int main(){
   Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.02f);
   Vector3 lightPos(-3, 7, 5);
   lightCamera.setLookAt(lightPos,
-    Vector3(0, 0, 0),
-    Vector3(0, 1, 0));
+			Vector3(0, 0, 0),
+			Vector3(0, 1, 0));
 
   int count = 0;
 

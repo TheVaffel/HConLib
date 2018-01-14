@@ -35,9 +35,10 @@ const char *fragShaderText =
        layout (set = 1, binding = 1) uniform sampler2D depthMap;
        void main() {
 	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
-	   > light_vert.z/light_vert.w - 0.000001? 1.0: 0.0;
+	   > light_vert.z/light_vert.w - 0.00001? 1.0: 0.0;
 	 float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
 	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
+	 //outColor = dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
        }
        );
 
@@ -158,15 +159,17 @@ int main(){
   WgObject cube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer);
   WgObject floor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer);
 
+  wgutil::Model teapot(wg, "teapot.obj", {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_NORMAL});
+
   WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
-  Vector3 camPos(4, 5, -6);
+  Vector3 camPos(9, 8, -6);
   cam.setLookAt(camPos,
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
 
 
   WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
-  Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.02f);
+  Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.015f);
   Vector3 lightPos(-3, 7, 5);
   lightCamera.setLookAt(lightPos,
 			Vector3(0, 0, 0),
@@ -182,7 +185,7 @@ int main(){
     Vector3(0, 0, 0),
     Vector3(0, 1, 0));
 
-    cam.setPosition(camPos + 0.3f*camPos*sin(0.03f*count));
+    cam.setPosition(camPos + 0.3*camPos*sin(0.02f*count));
     Matrix4 cmat = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cmat, sizeof(Matrix4));
 
@@ -190,20 +193,22 @@ int main(){
     wg.setUniform(lightTransformUniform, &lightMat, sizeof(Matrix4));
 
     depthObjectGroup.startRecording(depthFramebuffer);
-    depthObjectGroup.recordRendering(cube, {lightTransformSet});
+    //depthObjectGroup.recordRendering(cube, {lightTransformSet});
+    depthObjectGroup.recordRendering(teapot, {lightTransformSet});
     depthObjectGroup.recordRendering(floor, {lightTransformSet});
     depthObjectGroup.endRecording();
 
     wg.copyDepthFromFramebuffer(depthFramebuffer, depthImage.image);
     
     renderObjectGroup.startRecording();
-    renderObjectGroup.recordRendering(cube, {cameraSet, lightSet});
+    //renderObjectGroup.recordRendering(cube, {cameraSet, lightSet});
+    renderObjectGroup.recordRendering(teapot, {cameraSet, lightSet});
     renderObjectGroup.recordRendering(floor, {cameraSet, lightSet});
     renderObjectGroup.endRecording();
 
     wg.present();
     
-    win.sleepMilliseconds(50);
+    win.sleepMilliseconds(20);
     win.flushEvents();
     if(win.isKeyPressed(WK_ESC)){
       break;
@@ -237,6 +242,8 @@ int main(){
 
   wg.destroyObject(cube);
   wg.destroyObject(floor);
+
+  teapot.destroy();
 
   return 0;
 }

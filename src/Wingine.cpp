@@ -2,6 +2,8 @@
 #include <external/glsl_util.h>
 
 #include <cstdlib> // exit
+#include <fstream> // .obj file reading
+#include <sstream> // file content processing
 
 #ifdef WIN32
 //Windows...
@@ -2658,8 +2660,82 @@ namespace wgutil {
     wingine = &wg;
   }
 
-  WingineResource* Model::getResource(int index){
-    return resources[index];
+  // Input from file. Only supports one set of values per attrib type
+  Model::Model(Wingine& wg, const char* file_name, std::initializer_list<WgAttribType> attribs) : Model(wg){
+    int attribIndices[WG_NUM_ATTRIB_TYPES];
+    const WgAttribType* arr = std::begin(attribs);
+    
+    for(uint32_t i = 0; i < attribs.size(); i++){
+      if(arr[i] == WG_ATTRIB_TYPE_COLOR){
+	printf("Color nodes from .obj-files are not yet supported\n");
+	exit(-1);
+      }
+    }
+    
+    for(int j = 0; j < WG_NUM_ATTRIB_TYPES; j++){
+      attribIndices[j] = -1;
+      for(uint32_t i = 0; i < attribs.size(); i++){
+	if(arr[i] == j){
+	  attribIndices[j] = i;
+	  break;
+	}
+      }
+    }
+    
+    std::ifstream file(file_name);
+    std::vector<float> data[attribs.size()];
+    std::vector<uint32_t> indices;
+    std::string line;
+    std::string type;
+
+    float a, b, c;
+    uint32_t u, v, w;
+    
+    const float scale = 1.f/50;
+    const float up = 1.f;
+    
+    while(std::getline(file, line)){
+      std::istringstream iss(line);
+      iss >> type;
+      if(attribIndices[WG_ATTRIB_TYPE_POSITION] != -1 && type == "v"){
+	iss >> a >> b >> c;
+	std::vector<float>& vertices = data[attribIndices[WG_ATTRIB_TYPE_POSITION]];
+	vertices.push_back(a*scale);
+	vertices.push_back(b*scale + up);
+	vertices.push_back(c*scale);
+	vertices.push_back(1.0f);
+      } else if(attribIndices[WG_ATTRIB_TYPE_NORMAL] != -1 && type == "vn"){
+	iss >> a >> b >> c;
+	std::vector<float>& normals = data[attribIndices[WG_ATTRIB_TYPE_NORMAL]];
+	normals.push_back(a);
+	normals.push_back(b);
+	normals.push_back(c);
+	normals.push_back(0.0f);
+      } else if(attribIndices[WG_ATTRIB_TYPE_TEXTURE] != -1 && type == "vt"){
+        iss >> a >> b;
+	std::vector<float>& coords = data[attribIndices[WG_ATTRIB_TYPE_TEXTURE]];
+	coords.push_back(a);
+	coords.push_back(b);
+      }else if(type == "f"){
+	iss >> u >> v >> w;
+	indices.push_back(u-1);
+	indices.push_back(v-1);
+	indices.push_back(w-1);
+      } else {
+#ifdef DEBUG
+	printf("Skipping line '%s', as its type is unknown\n", line.c_str());
+#endif
+      }
+    }
+
+    for(uint32_t i = 0; i < attribs.size(); i++){
+      WingineBuffer buffer = wg.createVertexBuffer(data[i].size() * sizeof(float), data[i].data());
+      vertexAttribs.push_back(buffer);
+    }
+    WingineBuffer indBuffer = wg.createIndexBuffer(indices.size() * sizeof(int32_t), indices.data());
+
+    indexBuffer = indBuffer;
+    numDrawIndices = indices.size();
   }
 
   void Model::destroy(){
@@ -2669,9 +2745,6 @@ namespace wgutil {
 
     wingine->destroyBuffer(indexBuffer);
 
-    for(uint32_t i = 0 ; i < resources.size(); i++){
-      wingine->destroyUniform(*((WingineUniform*)resources[i]));
-    }
   }
 
   ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){

@@ -60,6 +60,14 @@ typedef enum WgAttribFormat {
   WG_ATTRIB_FORMAT_4 = 4
 } WgAttribFormat;
 
+#define WG_NUM_ATTRIB_TYPES 4
+  typedef enum WgAttribType {
+    WG_ATTRIB_TYPE_POSITION = 0x0,
+    WG_ATTRIB_TYPE_COLOR = 0x1,
+    WG_ATTRIB_TYPE_NORMAL = 0x2,
+    WG_ATTRIB_TYPE_TEXTURE = 0x3
+  } WgAttriblType;
+
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000
 
@@ -530,27 +538,23 @@ class Wingine{
 
 
 namespace wgutil {
-
   struct Model : public WingineRenderObject {
   protected:
     Wingine* wingine;
-    std::vector<WingineResource*> resources;
-    //virtual void init();
-    //Model(Wingine wingine, int numInds, int numVertexAttribs);
-    //WingineResource* getResource(int index);
-    Model(Wingine& w);
-    ~Model();
   public:
+    Model(Wingine& w);
+    Model(Wingine& w, const char* filename, std::initializer_list<WgAttribType> attribs);
+    
+    void destroy();
     WingineResource* getResource(int index);
   };
-
+  
   struct ColorModel : public Model { // Simple object with color attributes and a transformation matrix
     ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData);
   };
 
   ColorModel createCube(Wingine& wg, float s);
-
-}
+};
 
 typedef WingineBuffer WgBuffer;
 typedef WingineImage WgImage;

@@ -175,6 +175,7 @@ struct WinginePipeline{
   int numAttachments;
   int numDescriptorSetLayouts;
   VkDescriptorSetLayout* descriptorSetLayouts;
+  bool clearAttachments;
 };
 
 struct WinginePipelineSetup{
@@ -206,8 +207,6 @@ class WingineRenderObject{
  protected:
   std::vector<WingineBuffer> vertexAttribs;
   WingineBuffer indexBuffer;
-  int numResourceSets;
-  WingineResourceSet* resourceSets;
   bool altered = true;
   const WinginePipeline* pipeline;
   WingineObjectGroup* objectGroup;
@@ -216,20 +215,22 @@ class WingineRenderObject{
   int indexOffset;
  public:
   WingineRenderObject();
-  WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& indexBuffer, std::initializer_list<WingineResourceSet> rSets);
-  WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& indexBuffer, const WingineResourceSet& rSet);
-  WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& indexBuffer, int numResourceSets, const WingineResourceSet* rSets);
+  WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& indexBuffer);
+  WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& indexBuffer);
 
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
   void setNumIndices(int num);
-
-  void recordCommandBuffer(VkCommandBuffer& cmd);
+  uint32_t getNumIndices();
+  uint32_t getIndexOffset();
+  const WingineBuffer& getIndexBuffer();
 
   void setCommandBuffer(const VkCommandBuffer& cmd);
   VkCommandBuffer* getCommandBufferPointer();
 
   void setIndexBuffer(const WingineBuffer& indexBuffer);
+  uint32_t getNumAttribs();
+  const WingineBuffer* getAttribs();
   void setVertexAttribs(const WingineBuffer& wb, int index);
 
   void setObjectGroup(WingineObjectGroup& wog);
@@ -248,29 +249,15 @@ public:
   std::vector<WingineRenderObject> objects;
   VkCommandBuffer commandBuffer;
 
-  void recordCommandBuffer();
-
-  void startRecordingCommandBuffer(const WingineFramebuffer& framebuffer);
-  void endRecordingCommandBuffer();
+  void startRecording();
+  void startRecording(const WingineFramebuffer& framebuffer);
+  void endRecording();
 
   void addObject(const WingineRenderObject& obj);
-};
 
-class WingineScene{
-  Wingine* wg;
-public:
-  std::vector<WingineObjectGroup> objectGroups;
-  WingineScene(Wingine& wg);
-  ~WingineScene();
-  void addPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
-		   std::initializer_list<WingineShader> shaders,
-		   std:: initializer_list<WgAttribFormat> attribFormats);
-  void addPipeline(int numLayouts, const WingineResourceSetLayout* layouts,
-		   int numShaders, const WingineShader* shaders,
-		   int numVertexAttribs, const WgAttribFormat* attribFormats);
-  void addPipeline(WingineResourceSetLayout layout, int numShaders,
-    const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribTypes);
-  void addObject(WingineRenderObject& obj, int pipelineInd);
+  void recordRendering(WingineRenderObject& object,
+		      std::initializer_list<WingineResourceSet> sets);
+  void recordRendering(WingineRenderObject& object, const WingineResourceSet* sets);
 };
 
 class WingineCamera{
@@ -355,8 +342,6 @@ class Wingine{
   std::vector<const char*> instance_extension_names;
   std::vector<const char*> instance_layer_names;
   std::vector<const char*> device_extension_names;
-
-  WingineScene* currentScene;
 
   VkResult init_instance(int width, int height, const char* title);
   VkResult find_device();
@@ -535,13 +520,6 @@ class Wingine{
 
   void setCamera(WingineCamera& camera);
 
-  void setScene(WingineScene& scene);
-  void renderObjectGroup(WingineObjectGroup&);
-  void renderObjectGroup(WingineObjectGroup&,
-    const WingineFramebuffer& framebuffer);
-  void renderScene();
-  void renderScene(const WingineFramebuffer& framebuffer);
-
 #ifdef WIN32
   Wingine(int width, int height, const char* title, HINSTANCE hinst, HWND hwnd);
 #endif // WIN32
@@ -585,7 +563,6 @@ typedef WingineResourceSetLayout WgRSL;
 typedef WingineResource WgResource;
 typedef WingineResourceSet WgRS;
 typedef WingineResourceSet WgResourceSet;
-typedef WingineScene WgScene;
 typedef WingineRenderObject WgRenderObject;
 typedef WingineRenderObject WgObject;
 typedef WinginePipeline WgPipeline;

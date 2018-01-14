@@ -176,31 +176,22 @@ int main(){
   WingineShader textureVertexShader = wg.createVertexShader(texVertShaderText);
   WingineShader textureFragmentShader = wg.createFragmentShader(texFragShaderText);
 
-  WingineScene scene(wg);
-  scene.addPipeline({resourceLayout},
-		    {vertexShader, fragmentShader},
-		    {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4});
+  WinginePipeline colorPipeline = wg.createPipeline({resourceLayout},
+						    {vertexShader, fragmentShader},
+						    {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4}, true);
+  WingineObjectGroup colorGroup(wg, colorPipeline);
+  WinginePipeline texturePipeline = wg.createPipeline({textureResourceLayout},
+						      {textureVertexShader, textureFragmentShader},
+						      {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_2}, false);
+  WingineObjectGroup textureGroup(wg, texturePipeline);
+
+  WingineRenderObject object1(6, {vertexBuffer, colorBuffer}, indexBuffer);
+  WingineRenderObject object3(6, {vertexBuffer, textureCoordBuffer}, indexBuffer);
+
+  WingineRenderObject cubeObject(3*12, {cubeVertexBuffer, cubeTextureCoordBuffer}, cubeIndexBuffer);
   
-  scene.addPipeline({textureResourceLayout},
-		    {textureVertexShader, textureFragmentShader},
-		    {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_2});
-  WingineRenderObject object1(6, {vertexBuffer, colorBuffer},
-			      indexBuffer, {cameraSet}); 
-  WingineRenderObject object3(6, {vertexBuffer, textureCoordBuffer},
-			      indexBuffer,
-			      {textureSet});
-
-  WingineRenderObject cubeObject(3*12, {cubeVertexBuffer, cubeTextureCoordBuffer}, cubeIndexBuffer, {textureSet});
-
   wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
 
-  scene.addObject(object1, 0); //Object, pipeline number
-  scene.addObject(object3, 1);
-  scene.addObject(cube1, 0);
-  
-  scene.addObject(cubeObject, 1);
-
-  wg.setScene(scene);
 
   WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
   Vector3 camPos(-5, 3, -10);
@@ -249,9 +240,20 @@ int main(){
     Matrix4 cMatrix = cam.getRenderMatrix();
     wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
     wg.setUniform(offsetUniform, &newOffset, sizeof(Matrix4));
-    wg.setUniform(*(WingineUniform*)cube1.getResource(0), &cMatrix, sizeof(Matrix4));
-    wg.renderScene();
+ 
+    colorGroup.startRecording();
+    colorGroup.recordRendering(object1, {cameraSet});
+    colorGroup.recordRendering(cube1, {cameraSet});
+    colorGroup.endRecording();
 
+    textureGroup.startRecording();
+    textureGroup.recordRendering(object3, {textureSet});
+    textureGroup.recordRendering(cubeObject, {textureSet});
+    textureGroup.endRecording();
+
+    wg.present();
+    
+    // For inspiration ;)
     //WingineFramebuffer framebuffer = wg.getLastFramebuffer();
     //wg.copyFromFramebuffer(framebuffer, texture.image);
 
@@ -268,6 +270,8 @@ int main(){
     }
   }
 
+  cube1.destroy();
+
   wg.destroyTexture(texture);
   wg.destroyUniform(cameraUniform);
   wg.destroyUniform(offsetUniform);
@@ -278,6 +282,9 @@ int main(){
   wg.destroyShader(fragmentShader);
   wg.destroyShader(textureVertexShader);
   wg.destroyShader(textureFragmentShader);
+
+  wg.destroyPipeline(colorPipeline);
+  wg.destroyPipeline(texturePipeline);
 
   wg.destroyResourceSet(cameraSet);
   wg.destroyResourceSet(textureSet);

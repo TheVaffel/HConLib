@@ -131,7 +131,6 @@ int main(){
   WgShader vertexShader = wg.createVertexShader(vertShaderText);
   WgShader fragmentShader = wg.createFragmentShader(fragShaderText);
 
-  WingineScene scene(wg);
 
   // Depth rendering
   WgUniform lightTransformUniform = wg.createUniform(sizeof(Matrix4));
@@ -144,27 +143,20 @@ int main(){
   WgShader idVertexShader = wg.createVertexShader(vertShaderIdText);
 
   WgPipeline depthPipeline = wg.createDepthPipeline({rsl}, {idVertexShader});
+  WgObjectGroup depthObjectGroup(wg, depthPipeline);
+  
   WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
 
   WgResourceSet lightTransformSet = wg.createResourceSet(rsl, {&lightTransformUniform});
   WgResourceSet lightSet = wg.createResourceSet(lightLayout, {&lightTransformUniform, &depthImage});
 
-  WgObject lightCube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer, {lightTransformSet});
-  WgObject lightFloor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer, {lightTransformSet});
-
-
-  scene.addPipeline({rsl, lightLayout}, {vertexShader, fragmentShader}, {WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4});
-
-  WgObject cube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer, {cameraSet, lightSet});
-  WgObject floor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer, {cameraSet, lightSet});
-
-
-  scene.addObject(floor, 0);
-  scene.addObject(cube, 0);
-
-  WgObjectGroup depthObjectGroup(wg, depthPipeline);
-  depthObjectGroup.addObject(lightCube);
-  depthObjectGroup.addObject(lightFloor);
+  
+  WgPipeline renderPipeline = wg.createPipeline({rsl, lightLayout}, {vertexShader, fragmentShader},
+						{WG_ATTRIB_FORMAT_4, WG_ATTRIB_FORMAT_4}, true);
+  WgObjectGroup renderObjectGroup(wg, renderPipeline);
+  
+  WgObject cube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer);
+  WgObject floor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer);
 
   WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
   Vector3 camPos(4, 5, -6);
@@ -172,7 +164,6 @@ int main(){
 		Vector3(0, 0, 0),
 		Vector3(0, 1, 0));
 
-  wg.setScene(scene);
 
   WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
   Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.02f);
@@ -198,11 +189,20 @@ int main(){
     Matrix4 lightMat = lightCamera.getRenderMatrix();
     wg.setUniform(lightTransformUniform, &lightMat, sizeof(Matrix4));
 
-    wg.renderObjectGroup(depthObjectGroup, depthFramebuffer);
+    depthObjectGroup.startRecording(depthFramebuffer);
+    depthObjectGroup.recordRendering(cube, {lightTransformSet});
+    depthObjectGroup.recordRendering(floor, {lightTransformSet});
+    depthObjectGroup.endRecording();
 
     wg.copyDepthFromFramebuffer(depthFramebuffer, depthImage.image);
-    wg.renderScene();
+    
+    renderObjectGroup.startRecording();
+    renderObjectGroup.recordRendering(cube, {cameraSet, lightSet});
+    renderObjectGroup.recordRendering(floor, {cameraSet, lightSet});
+    renderObjectGroup.endRecording();
 
+    wg.present();
+    
     win.sleepMilliseconds(50);
     win.flushEvents();
     if(win.isKeyPressed(WK_ESC)){
@@ -220,6 +220,8 @@ int main(){
   wg.destroyBuffer(floorNormalBuffer);
   wg.destroyBuffer(cubeNormalBuffer);
 
+  wg.destroyPipeline(renderPipeline);
+
   wg.destroyBuffer(cubeIndexBuffer);
   wg.destroyBuffer(floorIndexBuffer);
 
@@ -235,9 +237,6 @@ int main(){
 
   wg.destroyObject(cube);
   wg.destroyObject(floor);
-
-  wg.destroyObject(lightCube);
-  wg.destroyObject(lightFloor);
 
   return 0;
 }

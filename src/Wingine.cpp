@@ -856,9 +856,6 @@ void Wingine::destroy_command_buffers(){
 }
 
 void Wingine::destroy_swapchain(){
-  /*for(uint32_t i = 0; i < swapchain_image_count;i++){
-    vkDestroyImageView(device, swapchain_image_views[i], NULL);
-  }*/
 
   delete[] swapchain_images;
 
@@ -880,7 +877,6 @@ void Wingine::destroy_render_passes(){
 
 void Wingine::destroy_framebuffers(){
   for(uint32_t i = 0; i < swapchain_image_count; i++){
-    //destroyFramebuffer(framebuffers[i]);
     vkDestroyImageView(device, framebuffers[i].image.view, NULL);
     destroyImage(framebuffers[i].depth_image);
 
@@ -891,7 +887,6 @@ void Wingine::destroy_framebuffers(){
 }
 
 void Wingine::destroyFramebuffer(WingineFramebuffer buffer){
-  //vkDestroyImageView(device, buffer.image.view, NULL);
   if(buffer.image.image)
     destroyImage(buffer.image);
   destroyImage(buffer.depth_image);
@@ -912,10 +907,6 @@ VkResult Wingine::init_pipeline_cache(){
 
   return res;
 }
-
-/*void Wingine::destroy_pipeline(){
-  vkDestroyPipeline(device, color_pipeline, NULL);
-}*/
 
 void Wingine::destroy_pipeline_cache(){
   vkDestroyPipelineCache(device, pipeline_cache, NULL);
@@ -1408,6 +1399,7 @@ WinginePipeline Wingine::createPipeline(int numResourceLayouts, const WingineRes
 					bool clear, int numAttachments, const WgAttachmentType* attachmentTypes){
   WinginePipelineSetup pipelineSetup(numAttachments, attachmentTypes);
   WinginePipeline pipeline;
+  pipeline.clearAttachments = clear;
   pipeline.numAttachments = numAttachments;
   wgAssert(numVertexAttribs <= MAX_VERTEX_ATTRIBUTES, "Max Vertex Attributes high enough");
   pipeline.numVertexAttribs = numVertexAttribs;
@@ -2424,38 +2416,6 @@ WingineFramebuffer Wingine::getLastFramebuffer() const {
   return framebuffers[(current_buffer - 1 + swapchain_image_count) % swapchain_image_count];
 }
 
-void Wingine::setScene(WingineScene& scene){
-  currentScene = &scene;
-}
-
-void Wingine::renderObjectGroup(WingineObjectGroup& group){
-  renderObjectGroup(group, getCurrentFramebuffer());
-}
-
-void Wingine::renderObjectGroup(WingineObjectGroup& group,
-  const WingineFramebuffer& framebuffer){
-  group.startRecordingCommandBuffer(framebuffer);
-  for(uint32_t i = 0; i < group.objects.size(); i++){
-    group.objects[i].recordCommandBuffer(group.commandBuffer);
-  }
-  group.endRecordingCommandBuffer();
-  submitDrawCommandBuffer(group.commandBuffer);
-}
-
-void Wingine::renderScene(){
-  //WingineFramebuffer buf = getCurrentFramebuffer();
-  //renderScene(buf);
-  renderScene(getCurrentFramebuffer());
-}
-
-void Wingine::renderScene(const WingineFramebuffer& framebuffer){
-  for(uint32_t i = 0; i < currentScene->objectGroups.size(); i++){
-    renderObjectGroup(currentScene->objectGroups[i], framebuffer);
-  }
-
-  present();
-}
-
 void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
   VkResult res;
 
@@ -2484,28 +2444,20 @@ void Wingine::submitDrawCommandBuffer(const VkCommandBuffer& buffer){
 }
 
 
-WingineRenderObject::WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& iBuffer, std::initializer_list<WingineResourceSet> rSets) : WingineRenderObject(numInds, vertexBuffers.size(), std::begin(vertexBuffers), iBuffer, rSets.size(), std::begin(rSets)) {
+WingineRenderObject::WingineRenderObject(int numInds, std::initializer_list<WingineBuffer> vertexBuffers, const WingineBuffer& iBuffer) : WingineRenderObject(numInds, vertexBuffers.size(), std::begin(vertexBuffers), iBuffer) {
 }
 
-WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& iBuffer, const WingineResourceSet& uSet) : WingineRenderObject(numInds, numVertexAttribs, buffers, iBuffer, 1, &uSet) {
-}
-
-WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& iBuffer, int numRS, const WingineResourceSet* rSets){
-  numResourceSets = numRS;
+WingineRenderObject::WingineRenderObject(int numInds, int numVertexAttribs, const WingineBuffer* buffers, const WingineBuffer& iBuffer){
   for(int i = 0; i < numVertexAttribs; i++){
     vertexAttribs.push_back(buffers[i]);
   }
   indexBuffer = iBuffer;
-  resourceSets = new WingineResourceSet[numResourceSets];
-  for(int i = 0; i < numResourceSets; i++){
-    resourceSets[i] = rSets[i];
-  }
+
   numDrawIndices = numInds;
   indexOffset = 0;
 }
 
 void WingineRenderObject::destroy(){
-  delete[] resourceSets;
 }
 
 void Wingine::destroyObject(WingineRenderObject& obj){
@@ -2534,24 +2486,54 @@ void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
   altered = true;
 }
 
-void WingineRenderObject::recordCommandBuffer(VkCommandBuffer& cmd){
-  wgAssert(MAX_DESCRIPTOR_SETS > numResourceSets, "Enough descriptor sets\n");
+uint32_t WingineRenderObject::getNumIndices(){
+  return numDrawIndices;
+}
+
+uint32_t WingineRenderObject::getIndexOffset(){
+  return indexOffset;
+}
+
+const WingineBuffer& WingineRenderObject::getIndexBuffer(){
+  return indexBuffer;
+}
+
+uint32_t WingineRenderObject::getNumAttribs(){
+  return vertexAttribs.size();
+}
+
+const WingineBuffer* WingineRenderObject::getAttribs(){
+  return vertexAttribs.data();
+}
+
+void WingineObjectGroup::recordRendering(WingineRenderObject& object,
+					 std::initializer_list<WingineResourceSet> sets){
+  recordRendering(object, std::begin(sets));
+}
+
+void WingineObjectGroup::recordRendering(WingineRenderObject& object,
+					 const WingineResourceSet* resourceSets){
+  wgAssert(MAX_DESCRIPTOR_SETS > pipeline.numDescriptorSetLayouts, "Enough descriptor sets\n");
   VkDescriptorSet sets[MAX_DESCRIPTOR_SETS];
-  for(int i = 0; i < numResourceSets; i++){
+  for(int i = 0; i < pipeline.numDescriptorSetLayouts; i++){
     sets[i] = resourceSets[i].descriptorSet;
   }
-  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipelineLayout,
-			  0, numResourceSets, sets, 0, NULL);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout,
+			  0, pipeline.numDescriptorSetLayouts, sets, 0, NULL);
+
   VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
   VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];
-  for(uint32_t i = 0; i< vertexAttribs.size(); i++){
-    vertexBuffers[i] = vertexAttribs[i].buffer;
+  uint32_t numAttribs = pipeline.numVertexAttribs;
+  const WingineBuffer* attribs = object.getAttribs();
+  for(uint32_t i = 0; i < numAttribs; i++){
+    vertexBuffers[i] = attribs[i].buffer;
     offsets[i] = 0;
   }
-  vkCmdBindVertexBuffers(cmd, 0, vertexAttribs.size(), vertexBuffers, offsets);
 
-  vkCmdBindIndexBuffer(cmd, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdDrawIndexed(cmd, numDrawIndices, 1, indexOffset, 0, 0);
+  vkCmdBindVertexBuffers(commandBuffer, 0, numAttribs, vertexBuffers, offsets);
+  vkCmdBindIndexBuffer(commandBuffer, object.getIndexBuffer().buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(commandBuffer, object.getNumIndices(), 1, object.getIndexOffset(), 0, 0);
 
   altered = false;
 }
@@ -2562,50 +2544,6 @@ void WingineRenderObject::setObjectGroup(WingineObjectGroup& wog){
 
 bool WingineRenderObject::isAltered(){
   return altered;
-}
-
-WingineScene::WingineScene(Wingine& w){
-  wg = &w;
-}
-
-WingineScene::~WingineScene(){
-  for(uint32_t i = 0; i < objectGroups.size(); i++){
-    wg->destroyPipeline(objectGroups[i].pipeline);
-  }
-}
-
-void WingineScene::addPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
-			       std::initializer_list<WingineShader> shaders,
-			       std:: initializer_list<WgAttribFormat> attribFormats){
-  addPipeline(layouts.size(), std::begin(layouts),
-	      shaders.size(), std::begin(shaders),
-	      attribFormats.size(), std::begin(attribFormats));
-}
-
-void WingineScene::addPipeline(int numLayouts, const WingineResourceSetLayout* layouts,
-			       int numShaders, const WingineShader* shaders,
-			       int numVertexAttribs, const WgAttribFormat* attribFormats){
-  WgAttachmentType types[] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
-  WinginePipeline p =  wg->createPipeline(numLayouts, layouts, numShaders, shaders,
-					  numVertexAttribs, attribFormats, objectGroups.size() == 0,
-					  2, types);
-  WingineObjectGroup wog(*wg, p);
-  wog.shouldClearAttachments = objectGroups.size() == 0;
-  objectGroups.push_back(wog);
-}
-
-void WingineScene::addPipeline(WingineResourceSetLayout layout, int numShaders,
-  const WingineShader* shaders, int numVertexAttribs, const WgAttribFormat* attribFormats){
-  addPipeline(1, &layout, numShaders, shaders, numVertexAttribs, attribFormats);
-}
-
-void WingineScene::addObject(WingineRenderObject& obj, int pipelineInd){
-  objectGroups[pipelineInd].objects.push_back(obj);
-  int index = objectGroups[pipelineInd].objects.size()-1;
-  objectGroups[pipelineInd].objects[index].setPipeline(objectGroups[pipelineInd].pipeline);
-  objectGroups[pipelineInd].altered = true;
-  //objectGroups[pipelineInd].objects[index].setCommandBuffer(wg->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY));
-  objectGroups[pipelineInd].objects[index].setObjectGroup(objectGroups[pipelineInd]);
 }
 
 void WingineObjectGroup::addObject(const WingineRenderObject& obj){
@@ -2620,11 +2558,15 @@ void WingineObjectGroup::addObject(const WingineRenderObject& obj){
 WingineObjectGroup::WingineObjectGroup(Wingine& wg, WinginePipeline& newPipeline){
   wingine = &wg;
   pipeline = newPipeline;
-  shouldClearAttachments = true;
+  shouldClearAttachments = newPipeline.clearAttachments;
   commandBuffer = wg.createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
-void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& framebuffer){
+void WingineObjectGroup::startRecording(){
+  startRecording(wingine->getCurrentFramebuffer());
+}
+
+void WingineObjectGroup::startRecording(const WingineFramebuffer& framebuffer){
   vkResetCommandBuffer(commandBuffer, 0);
 
   VkCommandBufferBeginInfo begin = {};
@@ -2692,11 +2634,13 @@ void WingineObjectGroup::startRecordingCommandBuffer(const WingineFramebuffer& f
 }
 
 
-void WingineObjectGroup::endRecordingCommandBuffer(){
+void WingineObjectGroup::endRecording(){
   vkCmdEndRenderPass(commandBuffer);
   VkResult res;
   res = vkEndCommandBuffer(commandBuffer);
   wgAssert(res == VK_SUCCESS, "End command buffer");
+
+  wingine->submitDrawCommandBuffer(commandBuffer);
 }
 
 WingineRenderObject::WingineRenderObject(){
@@ -2709,12 +2653,7 @@ void* _place_in_heap(void * data, int size){
 }
 
 namespace wgutil {
-  /*Model::Model(Wingine& wg, int numInds, int numVertexAttribs){
-    vertexAttribs.resize(numVertexAttribs);
-    numDrawIndices = numInds;
-    indexOffset = 0;
-    wingine = wg;
-    }*/
+  
   Model::Model(Wingine& wg) {
     wingine = &wg;
   }
@@ -2723,7 +2662,7 @@ namespace wgutil {
     return resources[index];
   }
 
-  Model::~Model(){
+  void Model::destroy(){
     for(uint32_t i = 0; i < vertexAttribs.size(); i++){
       wingine->destroyBuffer(vertexAttribs[i]);
     }
@@ -2733,11 +2672,6 @@ namespace wgutil {
     for(uint32_t i = 0 ; i < resources.size(); i++){
       wingine->destroyUniform(*((WingineUniform*)resources[i]));
     }
-
-    for(int i = 0; i < numResourceSets; i++){
-      wingine->destroyResourceSet(resourceSets[i]);
-    }
-    delete[] resourceSets;
   }
 
   ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){
@@ -2753,29 +2687,12 @@ namespace wgutil {
     WingineBuffer indBuffer = wg.createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(int32_t) * numInds);
     wg.setBuffer(indBuffer, indices, numInds * sizeof(uint32_t));
 
-    WgResourceType desc = WG_RESOURCE_TYPE_UNIFORM;
-    VkShaderStageFlagBits bit = VK_SHADER_STAGE_VERTEX_BIT;
-    WingineResourceSetLayout matrixLayout = wg.createResourceSetLayout(1, &desc, &bit);
-    WingineUniform matrixUniform = wg.createUniform(sizeof(Matrix4));
-    WingineResource* res = &matrixUniform;
-    WingineResourceSet matrixSet = wg.createResourceSet(matrixLayout, &res);
-
     vertexAttribs.push_back(vertexBuffer);
     vertexAttribs.push_back(colorBuffer);
 
     indexBuffer = indBuffer;
 
     numDrawIndices = numInds;
-
-    numResourceSets = 1;
-    resourceSets = new WingineResourceSet[numResourceSets];
-    resourceSets[0] = matrixSet;
-
-    WingineResource * rp = (WingineResource*)_place_in_heap(&matrixUniform, sizeof(matrixUniform));
-
-    resources.push_back(rp);
-
-    wingine->destroyResourceSetLayout(matrixLayout);
 
   }
 

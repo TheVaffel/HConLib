@@ -35,7 +35,7 @@ const char *fragShaderText =
        layout (set = 1, binding = 1) uniform sampler2D depthMap;
        void main() {
 	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
-	   > light_vert.z/light_vert.w - 0.0001? 1.0: 0.0;
+	   > light_vert.z/light_vert.w - 0.000001? 1.0: 0.0;
 	 float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
 	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
        }

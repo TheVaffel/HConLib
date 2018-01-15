@@ -16,6 +16,7 @@ const char *vertShaderText =
        layout (location = 1) in vec4 normal;
        layout (location = 0) out vec4 light_vertex;
        layout (location = 1) out vec4 outNormal;
+       layout (location = 2) out vec3 position;
        out gl_PerVertex { 
 	 vec4 gl_Position;
        };
@@ -24,6 +25,7 @@ const char *vertShaderText =
 	 light_vertex = lightVals.mvp * pos;
 	 outNormal = lightVals.mvp * normal;
 	 gl_Position = newPos;
+	 position = newPos.xyz;
        }
        );
 
@@ -31,13 +33,17 @@ const char *fragShaderText =
   GLSL(
        layout (location = 0) in vec4 light_vert;
        layout (location = 1) in vec4 light_normal;
+       layout (location = 2) in vec3 position;
        layout (location = 0) out vec4 outColor;
        layout (set = 1, binding = 1) uniform sampler2D depthMap;
        void main() {
+	 
+	 float dir = max(0, -dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
+	 vec3 reflect = (light_vert.xyz - dot(light_vert, light_normal) * normalize(light_normal.xyz));
+	 float divert = max(0, - dot(reflect, position) / (length(position) * length(reflect)));
 	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
-	   > light_vert.z/light_vert.w - 0.00001? 1.0: 0.0;
-	 float dir = max(0,- dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
-	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
+	   > light_vert.z/light_vert.w - 0.00001 * tan(acos(dir))? 1.0: 0.0;
+	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0) + pow(divert, 4)*vec4(1.0, 1.0, 1.0, 0.0);
 	 //outColor = dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
        }
        );
@@ -170,7 +176,7 @@ int main(){
 
   WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
   Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.015f);
-  Vector3 lightPos(-3, 7, 5);
+  Vector3 lightPos(-8, 7, 2);
   lightCamera.setLookAt(lightPos,
 			Vector3(0, 0, 0),
 			Vector3(0, 1, 0));

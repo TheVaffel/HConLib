@@ -38,13 +38,23 @@ const char *fragShaderText =
        layout (set = 1, binding = 1) uniform sampler2D depthMap;
        void main() {
 	 
-	 float dir = max(0, -dot(light_normal, light_vert)/(length(light_normal)*length(light_vert)));
+	 float dir = max(0, -dot(light_normal.xyz, light_vert.xyz)/(length(light_normal.xyz)*length(light_vert.xyz)));
 	 vec3 reflect = (light_vert.xyz - dot(light_vert, light_normal) * normalize(light_normal.xyz));
 	 float divert = max(0, - dot(reflect, position) / (length(position) * length(reflect)));
-	 float visible = textureLod(depthMap, (light_vert.xy/light_vert.w + vec2(1, 1))/2 , 0.0).x
-	   > light_vert.z/light_vert.w - 0.00001 * tan(acos(dir))? 1.0: 0.0;
-	 outColor = visible * dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0) + pow(divert, 4)*vec4(1.0, 1.0, 1.0, 0.0);
+	 float visible = 0;
+	 const int num = 2;
+	 for(int i = 0; i < num; i++){
+	   for(int j = 0; j < num; j++){
+	     visible += textureLod(depthMap,
+				   (light_vert.xy/light_vert.w + vec2(1, 1) + vec2(1e-3*i, 1e-3*j))/2 , 0.0).x
+	       >= light_vert.z/light_vert.w - 0.00001 - 0.000001 * min(100, max(0, tan(acos(dir))))
+	       ? 1.0/pow(num,2): 0.0;
+	   }
+	 }
+	 
+	 outColor = visible * (dir * vec4(1, 1, 1, 0.0) + pow(divert, 2)*vec4(1.0, 1.0, 1.0, 0.0)) + vec4(0.1, 0.1, 0.1, 1.0);
 	 //outColor = dir * vec4(1, 1, 1, 0.0) + vec4(0.1, 0.1, 0.1, 1.0);
+	 //outColor = visible * vec4(1, 1, 1, 1);
        }
        );
 
@@ -176,7 +186,7 @@ int main(){
 
   WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
   Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.015f);
-  Vector3 lightPos(-8, 7, 2);
+  Vector3 lightPos(-8, 15, 6);
   lightCamera.setLookAt(lightPos,
 			Vector3(0, 0, 0),
 			Vector3(0, 1, 0));
@@ -215,6 +225,7 @@ int main(){
     wg.present();
     
     win.sleepMilliseconds(20);
+    //win.waitForKey();
     win.flushEvents();
     if(win.isKeyPressed(WK_ESC)){
       break;

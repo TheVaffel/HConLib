@@ -1233,8 +1233,15 @@ VkDescriptorType Wingine::get_descriptor_type(WgResourceType type){
 }
 
 WingineResourceSetLayout Wingine::createResourceSetLayout(std::initializer_list<WgResourceType> types,
+							  std::initializer_list<WgShaderStage> stages){
+   wgAssert(types.size() == stages.size(), "Arguments to createResourceSetLayout has different size");
+   return createResourceSetLayout(types.size(), std::begin(types), (VkShaderStageFlagBits*)std::begin(stages));
+}
+  
+
+WingineResourceSetLayout Wingine::createResourceSetLayout(std::initializer_list<WgResourceType> types,
 							  std::initializer_list<VkShaderStageFlagBits> stages){
-  wgAssert(types.size() == stages.size(), "Arguments to createResourceSetLayout has different arguments");
+  wgAssert(types.size() == stages.size(), "Arguments to createResourceSetLayout has different size");
   return createResourceSetLayout(types.size(), std::begin(types), std::begin(stages));
 }
 

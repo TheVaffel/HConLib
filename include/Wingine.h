@@ -41,6 +41,11 @@
 #define IMAGE_STORE_DESCRIPTOR_POOL_SIZE 10
 #define MAX_NUM_COMMANDS 50
 
+typedef enum WgShaderStage{
+  WG_SHADER_STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
+  WG_SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT
+} WgShaderStage;
+
 typedef enum WgResourceType{
   WG_RESOURCE_TYPE_TEXTURE = 0,
   WG_RESOURCE_TYPE_UNIFORM = 1,
@@ -469,6 +474,8 @@ class Wingine{
 
   //A layout for resource sets
   // First evaluates stages for uniforms, then textures. Number of elements in stages = numUniforms + numTextures
+  WingineResourceSetLayout createResourceSetLayout(std::initializer_list<WgResourceType> types,
+						   std::initializer_list<WgShaderStage> stages);
   WingineResourceSetLayout createResourceSetLayout(std::initializer_list<WgResourceType> types,
 						   std::initializer_list<VkShaderStageFlagBits> stages);
   WingineResourceSetLayout createResourceSetLayout(int numResources, const WgResourceType* types, const VkShaderStageFlagBits* stages);

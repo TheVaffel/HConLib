@@ -194,6 +194,7 @@ struct Matrix4{
 	  float a13, float a14, float a15, float a16);
 
   std::string str() const;
+  Matrix3 toMatrix3() const;
 };
 
 Vector3 operator*(const Matrix4& m, const Vector3& v);

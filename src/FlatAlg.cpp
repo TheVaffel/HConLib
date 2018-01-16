@@ -492,6 +492,13 @@ std::string Matrix4::str() const{
   return oss.str();
 }
 
+
+Matrix3 Matrix4::toMatrix3() const {
+  return Matrix3(mat[0], mat[1], mat[2],
+		 mat[4], mat[5], mat[6],
+		 mat[8], mat[9], mat[10]);
+}
+
 Vector3 operator*(const Matrix4& m, const Vector3& v){
   return Vector3(m.get(0, 0)*v.get(0) + m.get(1, 0)*v.get(1) + m.get(2, 0)*v.get(2) + m.get(3, 0),
 		 m.get(0, 1)*v.get(0) + m.get(1, 1)*v.get(1) + m.get(2, 1)*v.get(2) + m.get(3, 1),

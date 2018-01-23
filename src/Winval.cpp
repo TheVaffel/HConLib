@@ -261,7 +261,7 @@ Winval::Winval(int w, int h, bool fullscreen){
 
   pointerX = pointerY = 0;
   mouseButtonPressed = false;
-
+  
   do{
     XNextEvent(dsp, &e);
   }while(e.type != MapNotify);
@@ -346,18 +346,21 @@ void Winval::handleEventProperly(XEvent& e){
     key = ks[index*keysyms];
     if(key < 1<<16){
       bool pressDown = false;
-      if(!autoRepeat){
-	if(XEventsQueued(dsp, QueuedAlready)){
-
-	  XEvent nextEvent;
-	  XPeekEvent(dsp, &nextEvent);
-	  if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
-	     e.xkey.time == nextEvent.xkey.time){
-	    XNextEvent(dsp, &nextEvent);
-	    pressDown = true;
-	  }
+      /*if(!autoRepeat){
+	printf("Not autorepeating\n");
+	if(XEventsQueued(dsp, QueuedAfterFlush)){
+	//if(XQLength(dsp)){
+	printf("More events were queued\n");
+	XEvent nextEvent;
+	XPeekEvent(dsp, &nextEvent);
+	if(nextEvent.type == KeyPress && nextEvent.xkey.keycode == e.xkey.keycode &&
+	e.xkey.time == nextEvent.xkey.time){
+	printf("Next event was corresponding press\n");
+	XNextEvent(dsp, &nextEvent);
+	pressDown = true;
 	}
-      }
+	}
+	}*/
       isDown[key] = pressDown;
     }
     break;

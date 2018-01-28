@@ -289,7 +289,9 @@ class WingineCamera{
   void setLookAt(const Vector3& pos,
 		 const Vector3& target,
 		 const Vector3& up);
-
+  void setLookDirection(float rightAngle, float upAngle,
+			const Vector3& up);
+  
   Matrix4 getRenderMatrix();
 
 };

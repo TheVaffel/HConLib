@@ -40,6 +40,24 @@ void WingineCamera::setLookAt(const Vector3& pos,
   altered = true;
 }
 
+void WingineCamera::setLookDirection(float rightAngle, float downAngle,
+				     const Vector3& up){
+  float cd = cos(-downAngle);
+  Vector3 dir(sin(-rightAngle) * cd, sin(-downAngle), cos(-rightAngle) * cd);
+  Vector3 right = cross(dir, up).normalized();
+  Vector3 viewUp = cross(right, dir);
+
+  printf("Viewup: %s\n", viewUp.str().c_str());
+
+  Vector3 pos = (~view.toMatrix3())*-Vector3(view[0][3], view[1][3], view[2][3]);
+
+  view = Matrix4(right.x, right.y, right.z, 0.f,
+		 viewUp.x, viewUp.y, viewUp.z, 0.f,
+		 -dir.x, -dir.y, -dir.z, 0.f,
+		 0.f, 0.f, 0.f, 1.f);
+  setPosition(pos);
+}
+
 Matrix4 WingineCamera::getRenderMatrix(){
   if(altered){
     total = clip*projection*view;

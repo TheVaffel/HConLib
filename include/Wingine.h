@@ -1,6 +1,6 @@
 //Vulkan integration for Winval
 
-//Huge thanks to LunarG's Vulkan tutorial, from which most of the is stolen - https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html
+//Huge thanks to LunarG's Vulkan tutorial, from which most of the code is stolen - https://vulkan.lunarg.com/doc/sdk/latest/linux/getting_started.html
 
 #ifndef INCLUDED_WINGINE
 #define INCLUDED_WINGINE

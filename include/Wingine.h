@@ -293,7 +293,7 @@ class WingineCamera{
 			const Vector3& up);
   
   Matrix4 getRenderMatrix();
-
+  Matrix4 getTransformMatrix();
 };
 
 class Wingine{

@@ -2542,7 +2542,7 @@ void WingineObjectGroup::recordRendering(WingineRenderObject& object,
 
 void WingineObjectGroup::recordRendering(WingineRenderObject& object,
 					 const WingineResourceSet* resourceSets){
-  wgAssert(MAX_DESCRIPTOR_SETS > pipeline.numDescriptorSetLayouts, "Enough descriptor sets\n");
+  wgAssert(MAX_DESCRIPTOR_SETS >= pipeline.numDescriptorSetLayouts, "Enough descriptor sets");
   VkDescriptorSet sets[MAX_DESCRIPTOR_SETS];
   for(int i = 0; i < pipeline.numDescriptorSetLayouts; i++){
     sets[i] = resourceSets[i].descriptorSet;
@@ -2682,9 +2682,27 @@ void* _place_in_heap(void * data, int size){
 }
 
 namespace wgutil {
+
+  
+  static WingineResourceSetLayout transformSetLayout; // To avoid duplicating the layout
+  static bool rslInitiated = false;
+  static int objCount = 0; // To delete layout when number of objects is zero
   
   Model::Model(Wingine& wg) {
     wingine = &wg;
+
+    if(!rslInitiated){
+      transformSetLayout = wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM}, {WG_SHADER_STAGE_VERTEX});
+      rslInitiated = true;
+    }
+
+    objCount++;
+
+    transformUniform = wg.createUniform(sizeof(Matrix4));
+    resourceSet = wg.createResourceSet(transformSetLayout, {&transformUniform});
+
+    
+    wingine->setUniform(transformUniform, &transform, sizeof(Matrix4));
   }
 
   // Input from file. Only supports one set of values per attrib type
@@ -2772,11 +2790,77 @@ namespace wgutil {
 
     wingine->destroyBuffer(indexBuffer);
 
+    wingine->destroyResourceSet(resourceSet);
+    wingine->destroyUniform(transformUniform);
+    
+    objCount--;
+    if(objCount == 0){
+      wingine->destroyResourceSetLayout(transformSetLayout);
+    }
+  }
+
+  WingineResourceSet& Model::getTransformSet(){
+    return resourceSet;
+  }
+
+  void Model::setTransform(const Matrix4& mat){
+    transform = mat;
+    Matrix4 tmp = ~transform;
+    wingine->setUniform(transformUniform, &tmp, sizeof(Matrix4));
+  }
+
+  void Model::initPolyhedron(std::initializer_list<uint32_t> sizes,
+			     std::initializer_list<void (*)(float,float, float*)> generators,
+			     int numT, int numH, float t10, float t11){
+    float stepT = t10 / numT;
+    float stepH = t11 / numH;
+
+    const uint32_t * sizeArray = std::begin(sizes);
+    //void (const generatorList**)(float, float, float*) = std::begin(generators);
+    void (* const* generatorList)(float, float, float*) = std::begin(generators);
+    //int a = std::begin(generators);
+    printf("Called init\n");
+    for(uint32_t k = 0; k < generators.size(); k++){
+      float data[numT * numH * sizeArray[k]];
+      uint32_t currInd = 0;
+      float currStepH = 0.0f;
+      for(int i = 0; i < numH; i++){
+	float currStepT = 0.0f;
+	for(int j = 0; j < numT; j++){
+	  generatorList[k](currStepT, currStepH, data + currInd);
+	  currInd += sizeArray[k];
+	  
+	  currStepT += stepT;
+	}
+	currStepH += stepH;
+      }
+      vertexAttribs.push_back(wingine->createVertexBuffer(numT * numH * sizeArray[k] * sizeof(float), data));
+    }
+
+    uint32_t indices[3 * 2 * numT * (numH - 1)];
+    for(int i = 0; i < numH - 1; i++){
+      for(int j = 0; j < numT; j++){
+	indices[3 * 2 * (numT * i + j) + 0] = (i + 1) * numT + j;
+	indices[3 * 2 * (numT * i + j) + 1] = i * numT + ((j + 1) % numT);
+	indices[3 * 2 * (numT * i + j) + 2] = i * numT + j;
+
+	indices[3 * 2 * (numT * i + j) + 3] = (i + 1) * numT + ((j + 1) % numT);
+	indices[3 * 2 * (numT * i + j) + 4] = i * numT + ((j + 1) % numT);
+	indices[3 * 2 * (numT * i + j) + 5] = (i + 1) * numT + j;
+      }
+    }
+    indexBuffer = wingine->createIndexBuffer(3 * 2 * numT * (numH - 1) * sizeof(uint32_t), indices);
+    numDrawIndices = 3 * 2 * numT * (numH - 1);
+  }
+
+  Model::Model(Wingine& w, std::initializer_list<uint32_t> sizes,
+	       std::initializer_list<void (*)(float,float,float*)> generators,
+	       int numT, int numH, float t10, float t11) : Model(w) {
+    printf("In constructor\n");
+    initPolyhedron(sizes, generators, numT, numH, t10, t11);
   }
 
   ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){
-
-    wingine = &wg;
 
     WingineBuffer vertexBuffer = wg.createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 4 * sizeof(float) * numVertices);
     wg.setBuffer(vertexBuffer, vertexData, numVertices * 4 * sizeof(float));

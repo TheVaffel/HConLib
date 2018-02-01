@@ -550,12 +550,24 @@ namespace wgutil {
   struct Model : public WingineRenderObject {
   protected:
     Wingine* wingine;
+    Matrix4 transform;
+    WingineUniform transformUniform;
+    WingineResourceSet resourceSet;
+
+    void initPolyhedron(std::initializer_list<uint32_t> sizes,
+			std::initializer_list<void (*)(float, float, float*)> generators,
+			int numT, int numH, float t10, float t11);
   public:
     Model(Wingine& w);
     Model(Wingine& w, const char* filename, std::initializer_list<WgAttribType> attribs);
+    Model(Wingine& w, std::initializer_list<uint32_t> sizes,
+	  std::initializer_list<void (*)(float, float, float*)> generators,
+	  int numT, int numH, float t10 = 1.0f, float t11 = 1.0f);
     
     void destroy();
-    WingineResource* getResource(int index);
+    
+    WingineResourceSet& getTransformSet();
+    void setTransform(const Matrix4& mat);
   };
   
   struct ColorModel : public Model { // Simple object with color attributes and a transformation matrix

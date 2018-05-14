@@ -512,6 +512,10 @@ class Wingine{
 				 std::initializer_list<WingineShader> shaders,
 				 std::initializer_list<WgAttribFormat> attribTypes,
 				 bool clear);
+  WinginePipeline createPipeline(int numResourceLayouts, const WingineResourceSetLayout* resourceLayouts,
+				 std::initializer_list<WingineShader> shaders,
+				 std::initializer_list<WgAttribFormat> attribFormats,
+				 bool clear);
   WinginePipeline createDepthPipeline(std::initializer_list<WingineResourceSetLayout> layouts,
 				      std::initializer_list<WingineShader> shaders);
   WinginePipeline createDepthPipeline(WingineResourceSetLayout layout,

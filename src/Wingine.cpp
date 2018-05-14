@@ -1428,6 +1428,17 @@ WinginePipeline Wingine::createPipeline(std::initializer_list<WingineResourceSet
 }
 
 WinginePipeline Wingine::createPipeline(int numResourceLayouts, const WingineResourceSetLayout* resourceLayouts,
+					std::initializer_list<WingineShader> shaders,
+					std::initializer_list<WgAttribFormat> attribFormats,
+					bool clear){
+  WgAttachmentType attch[] = {WG_ATTACHMENT_TYPE_COLOR, WG_ATTACHMENT_TYPE_DEPTH};
+  return createPipeline(numResourceLayouts, resourceLayouts,
+			shaders.size(), std::begin(shaders),
+			attribFormats.size(), std::begin(attribFormats),
+			clear, 2, attch);
+}
+
+WinginePipeline Wingine::createPipeline(int numResourceLayouts, const WingineResourceSetLayout* resourceLayouts,
 					int numShaders, const WingineShader* shaders,
 					int numVertexAttribs, const WgAttribFormat* attribFormats,
 					bool clear, int numAttachments, const WgAttachmentType* attachmentTypes){
@@ -2553,8 +2564,10 @@ void WingineObjectGroup::recordRendering(WingineRenderObject& object,
     sets[i] = resourceSets[i].descriptorSet;
   }
 
-  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout,
-			  0, pipeline.numDescriptorSetLayouts, sets, 0, NULL);
+  if(pipeline.numDescriptorSetLayouts){
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout,
+			    0, pipeline.numDescriptorSetLayouts, sets, 0, NULL);
+  }
 
   VkBuffer vertexBuffers[MAX_VERTEX_ATTRIBUTES];
   VkDeviceSize offsets[MAX_VERTEX_ATTRIBUTES];

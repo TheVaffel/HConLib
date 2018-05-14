@@ -493,6 +493,7 @@ class Wingine{
   WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
   WingineShader createVertexShader(const char* shaderText);
   WingineShader createFragmentShader(const char* shaderText);
+  WingineShader createShader(const std::vector<uint32_t>& spirv, VkShaderStageFlagBits stageBit);
   void destroyShader(WingineShader shader);
 
   WinginePipeline createPipeline(std::initializer_list<WingineResourceSetLayout> resourceLayouts,

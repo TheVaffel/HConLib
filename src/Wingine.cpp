@@ -1355,6 +1355,20 @@ WingineShader Wingine::createFragmentShader(const char* shaderText){
 }
 
 WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBits stageBit){
+
+  glslang::InitializeProcess();
+  std::vector<uint32_t> spirvVector;
+  bool retVal = GLSLtoSPV(stageBit, shaderText, spirvVector);
+  
+  glslang::FinalizeProcess();
+  
+  wgAssert(retVal, "Compiling");
+
+  return createShader(spirvVector, stageBit);
+}
+
+// Create shader module directly from SPIR-V binary
+WingineShader Wingine::createShader(const std::vector<uint32_t>& spirv, VkShaderStageFlagBits stageBit){
   WingineShader wgShader;
   wgShader.shader.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   wgShader.shader.pNext = NULL;
@@ -1363,25 +1377,16 @@ WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBit
   wgShader.shader.stage = stageBit;
   wgShader.shader.pName = "main";
 
-  glslang::InitializeProcess();
-  std::vector<unsigned int> spirvVector;
-
-  bool retVal = GLSLtoSPV(stageBit, shaderText, spirvVector);
-
-  wgAssert(retVal, "Compiling");
-
   VkShaderModuleCreateInfo mc;
   mc.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   mc.pNext = NULL;
   mc.flags = 0;
-  mc.codeSize = spirvVector.size() * sizeof(unsigned int);
-  mc.pCode = spirvVector.data();
+  mc.codeSize = spirv.size() * sizeof(uint32_t);
+  mc.pCode = spirv.data();
 
   VkResult res = vkCreateShaderModule(device, &mc, NULL, &wgShader.shader.module);
 
   wgAssert(res == VK_SUCCESS, "Creating shader module");
-
-  glslang::FinalizeProcess();
 
   return wgShader;
 }

@@ -758,7 +758,8 @@ void Wingine::render_pass_setup_generic(WingineRenderPassSetup* setup){
 
   for(int i = 0; i < setup->numAttachments; i++){
     setup->attachments[i].samples = NUM_SAMPLES;
-    setup->attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    // Is this right? Might get problems when we want the depth buffer to persist between passes
+    setup->attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     setup->attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     setup->attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     setup->attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

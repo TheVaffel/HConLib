@@ -6,7 +6,10 @@
 #define INCLUDED_WINGINE
 
 #include <Winval.h>
+
+#ifdef WINGINE_WITH_GLSLANG
 #include <external/vulkan/SPIRV/GlslangToSpv.h>
+#endif // WINGINE_WITH_GLSLANG
 
 #include <FlatAlg.h>
 
@@ -43,7 +46,8 @@
 
 typedef enum WgShaderStage{
   WG_SHADER_STAGE_VERTEX = VK_SHADER_STAGE_VERTEX_BIT,
-  WG_SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT
+  WG_SHADER_STAGE_FRAGMENT = VK_SHADER_STAGE_FRAGMENT_BIT,
+  WG_SHADER_STAGE_COMPUTE = VK_SHADER_STAGE_COMPUTE_BIT
 } WgShaderStage;
 
 typedef enum WgResourceType{
@@ -490,10 +494,14 @@ class Wingine{
   WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineResource* const* resources);
   void destroyResourceSet(const WingineResourceSet& resourceSet);
 
-  WingineShader createShader(const char* shaderText, VkShaderStageFlagBits stageBit);
+#ifdef WINGINE_WITH_GLSLANG
+  WingineShader createShader(const char* shaderText, WgShaderStage stageBit);
   WingineShader createVertexShader(const char* shaderText);
   WingineShader createFragmentShader(const char* shaderText);
-  WingineShader createShader(const std::vector<uint32_t>& spirv, VkShaderStageFlagBits stageBit);
+#endif // WINGINE_WITH_GLSLANG
+  
+  WingineShader createShader(const std::vector<uint32_t>& spirv, WgShaderStage stageBit);
+  
   void destroyShader(WingineShader shader);
 
   WinginePipeline createPipeline(std::initializer_list<WingineResourceSetLayout> resourceLayouts,
@@ -532,7 +540,10 @@ class Wingine{
 
   void destroyObject(WingineRenderObject&);
 
+#ifdef WINGINE_WITH_GLSLANG
   WingineKernel createKernel(const char* kernelText, WingineResourceSetLayout layout);
+#endif // WINGINE_WITH_GLSLANG
+  
   void executeKernel(WingineKernel& kernel, WingineResourceSet resourceSet, int numX, int numY, int numZ);
   void destroyKernel(WingineKernel kernel);
 

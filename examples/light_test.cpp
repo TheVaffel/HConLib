@@ -1,5 +1,8 @@
 #include <Winval.h>
+
+#define WINGINE_WITH_GLSLANG
 #include <Wingine.h>
+
 #include <iostream>
 
 using namespace std;
@@ -198,8 +201,8 @@ int main(){
 
     lightPos = lightRot * lightPos;
     lightCamera.setLookAt(lightPos,
-    Vector3(0, 0, 0),
-    Vector3(0, 1, 0));
+			  Vector3(0, 0, 0),
+			  Vector3(0, 1, 0));
 
     cam.setPosition(camPos + 0.3*camPos*sin(0.02f*count));
     Matrix4 cmat = cam.getRenderMatrix();

@@ -1,6 +1,10 @@
 #include <Wingine.h>
-#include <external/glsl_util.h>
 
+#ifdef WINGINE_WITH_GLSLANG
+#include <external/glsl_util.h>
+#endif // WINGINE_WITH_GLSLANG
+
+#include <string.h> // mem*
 #include <cstdlib> // exit
 #include <fstream> // .obj file reading
 #include <sstream> // file content processing
@@ -1347,19 +1351,20 @@ WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceL
 void Wingine::destroyResourceSet(const WingineResourceSet& set){
 }
 
+#ifdef WINGINE_WITH_GLSLANG
 WingineShader Wingine::createVertexShader(const char* shaderText){
-  return createShader(shaderText, VK_SHADER_STAGE_VERTEX_BIT);
+  return createShader(shaderText, WG_SHADER_STAGE_VERTEX);
 }
 
 WingineShader Wingine::createFragmentShader(const char* shaderText){
-  return createShader(shaderText, VK_SHADER_STAGE_FRAGMENT_BIT);
+  return createShader(shaderText, WG_SHADER_STAGE_FRAGMENT);
 }
 
-WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBits stageBit){
+WingineShader Wingine::createShader(const char* shaderText, WgShaderStage stageBit){
 
   glslang::InitializeProcess();
   std::vector<uint32_t> spirvVector;
-  bool retVal = GLSLtoSPV(stageBit, shaderText, spirvVector);
+  bool retVal = GLSLtoSPV((VkShaderStageFlagBits) stageBit, shaderText, spirvVector);
   
   glslang::FinalizeProcess();
   
@@ -1367,15 +1372,16 @@ WingineShader Wingine::createShader(const char* shaderText, VkShaderStageFlagBit
 
   return createShader(spirvVector, stageBit);
 }
+#endif // WINGINE_WITH_GLSLANG
 
 // Create shader module directly from SPIR-V binary
-WingineShader Wingine::createShader(const std::vector<uint32_t>& spirv, VkShaderStageFlagBits stageBit){
+WingineShader Wingine::createShader(const std::vector<uint32_t>& spirv, WgShaderStage stageBit){
   WingineShader wgShader;
   wgShader.shader.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   wgShader.shader.pNext = NULL;
   wgShader.shader.pSpecializationInfo = NULL;
   wgShader.shader.flags = 0;
-  wgShader.shader.stage = stageBit;
+  wgShader.shader.stage = (VkShaderStageFlagBits) stageBit;
   wgShader.shader.pName = "main";
 
   VkShaderModuleCreateInfo mc;
@@ -1550,10 +1556,11 @@ void Wingine::destroyPipeline(WinginePipeline pipeline){
   delete[] pipeline.descriptorSetLayouts;
 }
 
+#ifdef WINGINE_WITH_GLSLANG
 WingineKernel Wingine::createKernel(const char* kernelText, WingineResourceSetLayout resourceLayout){
   WingineKernel wk;
 
-  wk.shader = createShader(kernelText,VK_SHADER_STAGE_COMPUTE_BIT);
+  wk.shader = createShader(kernelText, WG_SHADER_STAGE_COMPUTE);
 
   VkPipelineLayoutCreateInfo lCreateInfo = {};
   lCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1575,6 +1582,7 @@ WingineKernel Wingine::createKernel(const char* kernelText, WingineResourceSetLa
 
   return wk;
 }
+#endif // WINGINE_WITH_GLSLANG
 
 void Wingine::destroyKernel(WingineKernel kernel){
   vkDestroyPipelineLayout(device, kernel.layout, NULL);
@@ -2835,10 +2843,9 @@ namespace wgutil {
     float stepH = t11 / numH;
 
     const uint32_t * sizeArray = std::begin(sizes);
-    //void (const generatorList**)(float, float, float*) = std::begin(generators);
+
     void (* const* generatorList)(float, float, float*) = std::begin(generators);
-    //int a = std::begin(generators);
-    printf("Called init\n");
+
     for(uint32_t k = 0; k < generators.size(); k++){
       float data[numT * numH * sizeArray[k]];
       uint32_t currInd = 0;

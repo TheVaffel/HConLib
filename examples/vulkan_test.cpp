@@ -3,7 +3,10 @@
 #endif
 
 #include <Winval.h>
+
+#define WINGINE_WITH_GLSLANG
 #include <Wingine.h>
+
 #include <iostream>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION

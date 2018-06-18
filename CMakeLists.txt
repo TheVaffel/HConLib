@@ -70,18 +70,12 @@ if(WINVAL_LIB)
     find_library(GLSLANG_LIBS NAMES glslang PATHS ${lib_search_dir} NO_DEFAULT_PATH) #Could search for the rest of the glslang archives too, but takes this as indicator
     if(GLSLANG_LIBS)
       #WingineWithGlslang
-      if(NOT WIN32)
-	add_definitions(-DWINGINE_WITH_GLSLANG)
-      else()
-	add_definitions(/DWINGINE_WITH_GLSLANG)
-      endif()
 
       add_library(WingineWithGlslang STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp) # Wingine with glslang
-
       if(NOT WIN32)
-	remove_definitions(-DWINGINE_WITH_GLSLANG)
+	target_compile_definitions(WingineWithGlslang PRIVATE -DWINGINE_WITH_GLSLANG)
       else()
-	remove_definitions(/DWINGINE_WITH_GLSLANG)
+	target_compile_definitions(WingineWithGlslang PRIVATE /DWINGINE_WITH_GLSLANG)
       endif()
     else()
       message(">>>glslang is not initialized, Wingine not built")

@@ -39,11 +39,11 @@ endif()
 
 set(glslang_libs glslang OSDependent SPIRV SPVRemapper OGLCompiler HLSL pthread)
 
-set(common_wingine_libs FlatAlg ${vulkan_libs} Wingine ${VULKAN_LIB_NAME} ${winval_libs})
+set(common_wingine_libs FlatAlg ${vulkan_libs} ${VULKAN_LIB_NAME} ${winval_libs})
 
-set(wingine_libs ${common_wingine_libs} Wingine)
+set(wingine_libs Wingine ${common_wingine_libs} )
 
-set(wingine_with_glslang_libs ${common_wingine_libs} WingineWithGlslang ${glslang_libs})
+set(wingine_with_glslang_libs WingineWithGlslang ${common_wingine_libs} ${glslang_libs})
 
 include_directories(${HConLibRoot}/include)
 link_directories(${HConLibRoot}/lib)

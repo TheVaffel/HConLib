@@ -178,7 +178,7 @@ int main(){
   WgObject cube(3 * 12, {cubeVertexBuffer, cubeNormalBuffer}, cubeIndexBuffer);
   WgObject floor(3 * 2, {floorVertexBuffer, floorNormalBuffer}, floorIndexBuffer);
 
-  wgutil::Model teapot(wg, "teapot.obj", {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_NORMAL});
+  wgutil::Model teapot(wg, wgutil::WG_MODEL_INIT_READ_OBJ, "teapot.obj", {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_NORMAL});
 
   WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
   Vector3 camPos(9, 8, -6);

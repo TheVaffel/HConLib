@@ -2708,14 +2708,13 @@ void* _place_in_heap(void * data, int size){
   return pp;
 }
 
-namespace wgutil {
 
-  
+namespace wgutil {
   static WingineResourceSetLayout transformSetLayout; // To avoid duplicating the layout
   static bool rslInitiated = false;
   static int objCount = 0; // To delete layout when number of objects is zero
-  
-  Model::Model(Wingine& wg) {
+
+  void Model::initModel(Wingine& wg){
     wingine = &wg;
 
     if(!rslInitiated){
@@ -2728,12 +2727,26 @@ namespace wgutil {
     transformUniform = wg.createUniform(sizeof(Matrix4));
     resourceSet = wg.createResourceSet(transformSetLayout, {&transformUniform});
 
-    
     wingine->setUniform(transformUniform, &transform, sizeof(Matrix4));
+  }
+  
+  Model::Model(Wingine& wg, WgModelInitMode mode,
+	       const char* file_name, std::initializer_list<WgAttribType> attribs){
+    initModel(wg);
+
+    switch(mode){
+    case WG_MODEL_INIT_READ_OBJ:
+      initFromFile(file_name, attribs);
+      break;
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+      exit(-1);
+    }
+
   }
 
   // Input from file. Only supports one set of values per attrib type
-  Model::Model(Wingine& wg, const char* file_name, std::initializer_list<WgAttribType> attribs) : Model(wg){
+  void Model::initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs){
     int attribIndices[WG_NUM_ATTRIB_TYPES];
     const WgAttribType* arr = std::begin(attribs);
     
@@ -2801,10 +2814,10 @@ namespace wgutil {
     }
 
     for(uint32_t i = 0; i < attribs.size(); i++){
-      WingineBuffer buffer = wg.createVertexBuffer(data[i].size() * sizeof(float), data[i].data());
+      WingineBuffer buffer = wingine->createVertexBuffer(data[i].size() * sizeof(float), data[i].data());
       vertexAttribs.push_back(buffer);
     }
-    WingineBuffer indBuffer = wg.createIndexBuffer(indices.size() * sizeof(int32_t), indices.data());
+    WingineBuffer indBuffer = wingine->createIndexBuffer(indices.size() * sizeof(int32_t), indices.data());
 
     indexBuffer = indBuffer;
     numDrawIndices = indices.size();
@@ -2823,6 +2836,20 @@ namespace wgutil {
     objCount--;
     if(objCount == 0){
       wingine->destroyResourceSetLayout(transformSetLayout);
+    }
+  }
+
+  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<uint32_t> sizes,
+	       std::initializer_list<void (*)(float,float, float*)> generators,
+	       int numT, int numH, float t10, float t11){
+    initModel(wg);
+    switch(mode){
+    case WG_MODEL_INIT_POLY:
+      initPolyhedron(sizes, generators, numT, numH, t10, t11);
+      break;
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+      exit(-1);
     }
   }
 
@@ -2875,15 +2902,25 @@ namespace wgutil {
 	indices[3 * 2 * (numT * i + j) + 5] = (i + 1) * numT + j;
       }
     }
-    indexBuffer = wingine->createIndexBuffer(3 * 2 * numT * (numH - 1) * sizeof(uint32_t), indices);
-    numDrawIndices = 3 * 2 * numT * (numH - 1);
+
+    for(int i = 0; i < numT - 2; i++){
+      indices[3 * 2 * numT * (numH - 1) + 3 * i + 0] = 0;
+      indices[3 * 2 * numT * (numH - 1) + 3 * i + 1] = i + 1;
+      indices[3 * 2 * numT * (numH - 1) + 3 * i + 2] = i + 2;
+
+      indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 0] = numT * (numH - 1) + i + 1;
+      indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 1] = numT * (numH - 1) + i;
+      indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 2] = numT * (numH - 1);
+    }
+    
+    numDrawIndices = 3 * (2 * numT * (numH - 1) + 2 * (numT - 2));
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
   }
 
-  Model::Model(Wingine& w, std::initializer_list<uint32_t> sizes,
-	       std::initializer_list<void (*)(float,float,float*)> generators,
-	       int numT, int numH, float t10, float t11) : Model(w) {
-    printf("In constructor\n");
-    initPolyhedron(sizes, generators, numT, numH, t10, t11);
+
+  // Legacy
+  Model::Model(Wingine& wg){
+    initModel(wg);
   }
 
   ColorModel::ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData) : Model(wg){

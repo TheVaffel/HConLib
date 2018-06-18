@@ -563,6 +563,15 @@ class Wingine{
 
 
 namespace wgutil {
+  
+  enum WgModelInitMode {
+    WG_MODEL_INIT_POLY,
+    WG_MODEL_INIT_CUBE,
+    WG_MODEL_INIT_SPHERE,
+    WG_MODEL_INIT_READ_OBJ
+  };
+  
+  
   struct Model : public WingineRenderObject {
   protected:
     Wingine* wingine;
@@ -570,16 +579,20 @@ namespace wgutil {
     WingineUniform transformUniform;
     WingineResourceSet resourceSet;
 
+    void initModel(Wingine& wg);
+    
     void initPolyhedron(std::initializer_list<uint32_t> sizes,
 			std::initializer_list<void (*)(float, float, float*)> generators,
 			int numT, int numH, float t10, float t11);
+    void initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs);
   public:
-    Model(Wingine& w);
-    Model(Wingine& w, const char* filename, std::initializer_list<WgAttribType> attribs);
-    Model(Wingine& w, std::initializer_list<uint32_t> sizes,
+    Model(Wingine& w, WgModelInitMode mode, const char* filename, std::initializer_list<WgAttribType> attribs);
+    Model(Wingine& w, WgModelInitMode mode, std::initializer_list<uint32_t> sizes,
 	  std::initializer_list<void (*)(float, float, float*)> generators,
 	  int numT, int numH, float t10 = 1.0f, float t11 = 1.0f);
-    
+
+    // Legacy, remove when ColorModel is removed and initCube is implemented
+    Model(Wingine& w);
     void destroy();
     
     WingineResourceSet& getTransformSet();

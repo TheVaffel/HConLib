@@ -170,8 +170,11 @@ int main(){
     wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM, WG_RESOURCE_TYPE_TEXTURE},
 			       {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT});
 
-  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout, {&cameraUniform});
-  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout, {&offsetUniform, &texture});
+  WingineResourceSet cameraSet = wg.createResourceSet(resourceLayout);
+  wg.updateResourceSet(cameraSet, {&cameraUniform});
+  
+  WingineResourceSet textureSet = wg.createResourceSet(textureResourceLayout);
+  wg.updateResourceSet(textureSet, {&offsetUniform, &texture});
 
   WingineShader vertexShader = wg.createVertexShader(vertShaderText);
   WingineShader fragmentShader = wg.createFragmentShader(fragShaderText);
@@ -235,7 +238,9 @@ int main(){
   WingineImage im = wg.createGPUImage(texWidth, texHeight);
   wg.setLayout(im, VK_IMAGE_LAYOUT_GENERAL);
   
-  WingineResourceSet kernelResources = wg.createResourceSet(computeLayout,{&im});
+  WingineResourceSet kernelResources = wg.createResourceSet(computeLayout);
+  wg.updateResourceSet(kernelResources, {&im});
+  
   wg.executeKernel(kernel, kernelResources, texWidth, texHeight, 1);
   wg.copyColorImage(im, texture.image);
 

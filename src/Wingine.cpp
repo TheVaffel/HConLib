@@ -1310,12 +1310,7 @@ void Wingine::destroyResourceSetLayout(WingineResourceSetLayout wrsl){
   vkDestroyDescriptorSetLayout(device,wrsl.layout,NULL);
 }
 
-WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout layout,
-					      std::initializer_list<WingineResource*> resources){
-  return createResourceSet(layout, std::begin(resources));
-}
-
-WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceLayout, WingineResource* const* resources){
+WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout& resourceLayout){
   WingineResourceSet resourceSet;
 
   //Create descriptor set and initialize descriptors
@@ -1328,24 +1323,50 @@ WingineResourceSet Wingine::createResourceSet(WingineResourceSetLayout resourceL
 
   VkResult res = vkAllocateDescriptorSets(device, &alloc, &resourceSet.descriptorSet);
   wgAssert(res == VK_SUCCESS, "Allocate descriptor set");
+  resourceSet.layout = &resourceLayout;
+  
+  return resourceSet;
+}
 
-  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[resourceLayout.numResources];
+void Wingine::updateResourceSet(WingineResourceSet& set, std::initializer_list<WingineResource const *> resources){
+  wgAssert(resources.size() == set.layout->numResources, "Resource set and number of resources coincide");
+  updateResourceSet(set, std::begin(resources));
+}
 
-  for(int i = 0; i < resourceLayout.numResources; i++){
+void Wingine::updateResourceSet(WingineResourceSet& set, const WingineResource* const * resources){
+  VkWriteDescriptorSet* writes = new VkWriteDescriptorSet[set.layout->numResources];
+
+  for(uint32_t i = 0; i < set.layout->numResources; i++){
     writes[i] = {};
     writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[i].pNext = NULL;
-    writes[i].dstSet = resourceSet.descriptorSet;
+    writes[i].dstSet = set.descriptorSet;
     writes[i].descriptorCount = 1;
-    writes[i].descriptorType = get_descriptor_type(resourceLayout.types[i]);
+    writes[i].descriptorType = get_descriptor_type(set.layout->types[i]);
     writes[i].pBufferInfo = resources[i]->getBufferInfo();
     writes[i].pImageInfo = resources[i]->getImageInfo();
     writes[i].dstArrayElement = 0;
     writes[i].dstBinding = i;
   }
-  vkUpdateDescriptorSets(device, resourceLayout.numResources, writes, 0, NULL);
+  
+  vkUpdateDescriptorSets(device, set.layout->numResources, writes, 0, NULL);
 
-  return resourceSet;
+  delete [] writes;
+}
+
+void Wingine::updateResourceSetIndex(WingineResourceSet& set, WingineResource* resource, int index){
+  VkWriteDescriptorSet write = {};
+  write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  write.pNext = NULL;
+  write.dstSet = set.descriptorSet;
+  write.descriptorCount = 1;
+  write.descriptorType = get_descriptor_type(set.layout->types[index]);
+  write.pBufferInfo = resource->getBufferInfo();
+  write.pImageInfo = resource->getImageInfo();
+  write.dstArrayElement = 0;
+  write.dstBinding = index;
+
+  vkUpdateDescriptorSets(device, 1, &write, 0, NULL);
 }
 
 void Wingine::destroyResourceSet(const WingineResourceSet& set){
@@ -2725,7 +2746,8 @@ namespace wgutil {
     objCount++;
 
     transformUniform = wg.createUniform(sizeof(Matrix4));
-    resourceSet = wg.createResourceSet(transformSetLayout, {&transformUniform});
+    resourceSet = wg.createResourceSet(transformSetLayout);
+    wg.updateResourceSet(resourceSet, {&transformUniform});
 
     wingine->setUniform(transformUniform, &transform, sizeof(Matrix4));
   }

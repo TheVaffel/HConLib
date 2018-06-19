@@ -88,13 +88,13 @@ struct WingineBuffer{
 };
 
 struct WingineResource {
-  virtual VkDescriptorType getDescriptorType() = 0;
+  virtual const VkDescriptorType getDescriptorType() const = 0;
 
-  virtual VkDescriptorImageInfo* getImageInfo(){
+  virtual const VkDescriptorImageInfo* getImageInfo() const {
     return NULL;
   }
 
-  virtual VkDescriptorBufferInfo* getBufferInfo(){
+  virtual const VkDescriptorBufferInfo* getBufferInfo() const {
     return NULL;
   }
 };
@@ -103,11 +103,11 @@ struct WingineUniform : WingineResource{
   WingineBuffer buffer;
   VkDescriptorBufferInfo bufferInfo;
 
-  virtual VkDescriptorType getDescriptorType(){
+  virtual const VkDescriptorType getDescriptorType() const {
     return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   }
 
-  virtual VkDescriptorBufferInfo* getBufferInfo(){
+  virtual const VkDescriptorBufferInfo* getBufferInfo() const {
     return &bufferInfo;
   }
 };
@@ -122,11 +122,11 @@ struct WingineImage : WingineResource {
   VkDescriptorImageInfo imageInfo;
   int memorySize;
 
-  virtual VkDescriptorType getDescriptorType(){
+  virtual const VkDescriptorType getDescriptorType() const {
     return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   }
 
-  virtual VkDescriptorImageInfo* getImageInfo(){
+  virtual const VkDescriptorImageInfo* getImageInfo() const {
     return &imageInfo;
   }
 };
@@ -135,11 +135,11 @@ struct WingineTexture : WingineResource {
   WingineImage image;
   VkSampler sampler;
 
-  virtual VkDescriptorType getDescriptorType(){
+  virtual const VkDescriptorType getDescriptorType() const {
     return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   }
 
-  virtual VkDescriptorImageInfo* getImageInfo(){
+  virtual const VkDescriptorImageInfo* getImageInfo() const {
     return &image.imageInfo;
   }
 };
@@ -152,12 +152,13 @@ struct WingineFramebuffer {
 
 struct WingineResourceSetLayout{
   VkDescriptorSetLayout layout;
-  int numResources;
+  uint32_t numResources;
   WgResourceType *types;
 };
 
 struct WingineResourceSet{
   VkDescriptorSet descriptorSet;
+  WingineResourceSetLayout* layout;
 };
 
 struct WingineShader{
@@ -488,10 +489,12 @@ class Wingine{
   void destroyResourceSetLayout(WingineResourceSetLayout wrsl);
 
   //A set of uniforms and textures (to better utilize Vulkan's descriptor set abstraction) that "belong together"
-  WingineResourceSet createResourceSet(WingineResourceSetLayout layout,
-				       std::initializer_list<WingineResource*> resources);
+  WingineResourceSet createResourceSet(WingineResourceSetLayout& layout);
+
+  void updateResourceSet(WingineResourceSet& set, std::initializer_list<WingineResource const *> resources);
   // Second type is a bit mystical, but oh well
-  WingineResourceSet createResourceSet(WingineResourceSetLayout layout, WingineResource* const* resources);
+  void updateResourceSet(WingineResourceSet& set, const WingineResource* const* resources);
+  void updateResourceSetIndex(WingineResourceSet& set, WingineResource* resource, int index); 
   void destroyResourceSet(const WingineResourceSet& resourceSet);
 
 #ifdef WINGINE_WITH_GLSLANG

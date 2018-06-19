@@ -146,7 +146,8 @@ int main(){
 
   WgRSL rsl = wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM}, {VK_SHADER_STAGE_VERTEX_BIT});
 
-  WgResourceSet cameraSet = wg.createResourceSet(rsl, {&cameraUniform});
+  WgResourceSet cameraSet = wg.createResourceSet(rsl);
+  wg.updateResourceSet(cameraSet, {&cameraUniform});
 
   WgShader vertexShader = wg.createVertexShader(vertShaderText);
   WgShader fragmentShader = wg.createFragmentShader(fragShaderText);
@@ -167,8 +168,10 @@ int main(){
   
   WingineFramebuffer depthFramebuffer = wg.createDepthFramebuffer(width, height, depthPipeline);
 
-  WgResourceSet lightTransformSet = wg.createResourceSet(rsl, {&lightTransformUniform});
-  WgResourceSet lightSet = wg.createResourceSet(lightLayout, {&lightTransformUniform, &depthImage});
+  WgResourceSet lightTransformSet = wg.createResourceSet(rsl);
+  WgResourceSet lightSet = wg.createResourceSet(lightLayout);
+  wg.updateResourceSet(lightTransformSet, {&lightTransformUniform});
+  wg.updateResourceSet(lightSet, {&lightTransformUniform, &depthImage});
 
   
   WgPipeline renderPipeline = wg.createPipeline({rsl, lightLayout}, {vertexShader, fragmentShader},

@@ -612,12 +612,6 @@ namespace wgutil {
     WingineResourceSet& getTransformSet();
     void setTransform(const Matrix4& mat);
   };
-  
-  struct ColorModel : public Model { // Simple object with color attributes and a transformation matrix
-    ColorModel(Wingine& wg, int numInds, int32_t* indices, int numVertices, float * vertexData, float * colorData);
-  };
-
-  ColorModel createCube(Wingine& wg, float s);
 };
 
 typedef WingineBuffer WgBuffer;

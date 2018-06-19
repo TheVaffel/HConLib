@@ -568,9 +568,9 @@ namespace wgutil {
     WG_MODEL_INIT_POLY,
     WG_MODEL_INIT_CUBE,
     WG_MODEL_INIT_SPHERE,
+    WG_MODEL_INIT_QUAD,
     WG_MODEL_INIT_READ_OBJ
   };
-  
   
   struct Model : public WingineRenderObject {
   protected:
@@ -585,12 +585,26 @@ namespace wgutil {
 			std::initializer_list<void (*)(float, float, float*)> generators,
 			int numT, int numH, float t10, float t11);
     void initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs);
+    void initCube(std::initializer_list<WgAttribType> attribs, float size);
+    void initQuad(std::initializer_list<WgAttribType> attribs,
+		  const Vector3& side1, const Vector3& side2);
   public:
+    // Create from .obj file
     Model(Wingine& w, WgModelInitMode mode, const char* filename, std::initializer_list<WgAttribType> attribs);
+
+    // Create from generator functions
     Model(Wingine& w, WgModelInitMode mode, std::initializer_list<uint32_t> sizes,
 	  std::initializer_list<void (*)(float, float, float*)> generators,
 	  int numT, int numH, float t10 = 1.0f, float t11 = 1.0f);
 
+    // Basic geometric shapes (cube, sphere...)
+    Model(Wingine& w, WgModelInitMode mode,
+	  std::initializer_list<WgAttribType> attribs, float size);
+    // Quad
+    Model(Wingine& w, WgModelInitMode mode,
+	  std::initializer_list<WgAttribType> attribs,
+	  const Vector3& side1, const Vector3& side2);
+    
     // Legacy, remove when ColorModel is removed and initCube is implemented
     Model(Wingine& w);
     void destroy();

@@ -193,8 +193,12 @@ int main(){
 
   WingineRenderObject cubeObject(3*12, {cubeVertexBuffer, cubeTextureCoordBuffer}, cubeIndexBuffer);
   
-  wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
-
+  // wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
+  wgutil::Model cube1(wg, wgutil::WG_MODEL_INIT_CUBE,
+		      {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_POSITION}, 0.45f); // use position as color value
+  // wgutil::Model quad(wg, wgutil::WG_MODEL_INIT_QUAD,
+  //                    {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_COLOR},
+  //                    Vector3(1, 3, 4), Vector3(-4, 2, 4));
 
   WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
   Vector3 camPos(-5, 3, -10);
@@ -247,6 +251,7 @@ int main(){
     colorGroup.startRecording();
     colorGroup.recordRendering(object1, {cameraSet});
     colorGroup.recordRendering(cube1, {cameraSet});
+    // colorGroup.recordRendering(quad, {cameraSet});
     colorGroup.endRecording();
 
     textureGroup.startRecording();
@@ -274,6 +279,7 @@ int main(){
   }
 
   cube1.destroy();
+  // quad.destroy();
 
   wg.destroyTexture(texture);
   wg.destroyUniform(cameraUniform);

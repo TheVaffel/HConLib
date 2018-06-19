@@ -2745,6 +2745,49 @@ namespace wgutil {
 
   }
 
+  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<uint32_t> sizes,
+	       std::initializer_list<void (*)(float,float, float*)> generators,
+	       int numT, int numH, float t10, float t11){
+    initModel(wg);
+    switch(mode){
+    case WG_MODEL_INIT_POLY:
+      initPolyhedron(sizes, generators, numT, numH, t10, t11);
+      break;
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+      exit(-1);
+    }
+  }
+
+  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<WgAttribType> attribs, float size){
+    initModel(wg);
+
+    switch(mode){
+    case WG_MODEL_INIT_CUBE:
+      initCube(attribs, size);
+      break;
+    case WG_MODEL_INIT_SPHERE:
+      printf("Sphere model not yet implemented\n");
+      exit(-1);
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+      exit(-1);
+    }
+  }
+
+  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<WgAttribType> attribs,
+	       const Vector3& v2, const Vector3& v3){
+    initModel(wg);
+    switch(mode){
+    case WG_MODEL_INIT_QUAD:
+      initQuad(attribs, v2, v3);
+      break;
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+      exit(-1);
+    }
+  }
+
   // Input from file. Only supports one set of values per attrib type
   void Model::initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs){
     int attribIndices[WG_NUM_ATTRIB_TYPES];
@@ -2839,20 +2882,6 @@ namespace wgutil {
     }
   }
 
-  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<uint32_t> sizes,
-	       std::initializer_list<void (*)(float,float, float*)> generators,
-	       int numT, int numH, float t10, float t11){
-    initModel(wg);
-    switch(mode){
-    case WG_MODEL_INIT_POLY:
-      initPolyhedron(sizes, generators, numT, numH, t10, t11);
-      break;
-    default:
-      printf("No matching call to Model() with mode %d\n", mode);
-      exit(-1);
-    }
-  }
-
   WingineResourceSet& Model::getTransformSet(){
     return resourceSet;
   }
@@ -2869,6 +2898,7 @@ namespace wgutil {
     float stepT = t10 / numT;
     float stepH = t11 / numH;
 
+    wgAssert(sizes.size() == generators.size(), "Equal argument sizes in initPolyhedron");
     const uint32_t * sizeArray = std::begin(sizes);
 
     void (* const* generatorList)(float, float, float*) = std::begin(generators);
@@ -2890,7 +2920,8 @@ namespace wgutil {
       vertexAttribs.push_back(wingine->createVertexBuffer(numT * numH * sizeArray[k] * sizeof(float), data));
     }
 
-    uint32_t indices[3 * 2 * numT * (numH - 1)];
+    numDrawIndices = 3 * (2 * numT * (numH - 1) + 2 * (numT - 2));
+    uint32_t indices[numDrawIndices];
     for(int i = 0; i < numH - 1; i++){
       for(int j = 0; j < numT; j++){
 	indices[3 * 2 * (numT * i + j) + 0] = (i + 1) * numT + j;
@@ -2913,10 +2944,178 @@ namespace wgutil {
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 2] = numT * (numH - 1);
     }
     
-    numDrawIndices = 3 * (2 * numT * (numH - 1) + 2 * (numT - 2));
     indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
   }
 
+  void Model::initCube(std::initializer_list<WgAttribType> attribs_in, float size){
+    const WgAttribType * attribs = std::begin(attribs_in);
+    
+    for(unsigned int i = 0; i < attribs_in.size(); i++){
+      int attrib_size;
+      switch(attribs[i]){
+      case WG_ATTRIB_TYPE_POSITION:
+	attrib_size = 4;
+	break;
+      case WG_ATTRIB_TYPE_NORMAL:
+	attrib_size = 4;
+	break;
+      case WG_ATTRIB_TYPE_TEXTURE:
+	attrib_size = 2;
+	break;
+      default:
+	printf("Attrib type %d not implemented for cube\n", attribs[i]);
+	exit(-1);
+      }
+
+      float data[attrib_size * 4 * 6]; // Make each face with separate vertices
+      
+      if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
+	float s2 = size / 2;
+        int dx = 0, dy = 1, dz = 2;
+	for(int i = 0; i < 3; i++){
+	  for(int j = 0; j < 4; j++){
+	    data[attrib_size * (i * 2 * 4 + j) + dx] = (j  && j - 3) ? -s2 : s2;
+	    data[attrib_size * (i * 2 * 4 + j) + dy] = (j & 2) ? -s2 : s2;
+	    data[attrib_size * (i * 2 * 4 + j) + dz] = -s2;
+	    data[attrib_size * (i * 2 * 4 + j) + 3] = 1.0f;
+
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dx] = (j && j - 3) ? -s2 : s2;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dy] = (j & 2) ? s2 : -s2;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dz] = s2;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + 3] = 1.0f;
+	  }
+	  std::swap(dx, dy);
+	  std::swap(dy, dz);
+	}
+      } else if (attribs[i] == WG_ATTRIB_TYPE_NORMAL) {
+        int dx = 0, dy = 1, dz = 2;
+	for(int i = 0; i < 3; i++){
+	  for(int j = 0; j < 4; j++){
+	    data[attrib_size * (i * 2 * 4 + j) + dx] = 0.0f;
+	    data[attrib_size * (i * 2 * 4 + j) + dy] = 0.0f;
+	    data[attrib_size * (i * 2 * 4 + j) + dz] = -1.0f;
+	    data[attrib_size * (i * 2 * 4 + j) + 3] = 0.0f;
+
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dx] = 0.0f;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dy] = 0.0f;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + dz] = 1.0f;
+	    data[attrib_size * (i * 2 * 4 + j + 4) + 3] = 0.0f;
+	  }
+	  std::swap(dx, dy);
+	  std::swap(dy, dz);
+	}
+      } else if (attribs[i] == WG_ATTRIB_TYPE_TEXTURE) {
+	for(int i = 0; i < 6; i++){
+	  data[attrib_size * i * 4 + 0] = 0.0f;
+	  data[attrib_size * i * 4 + 1] = 0.0f;
+
+	  data[attrib_size * i * 4 + 2] = 1.0f;
+	  data[attrib_size * i * 4 + 3] = 0.0f;
+	  
+	  data[attrib_size * i * 4 + 4] = 1.0f;
+	  data[attrib_size * i * 4 + 5] = 1.0f;
+
+	  data[attrib_size * i * 4 + 6] = 0.0f;
+	  data[attrib_size * i * 4 + 7] = 1.0f;
+	}
+      }
+      
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 6 * sizeof(float), data));
+    }
+
+    numDrawIndices = 3 * 2 * 6;
+    uint32_t indices[numDrawIndices];
+    
+    for(int i = 0; i < 6; i++){
+      indices[3 * 2 * i + 0] = 4 * i + 0;
+      indices[3 * 2 * i + 1] = 4 * i + 1;
+      indices[3 * 2 * i + 2] = 4 * i + 2;
+
+      indices[3 * 2 * i + 3] = 4 * i + 2;
+      indices[3 * 2 * i + 4] = 4 * i + 3;
+      indices[3 * 2 * i + 5] = 4 * i + 0;
+    }
+
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
+  }
+  
+  void Model::initQuad(std::initializer_list<WgAttribType> attribs_in,
+		       const Vector3& side1, const Vector3& side2){
+    const WgAttribType * attribs = std::begin(attribs_in);
+    
+    for(unsigned int i = 0; i < attribs_in.size(); i++){
+      int attrib_size;
+      switch(attribs[i]){
+      case WG_ATTRIB_TYPE_POSITION:
+	attrib_size = 4;
+	break;
+      case WG_ATTRIB_TYPE_NORMAL:
+	attrib_size = 4;
+	break;
+      case WG_ATTRIB_TYPE_TEXTURE:
+	attrib_size = 2;
+	break;
+      case WG_ATTRIB_TYPE_COLOR:
+	attrib_size = 4;
+	break;
+      default:
+	printf("Attrib type %d not implemented for quad\n", attribs[i]);
+	exit(-1);
+      }
+
+      float data[attrib_size * 4]; // Make each face with separate vertices
+      
+      if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
+	const Vector3 si1 = side1 / 2.f;
+	const Vector3 si2 = side2 / 2.f;
+	
+        for(int i = 0; i < 4; i++){
+	  const Vector3 v1 = (i & 1) ? - si1 : si1;
+	  const Vector3 v2 = (i & 2) ? - si2 : si2;
+	  for(int j = 0; j < 3; j++){
+	    data[attrib_size * i + j] = v1.get(j) + v2.get(j);
+	  }
+	  data[attrib_size * i + 3] = 1.0f;
+	}
+      } else if (attribs[i] == WG_ATTRIB_TYPE_NORMAL) {
+        const Vector3 norm = cross(side1, side2);
+	for(int i = 0; i < 4; i++){
+	  for(int j = 0; j < 3; j++){
+	    data[attrib_size * i + j] = norm.get(j);
+	  }
+	  data[attrib_size * i + 3] = 0.0f;
+	}
+      } else if (attribs[i] == WG_ATTRIB_TYPE_TEXTURE) {
+        for(int i = 0; i < 4; i++){
+	  data[attrib_size * i + 0] = (i & 1) ? 1.0f : 0.0f;
+	  data[attrib_size * i + 1] = (i & 2) ? 1.0f : 0.0f;
+	}
+      } else if (attribs[i] == WG_ATTRIB_TYPE_COLOR) {
+	for(int i = 0; i < 4; i++){
+	  data[attrib_size * i + 0] = (i & 1) ? 1.0f : 0.0f;
+	  data[attrib_size * i + 1] = 0.0f;
+	  data[attrib_size * i + 2] = (i & 2) ? 1.0f : 0.0f;
+	  data[attrib_size * i + 3] = 1.0f;
+	}
+      }
+      
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * sizeof(float), data));
+    }
+
+    numDrawIndices = 3 * 2;
+    uint32_t indices[numDrawIndices];
+    
+    indices[0] = 0;
+    indices[1] = 1;
+    indices[2] = 2;
+    
+    indices[3] = 2;
+    indices[4] = 1;
+    indices[5] = 3;
+    
+    
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
+  }
 
   // Legacy
   Model::Model(Wingine& wg){

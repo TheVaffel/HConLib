@@ -3089,7 +3089,7 @@ namespace wgutil {
 	exit(-1);
       }
 
-      float data[attrib_size * 4]; // Make each face with separate vertices
+      float data[attrib_size * 4 * 2]; // Make each face with separate vertices
       
       if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
 	const Vector3 si1 = side1 / 2.f;
@@ -3100,24 +3100,28 @@ namespace wgutil {
 	  const Vector3 v2 = (i & 2) ? - si2 : si2;
 	  for(int j = 0; j < 3; j++){
 	    data[attrib_size * i + j] = v1.get(j) + v2.get(j);
+	    data[attrib_size * 4 + attrib_size * i + j] = v1.get(j) + v2.get(j);
 	  }
 	  data[attrib_size * i + 3] = 1.0f;
+	  data[attrib_size * 4 + attrib_size * i + 3] = 1.0f;
 	}
       } else if (attribs[i] == WG_ATTRIB_TYPE_NORMAL) {
-        const Vector3 norm = cross(side1, side2);
+        const Vector3 norm = cross(side1, side2).normalized();
 	for(int i = 0; i < 4; i++){
 	  for(int j = 0; j < 3; j++){
 	    data[attrib_size * i + j] = norm.get(j);
+	    data[attrib_size * 4 + attrib_size * i + j] = -norm.get(j);
 	  }
 	  data[attrib_size * i + 3] = 0.0f;
+	  data[attrib_size * 4 + attrib_size * i + 3] = 0.0f;
 	}
       } else if (attribs[i] == WG_ATTRIB_TYPE_TEXTURE) {
-        for(int i = 0; i < 4; i++){
+        for(int i = 0; i < 2 * 4; i++){
 	  data[attrib_size * i + 0] = (i & 1) ? 1.0f : 0.0f;
 	  data[attrib_size * i + 1] = (i & 2) ? 1.0f : 0.0f;
 	}
       } else if (attribs[i] == WG_ATTRIB_TYPE_COLOR) {
-	for(int i = 0; i < 4; i++){
+	for(int i = 0; i < 2 * 4; i++){
 	  data[attrib_size * i + 0] = (i & 1) ? 1.0f : 0.0f;
 	  data[attrib_size * i + 1] = 0.0f;
 	  data[attrib_size * i + 2] = (i & 2) ? 1.0f : 0.0f;
@@ -3125,20 +3129,27 @@ namespace wgutil {
 	}
       }
       
-      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * sizeof(float), data));
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 2 * sizeof(float), data));
     }
 
-    numDrawIndices = 3 * 2;
+    numDrawIndices = 3 * 2 * 2;
     uint32_t indices[numDrawIndices];
     
     indices[0] = 0;
-    indices[1] = 1;
-    indices[2] = 2;
+    indices[1] = 2;
+    indices[2] = 1;
     
-    indices[3] = 2;
-    indices[4] = 1;
+    indices[3] = 1;
+    indices[4] = 2;
     indices[5] = 3;
-    
+
+    indices[6] = 4;
+    indices[7] = 5;
+    indices[8] = 6;
+
+    indices[9] = 5;
+    indices[10] = 7;
+    indices[11] = 6;
     
     indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
   }

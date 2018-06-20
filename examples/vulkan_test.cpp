@@ -196,7 +196,6 @@ int main(){
 
   WingineRenderObject cubeObject(3*12, {cubeVertexBuffer, cubeTextureCoordBuffer}, cubeIndexBuffer);
   
-  // wgutil::ColorModel cube1 = wgutil::createCube(wg, 0.45f);
   wgutil::Model cube1(wg, wgutil::WG_MODEL_INIT_CUBE,
 		      {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_POSITION}, 0.45f); // use position as color value
   // wgutil::Model quad(wg, wgutil::WG_MODEL_INIT_QUAD,

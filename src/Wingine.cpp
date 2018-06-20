@@ -73,6 +73,10 @@ Matrix4 WingineCamera::getTransformMatrix(){
   return total;
 }
 
+Matrix4 WingineCamera::getViewMatrix(){
+  return view;
+}
+
 
 WinginePipelineSetup::WinginePipelineSetup(std::initializer_list<WgAttachmentType> types)
   : WinginePipelineSetup(types.size(), std::begin(types)) {};

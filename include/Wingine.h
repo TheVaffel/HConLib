@@ -299,6 +299,7 @@ class WingineCamera{
   
   Matrix4 getRenderMatrix();
   Matrix4 getTransformMatrix();
+  Matrix4 getViewMatrix();
 };
 
 class Wingine{

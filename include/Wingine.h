@@ -300,6 +300,12 @@ class WingineCamera{
   Matrix4 getRenderMatrix();
   Matrix4 getTransformMatrix();
   Matrix4 getViewMatrix();
+
+  Vector3 getForwardVector();
+  Vector3 getRightVector();
+  Vector3 getUpVector();
+
+  Vector3 getPosition();
 };
 
 class Wingine{

@@ -77,6 +77,21 @@ Matrix4 WingineCamera::getViewMatrix(){
   return view;
 }
 
+Vector3 WingineCamera::getForwardVector() {
+  return Vector3(-view.get(0, 2), -view.get(1, 2), -view.get(2, 2));
+}
+
+Vector3 WingineCamera::getRightVector() {
+  return Vector3(view.get(0, 0), view.get(1, 0), view.get(2, 0));
+}
+
+Vector3 WingineCamera::getUpVector() {
+  return Vector3(view.get(0, 1), view.get(1, 1), view.get(2, 1));
+}
+
+Vector3 WingineCamera::getPosition() {
+  return (~view.toMatrix3())*-Vector3(view[0][3], view[1][3], view[2][3]);
+}
 
 WinginePipelineSetup::WinginePipelineSetup(std::initializer_list<WgAttachmentType> types)
   : WinginePipelineSetup(types.size(), std::begin(types)) {};

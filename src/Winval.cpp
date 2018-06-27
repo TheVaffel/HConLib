@@ -507,3 +507,14 @@ void Winval::sleepMilliseconds(int u){
 }
 
 #endif //WIN32
+
+// Cross-platform code
+
+bool Winval::isPointerLocked(){
+  return lockedPointer;
+}
+
+void Winval::getPointerLockPosition(int* x, int* y){
+  *x = lockedPointerX;
+  *y = lockedPointerY;
+}

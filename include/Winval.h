@@ -176,6 +176,8 @@ class Winval{
   bool isOpen();
   void setPointerVisible(bool visible);
   void lockPointer(bool lock, int x = 300, int y = 300);
+  bool isPointerLocked();
+  void getPointerLockPosition(int* x, int* y);
   void sleepMilliseconds(int u);
 
 #ifdef WIN32

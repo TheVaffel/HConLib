@@ -9,9 +9,9 @@ int main(){
   int w = 1000, h =  1000;
   Winval win(w, h);
 
-  Canvas vas(w, h);
+  hg::Canvas vas(w, h);
 
-  CamParam par(w, h, F_PI/2, 0.1f);
+  hg::CamParam par(w, h, F_PI/2, 0.1f);
   for(int i = 0; i < w*h; i++){
     vas[i] = 0;
   }
@@ -27,7 +27,7 @@ int main(){
   Matrix4 r;
   Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05f);
   int i = 0;
-  LineCube lc(1, 1, 1);
+  hg::LineCube lc(1, 1, 1);
   while(win.isOpen() && !win.isKeyPressed(WK_ESC)){
     r = r*rr;
     m = Matrix4(FLATALG_MATRIX_TRANSLATION, Point3(0,0,-3 + 1.5f*cos(i*0.07f)));

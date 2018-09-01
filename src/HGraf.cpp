@@ -3,100 +3,65 @@
 #include <algorithm>
 
 static int msb(int a){
-  #ifdef WIN32
+#ifdef WIN32
     int i = 31;
     while((a&(1<<i)) == 0 && i > 0){
       i--;
     }
     return i;
-  #else //WIN32
+#else //WIN32
     return 31 - __builtin_clz(a);
-  #endif //WIN32
-}
-
-Canvas::Canvas(int nw, int nh){
-  w = nw; h = nh;
-  buffer = new unsigned char[nw*nh*channels];
-  initializedBuffer = true;
-}
-
-Canvas::Canvas(unsigned char* nbuffer, int nw, int nh){
-  w = nw; h = nh;
-  buffer = nbuffer;
-  initializedBuffer = false;
-}
-
-int& Canvas::operator[](int a){
-  return ((int*)buffer)[a];
-}
-
-int Canvas::getWidth(){
-  return w;
-}
-
-int Canvas::getHeight(){
-  return h;
-}
-
-unsigned char* Canvas::getData(){
-  return buffer;
-}
-  
-Canvas::~Canvas(){
-  if(initializedBuffer)
-    delete[] buffer;
-}
-
-void Canvas::clear(int c = 0x000000){
-  for(int i = 0; i < w*h; i++){
-    ((int*)buffer)[i] = c;
+#endif //WIN32
   }
-}
-
-CamParam::CamParam(int w, int h, double fovh = F_PI/2, float nplane = 0.01){
-  screenWidth = w;
-  screenHeight = h;
-  invtanfovhover2 = 1.f/tan(fovh/2);
-  invtanfovvover2 = invtanfovhover2*w/h;
-  nearPlane = nplane;
-}
-
-LineModel::LineModel(int n, int m){
-  numIndices= m;
-  numPoints = n;
-  indices = new int[2*m];
-  points = new Point3[n];
-}
-
-LineModel::~LineModel(){
-  if(indices)
-    delete[] indices;
-
-  if(points)
-    delete[] points;
-}
-
-LineCube::LineCube(float w, float h, float l):LineModel(8,12){
-  for(int i = 0; i < 2; i++){
-    for(int j =0; j < 2; j++){
-      for(int k = 0;k < 2; k++){
-	points[4*i + 2*j + k] = Point3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
-      }
-    }
-  }
-  int u= 0;
-  for(int i = 0; i < 8; i++){
-    for(int j = 0; j < 3; j++){
-      if(! ((1<<j)&i)){
-	indices[2*u] = i;
-	indices[2*u + 1] = i | (1<<j);
-	u++;
-      }
-    }
-  }
-}
 
 namespace hg{
+  float Rectangle::getX() const {
+    return x;
+  }
+
+  float Rectangle::getY() const {
+    return y;
+  }
+
+  float Rectangle::getWidth() const {
+    return w;
+  }
+
+  float Rectangle::getHeight() const {
+    return h;
+  }
+
+  void Rectangle::setX(float nx) {
+    x = nx;
+  }
+
+  void Rectangle::setY(float ny) {
+    y = ny;
+  }
+
+  void Rectangle::setWidth(float nw) {
+    w = nw;
+  }
+
+  void Rectangle::setHeight(float nh) {
+    h = nh;
+  }
+
+  void drawRectangle(Canvas* canvas, const Rectangle* rectangle, Color c) {
+    int ic = colorToInt(c);
+    int ix = (int)rectangle->getX(), iy = (int)rectangle->getY();
+    int iw = (int)rectangle->getWidth(), ih = (int)rectangle->getHeight();
+    for(int i = 0; i < iw ; i++){
+      canvas->setPixel(ix + i, iy, ic);
+      canvas->setPixel(ix + i, iy + ih, ic);
+    }
+
+    for(int i = 0; i < ih; i++){
+      canvas->setPixel(ix, iy + i, ic);
+      canvas->setPixel(ix + iw, iy + i, ic);
+    }
+  }
+
   inline int _signum(int a){
     return (a > 0) - (a < 0);
   }
@@ -440,6 +405,92 @@ namespace hg{
   void clearCanvas(Canvas& canvas){
     for(int i = 0; i< canvas.getHeight()*canvas.getWidth();i ++){
       canvas[i] = 0x000000;
+    }
+  }
+
+  Canvas::Canvas(int nw, int nh){
+    w = nw; h = nh;
+    buffer = new unsigned char[nw*nh*channels];
+    initializedBuffer = true;
+  }
+
+  Canvas::Canvas(unsigned char* nbuffer, int nw, int nh){
+    w = nw; h = nh;
+    buffer = nbuffer;
+    initializedBuffer = false;
+  }
+
+  int& Canvas::operator[](int a){
+    return ((int*)buffer)[a];
+  }
+
+  int Canvas::getWidth(){
+    return w;
+  }
+
+  int Canvas::getHeight(){
+    return h;
+  }
+
+  unsigned char* Canvas::getData(){
+    return buffer;
+  }
+  
+  Canvas::~Canvas(){
+    if(initializedBuffer)
+      delete[] buffer;
+  }
+
+  void Canvas::clear(int c = 0x000000){
+    for(int i = 0; i < w*h; i++){
+      ((int*)buffer)[i] = c;
+    }
+  }
+
+  void Canvas::setPixel(int x, int y, int color){
+    ((int*)buffer)[y * w + x] = color;
+  }
+
+  CamParam::CamParam(int w, int h, double fovh = F_PI/2, float nplane = 0.01){
+    screenWidth = w;
+    screenHeight = h;
+    invtanfovhover2 = 1.f/tan(fovh/2);
+    invtanfovvover2 = invtanfovhover2*w/h;
+    nearPlane = nplane;
+  }
+
+  LineModel::LineModel(int n, int m){
+    numIndices= m;
+    numPoints = n;
+    indices = new int[2*m];
+    points = new Point3[n];
+  }
+
+  LineModel::~LineModel(){
+    if(indices)
+      delete[] indices;
+
+    if(points)
+      delete[] points;
+  }
+
+  LineCube::LineCube(float w, float h, float l):LineModel(8,12){
+    for(int i = 0; i < 2; i++){
+      for(int j =0; j < 2; j++){
+	for(int k = 0;k < 2; k++){
+	  points[4*i + 2*j + k] = Point3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
+	}
+      }
+    }
+    int u= 0;
+    for(int i = 0; i < 8; i++){
+      for(int j = 0; j < 3; j++){
+	if(! ((1<<j)&i)){
+	  indices[2*u] = i;
+	  indices[2*u + 1] = i | (1<<j);
+	  u++;
+	}
+      }
     }
   }
 };

@@ -19,6 +19,7 @@
 #endif //WIN32
 
 #include <algorithm> //std::min, std::max
+#include <cmath>
 
 #include <FlatAlg.h>
 
@@ -52,7 +53,7 @@ void WingineCamera::setLookDirection(float rightAngle, float downAngle,
   Vector3 viewUp = cross(right, dir);
 
   Vector3 pos = (~view.toMatrix3())*-Vector3(view[0][3], view[1][3], view[2][3]);
-
+  
   view = Matrix4(right.x, right.y, right.z, 0.f,
 		 viewUp.x, viewUp.y, viewUp.z, 0.f,
 		 -dir.x, -dir.y, -dir.z, 0.f,

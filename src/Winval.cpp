@@ -92,27 +92,27 @@ void Winval::handleEventProperly(MSG& msg){
 }
 
 void Winval::flushEvents(){
+  if(lockedPointer){
+    POINT p = {lockedPointerX, lockedPointerY};
+    ClientToScreen(hwnd, &p);
+    SetCursorPos(p.x, p.y);
+  }
+  
   while(PeekMessage(&msg, hwnd, 0, 0,PM_NOREMOVE)){
     GetMessage(&msg, hwnd, 0, 0);
     handleEventProperly(msg);
   }
 }
 
-void Winval::getPointerPosition(int* x, int* y){
+void Winval::getPointerPosition(int* x, int* y) const {
   *x = pointerX; *y = pointerY;
-
-  if(lockedPointer){
-    POINT p = {lockedPointerX, lockedPointerY};
-    ClientToScreen(hwnd, &p);
-    SetCursorPos(p.x, p.y);
-  }
 }
 
-bool Winval::isMouseButtonPressed(){
+bool Winval::isMouseButtonPressed() const {
   return mouseButtonPressed;
 }
 
-bool Winval::isKeyPressed(int i){
+bool Winval::isKeyPressed(int i) const {
   return isDown[i];
 }
 
@@ -255,7 +255,7 @@ Winval::Winval(int w, int h, bool fullscreen){
   XEvent e;
 
   ks = XGetKeyboardMapping(dsp, WINVAL_KEYMAP_OFFSET, 256 - WINVAL_KEYMAP_OFFSET, &keysyms);
-  for(int i = 0; i < 256; i++){
+  for(int i = 0; i < _numKeys; i++){
     isDown[i] = false;
   }
 
@@ -282,9 +282,8 @@ Winval::Winval(int w, int h, bool fullscreen){
 }
 
 Winval::~Winval(){
-  flushEvents();
-
-  if(!isOpen())
+// flushEvents();
+  if(!dsp)
     return;
 
   if(image)
@@ -338,6 +337,7 @@ void Winval::handleEventProperly(XEvent& e){
   case KeyPress:
     index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
     key = ks[index*keysyms];
+    
     if(key < 1<<16)
       isDown[key] = true;
     break;
@@ -387,23 +387,25 @@ void Winval::handleEventProperly(XEvent& e){
   }
 }
 
-void Winval::getPointerPosition(int* x, int*y){
+void Winval::getPointerPosition(int* x, int*y) const {
   *x = pointerX; *y = pointerY;
-
-  if(lockedPointer){
-    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY);
-  }
 }
 
-bool Winval::isMouseButtonPressed(){
+bool Winval::isMouseButtonPressed() const {
   return mouseButtonPressed;
 }
 
-bool Winval::isKeyPressed(int i){
+bool Winval::isKeyPressed(int i) const {
   return isDown[i];
 }
 
 void Winval::flushEvents(){
+
+  // Safe?
+  if(lockedPointer){
+    XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY);
+  }
+  
   int num = XEventsQueued(dsp, QueuedAfterFlush);
   XEvent e2;
   while(num--){

@@ -141,7 +141,8 @@ class Winval{
   int getKeySym(int keycode);
 #endif //WIN32
 
-  bool isDown[65536];
+  static const int _numKeys = 1 << 16;
+  bool isDown[_numKeys];
 
   bool autoRepeat;
 
@@ -161,9 +162,9 @@ class Winval{
 
   void flushEvents();
 
-  void getPointerPosition(int* x, int* y);
-  bool isMouseButtonPressed();
-  bool isKeyPressed(int i);
+  void getPointerPosition(int* x, int* y) const;
+  bool isMouseButtonPressed() const;
+  bool isKeyPressed(int i) const;
   int waitForKey();
   void getButtonStateAndMotion(bool& valid, int& x, int& y);
   void waitForButtonPress(int& x, int& y);

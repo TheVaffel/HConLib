@@ -15,6 +15,12 @@ static int msb(int a){
   }
 
 namespace hg{
+  Rectangle::Rectangle() {}
+  
+  Rectangle::Rectangle(float nx, float ny, float nw, float nh){
+    x = nx; y = ny; w = nw; h = nh;
+  }
+  
   float Rectangle::getX() const {
     return x;
   }
@@ -47,18 +53,43 @@ namespace hg{
     h = nh;
   }
 
-  void drawRectangle(Canvas* canvas, const Rectangle* rectangle, Color c) {
+  bool Rectangle::contains(const Point2& p) const {
+    return p.get(0) >= x && p.get(1) >= y && p.get(0) <= x + w && p.get(1) <= y + h;
+  }
+
+  void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c) {
     int ic = colorToInt(c);
-    int ix = (int)rectangle->getX(), iy = (int)rectangle->getY();
-    int iw = (int)rectangle->getWidth(), ih = (int)rectangle->getHeight();
-    for(int i = 0; i < iw ; i++){
-      canvas->setPixel(ix + i, iy, ic);
-      canvas->setPixel(ix + i, iy + ih, ic);
+    
+    int ix = (int)rectangle.getX(), iy = (int)rectangle.getY();
+    int iw = (int)rectangle.getWidth(), ih = (int)rectangle.getHeight();
+
+    int fx1 = std::max(std::min(ix, canvas->getWidth() - 1), 0);
+    int fx2 = std::max(std::min(ix + iw, canvas->getWidth() - 1), 0);
+    int fy1 = std::max(std::min(iy, canvas->getHeight() - 1), 0);
+    int fy2 = std::max(std::min(iy + ih, canvas->getHeight() - 1), 0);
+
+    if(iy == fy1){
+      for(int i = fx1; i < fx2 ; i++){
+	canvas->setPixel(i, iy, ic);
+      }
+    }
+    
+    if (iy + ih == fy2){
+      for(int i = fx1; i < fx2 ; i++){
+	canvas->setPixel(i, iy + ih, ic);
+      }
     }
 
-    for(int i = 0; i < ih; i++){
-      canvas->setPixel(ix, iy + i, ic);
-      canvas->setPixel(ix + iw, iy + i, ic);
+    if(ix == fx1) {
+      for(int i = fy1; i < fy2; i++){
+	canvas->setPixel(ix, i, ic);
+      }
+    }
+
+    if(ix + iw == fx2) {
+      for(int i = fy1; i < fy2; i++){
+	canvas->setPixel(ix + iw, i, ic);
+      }
     }
   }
 
@@ -67,7 +98,7 @@ namespace hg{
   }
   
   inline int colorToInt(Color c){
-    return (((int)c[0])<<16) | (((int)c[1])<<8) | ((int)c[2]);
+    return (255 << 24) | (((int)(c[0]*255))<<16) | (((int)(c[1]*255))<<8) | ((int)(c[2]*255));
   }
 
   //An implementation of Bresenham's algorithm
@@ -449,6 +480,10 @@ namespace hg{
 
   void Canvas::setPixel(int x, int y, int color){
     ((int*)buffer)[y * w + x] = color;
+  }
+
+  int Canvas::getPixel(int x, int y){
+    return ((int*)buffer)[y * w + x];
   }
 
   CamParam::CamParam(int w, int h, double fovh = F_PI/2, float nplane = 0.01){

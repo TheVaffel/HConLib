@@ -26,7 +26,8 @@ namespace hg{
     int getHeight();
 
     void setPixel(int x, int y, int color);
-
+    int getPixel(int x, int y);
+    
     unsigned char* getData();
     void clear(int c);
     ~Canvas();
@@ -38,6 +39,7 @@ namespace hg{
     float x, y, w, h;
   public:
     
+    Rectangle();
     Rectangle(float x, float y, float w, float h);
 
     float getX() const;
@@ -49,9 +51,11 @@ namespace hg{
     void setY(float ny);
     void setWidth(float nw);
     void setHeight(float nh);
+
+    bool contains(const Point2& p) const;
   };
 
-  void drawRectangle(Canvas* canvas, const Rectangle* rectangle);
+  void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c);
   
   int colorToInt(Color c);
 

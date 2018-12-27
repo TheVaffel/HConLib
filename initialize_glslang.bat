@@ -6,6 +6,7 @@ set conf=Release
 git clone https://github.com/KhronosGroup/glslang.git
 
 cd glslang
+git checkout vulkan-1.1-rc9
 mkdir build
 cd build
 cmake ..

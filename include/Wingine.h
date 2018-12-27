@@ -260,10 +260,10 @@ struct WingineObjectGroup{ // Collection of objects that are rendered with the s
 private:
   Wingine* wingine;
 public:
-  WingineObjectGroup(Wingine& wg, WinginePipeline& pipeline);
+  WingineObjectGroup(Wingine& wg, const WinginePipeline& pipeline);
   bool altered  = true;
   bool shouldClearAttachments;
-  WinginePipeline pipeline;
+  const WinginePipeline pipeline;
   std::vector<WingineRenderObject> objects;
   VkCommandBuffer commandBuffer;
 

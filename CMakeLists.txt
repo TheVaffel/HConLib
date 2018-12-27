@@ -3,7 +3,7 @@ project(HConLib)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/lib)
 
-#set(DEBUG True)
+# set(DEBUG true)
 
 if(WIN32)
   if(DEBUG)
@@ -66,16 +66,16 @@ if(WINVAL_LIB)
   if(VULKAN_LIBS)
     #Wingine
     add_library(Wingine STATIC ${srcDir}/Wingine.cpp) # Normal Wingine
-    
+
     find_library(GLSLANG_LIBS NAMES glslang PATHS ${lib_search_dir} NO_DEFAULT_PATH) #Could search for the rest of the glslang archives too, but takes this as indicator
     if(GLSLANG_LIBS)
       #WingineWithGlslang
 
       add_library(WingineWithGlslang STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp) # Wingine with glslang
-      if(NOT WIN32)
-	target_compile_definitions(WingineWithGlslang PRIVATE -DWINGINE_WITH_GLSLANG)
+      if(WIN32)
+	       target_compile_definitions(WingineWithGlslang PRIVATE WINGINE_WITH_GLSLANG)
       else()
-	target_compile_definitions(WingineWithGlslang PRIVATE /DWINGINE_WITH_GLSLANG)
+	       target_compile_definitions(WingineWithGlslang PRIVATE -DWINGINE_WITH_GLSLANG)
       endif()
     else()
       message(">>>glslang is not initialized, Wingine not built")

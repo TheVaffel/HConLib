@@ -37,7 +37,11 @@ else()
   set(VULKAN_LIB_NAME vulkan)
 endif()
 
-set(glslang_libs glslang OSDependent SPIRV SPVRemapper OGLCompiler HLSL pthread)
+set(glslang_libs glslang OSDependent SPIRV SPVRemapper OGLCompiler HLSL)
+
+if(NOT WIN32)
+  set(glslang_libs ${glslang_libs} pthread)
+endif()
 
 set(common_wingine_libs FlatAlg ${vulkan_libs} ${VULKAN_LIB_NAME} ${winval_libs})
 

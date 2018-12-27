@@ -2648,13 +2648,10 @@ void WingineObjectGroup::addObject(const WingineRenderObject& obj){
   int ind = objects.size() - 1;
   objects[ind].setPipeline(pipeline);
   altered = true;
-  //objects[ind].setCommandBuffer(wingine->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY));
   objects[ind].setObjectGroup(*this);
 }
 
-WingineObjectGroup::WingineObjectGroup(Wingine& wg, WinginePipeline& newPipeline){
-  wingine = &wg;
-  pipeline = newPipeline;
+WingineObjectGroup::WingineObjectGroup(Wingine& wg, const WinginePipeline& newPipeline) : wingine(&wg), pipeline(newPipeline) {
   shouldClearAttachments = newPipeline.clearAttachments;
   commandBuffer = wg.createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
@@ -2672,14 +2669,14 @@ void WingineObjectGroup::startRecording(const WingineFramebuffer& framebuffer){
   begin.flags = 0;
   begin.pInheritanceInfo = NULL;
 
-  VkClearValue clear_values[pipeline.numAttachments];
+  std::vector<VkClearValue> clear_values(pipeline.numAttachments);
 
   int framebuffer_width, framebuffer_height;
-  
+
   if(framebuffer.image.image){
     framebuffer_width = framebuffer.image.width;
     framebuffer_height = framebuffer.image.height;
-    
+
     clear_values[0].color.float32[0] = 0.2f;
     clear_values[0].color.float32[1] = 0.2f;
     clear_values[0].color.float32[2] = 0.2f;
@@ -2713,7 +2710,7 @@ void WingineObjectGroup::startRecording(const WingineFramebuffer& framebuffer){
   rp_begin.renderPass = pipeline.compatibleRenderPass;
   rp_begin.clearValueCount = shouldClearAttachments? pipeline.numAttachments : 0;
 
-  rp_begin.pClearValues = clear_values;
+  rp_begin.pClearValues = clear_values.data();
   rp_begin.framebuffer = framebuffer.framebuffer;
   rp_begin.renderArea.offset.x = 0;
   rp_begin.renderArea.offset.y = 0;
@@ -2851,19 +2848,20 @@ namespace wgutil {
 	}
       }
     }
-    
+
     std::ifstream file(file_name);
-    std::vector<float> data[attribs.size()];
+    std::vector<std::vector<float> > data(attribs.size());
+
     std::vector<uint32_t> indices;
     std::string line;
     std::string type;
 
     float a, b, c;
     uint32_t u, v, w;
-    
+
     const float scale = 1.f/50;
     const float up = 1.f;
-    
+
     while(std::getline(file, line)){
       std::istringstream iss(line);
       iss >> type;
@@ -2906,6 +2904,7 @@ namespace wgutil {
 
     indexBuffer = indBuffer;
     numDrawIndices = indices.size();
+    indexOffset = 0;
   }
 
   void Model::destroy(){
@@ -2946,33 +2945,33 @@ namespace wgutil {
     void (* const* generatorList)(float, float, float*) = std::begin(generators);
 
     for(uint32_t k = 0; k < generators.size(); k++){
-      float data[numT * numH * sizeArray[k]];
+      std::vector<float> data(numT * numH * sizeArray[k]);
       uint32_t currInd = 0;
       float currStepH = 0.0f;
       for(int i = 0; i < numH; i++){
-	float currStepT = 0.0f;
-	for(int j = 0; j < numT; j++){
-	  generatorList[k](currStepT, currStepH, data + currInd);
-	  currInd += sizeArray[k];
-	  
-	  currStepT += stepT;
-	}
-	currStepH += stepH;
+	        float currStepT = 0.0f;
+	        for(int j = 0; j < numT; j++){
+	             generatorList[k](currStepT, currStepH, data.data() + currInd);
+	             currInd += sizeArray[k];
+
+	             currStepT += stepT;
+	        }
+	        currStepH += stepH;
       }
-      vertexAttribs.push_back(wingine->createVertexBuffer(numT * numH * sizeArray[k] * sizeof(float), data));
+      vertexAttribs.push_back(wingine->createVertexBuffer(numT * numH * sizeArray[k] * sizeof(float), data.data()));
     }
 
     numDrawIndices = 3 * (2 * numT * (numH - 1) + 2 * (numT - 2));
-    uint32_t indices[numDrawIndices];
+    std::vector<uint32_t> indices(numDrawIndices);
     for(int i = 0; i < numH - 1; i++){
       for(int j = 0; j < numT; j++){
-	indices[3 * 2 * (numT * i + j) + 0] = (i + 1) * numT + j;
-	indices[3 * 2 * (numT * i + j) + 1] = i * numT + ((j + 1) % numT);
-	indices[3 * 2 * (numT * i + j) + 2] = i * numT + j;
+	       indices[3 * 2 * (numT * i + j) + 0] = (i + 1) * numT + j;
+	       indices[3 * 2 * (numT * i + j) + 1] = i * numT + ((j + 1) % numT);
+	       indices[3 * 2 * (numT * i + j) + 2] = i * numT + j;
 
-	indices[3 * 2 * (numT * i + j) + 3] = (i + 1) * numT + ((j + 1) % numT);
-	indices[3 * 2 * (numT * i + j) + 4] = i * numT + ((j + 1) % numT);
-	indices[3 * 2 * (numT * i + j) + 5] = (i + 1) * numT + j;
+         indices[3 * 2 * (numT * i + j) + 3] = (i + 1) * numT + ((j + 1) % numT);
+         indices[3 * 2 * (numT * i + j) + 4] = i * numT + ((j + 1) % numT);
+         indices[3 * 2 * (numT * i + j) + 5] = (i + 1) * numT + j;
       }
     }
 
@@ -2985,13 +2984,13 @@ namespace wgutil {
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 1] = numT * (numH - 1) + i;
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 2] = numT * (numH - 1);
     }
-    
-    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
+
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices.data());
   }
 
   void Model::initCube(std::initializer_list<WgAttribType> attribs_in, float size){
     const WgAttribType * attribs = std::begin(attribs_in);
-    
+
     for(unsigned int i = 0; i < attribs_in.size(); i++){
       int attrib_size;
       switch(attribs[i]){
@@ -3009,8 +3008,8 @@ namespace wgutil {
 	exit(-1);
       }
 
-      float data[attrib_size * 4 * 6]; // Make each face with separate vertices
-      
+      std::vector<float> data(attrib_size * 4 * 6); // Make each face with separate vertices
+
       if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
 	float s2 = size / 2;
         int dx = 0, dy = 1, dz = 2;
@@ -3061,13 +3060,13 @@ namespace wgutil {
 	  data[attrib_size * i * 4 + 7] = 1.0f;
 	}
       }
-      
-      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 6 * sizeof(float), data));
+
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 6 * sizeof(float), data.data()));
     }
 
     numDrawIndices = 3 * 2 * 6;
-    uint32_t indices[numDrawIndices];
-    
+    std::vector<uint32_t> indices(numDrawIndices);
+
     for(int i = 0; i < 6; i++){
       indices[3 * 2 * i + 0] = 4 * i + 0;
       indices[3 * 2 * i + 1] = 4 * i + 1;
@@ -3078,13 +3077,13 @@ namespace wgutil {
       indices[3 * 2 * i + 5] = 4 * i + 0;
     }
 
-    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices.data());
   }
-  
+
   void Model::initQuad(std::initializer_list<WgAttribType> attribs_in,
 		       const Vector3& side1, const Vector3& side2){
     const WgAttribType * attribs = std::begin(attribs_in);
-    
+
     for(unsigned int i = 0; i < attribs_in.size(); i++){
       int attrib_size;
       switch(attribs[i]){
@@ -3105,12 +3104,12 @@ namespace wgutil {
 	exit(-1);
       }
 
-      float data[attrib_size * 4 * 2]; // Make each face with separate vertices
-      
+      std::vector<float> data(attrib_size * 4 * 2); // Make each face with separate vertices
+
       if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
 	const Vector3 si1 = side1 / 2.f;
 	const Vector3 si2 = side2 / 2.f;
-	
+
         for(int i = 0; i < 4; i++){
 	  const Vector3 v1 = (i & 1) ? - si1 : si1;
 	  const Vector3 v2 = (i & 2) ? - si2 : si2;
@@ -3144,17 +3143,18 @@ namespace wgutil {
 	  data[attrib_size * i + 3] = 1.0f;
 	}
       }
-      
-      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 2 * sizeof(float), data));
+
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * 4 * 2 * sizeof(float), data.data()));
     }
 
     numDrawIndices = 3 * 2 * 2;
-    uint32_t indices[numDrawIndices];
-    
+    indexOffset = 0;
+    std::vector<uint32_t> indices(numDrawIndices);
+
     indices[0] = 0;
     indices[1] = 2;
     indices[2] = 1;
-    
+
     indices[3] = 1;
     indices[4] = 2;
     indices[5] = 3;
@@ -3166,7 +3166,7 @@ namespace wgutil {
     indices[9] = 5;
     indices[10] = 7;
     indices[11] = 6;
-    
-    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices);
+
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices.data());
   }
 }

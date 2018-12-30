@@ -2962,6 +2962,8 @@ namespace wgutil {
     }
 
     numDrawIndices = 3 * (2 * numT * (numH - 1) + 2 * (numT - 2));
+    indexOffset = 0;
+
     std::vector<uint32_t> indices(numDrawIndices);
     for(int i = 0; i < numH - 1; i++){
       for(int j = 0; j < numT; j++){
@@ -3065,6 +3067,8 @@ namespace wgutil {
     }
 
     numDrawIndices = 3 * 2 * 6;
+    indexOffset = 0;
+
     std::vector<uint32_t> indices(numDrawIndices);
 
     for(int i = 0; i < 6; i++){

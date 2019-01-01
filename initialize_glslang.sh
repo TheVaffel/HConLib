@@ -4,10 +4,12 @@ mkdir build 2> /dev/null
 cd build
 
 #get glslang
-git clone git@github.com:KhronosGroup/glslang.git
+git clone https://github.com/KhronosGroup/glslang.git
 
 #build glslang archives
 cd glslang 
+git checkout vulkan-1.1-rc9
+
 mkdir build 2> /dev/null
 cd build
 cmake ..

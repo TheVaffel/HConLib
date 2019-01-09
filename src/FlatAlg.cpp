@@ -43,12 +43,12 @@ float* Matrix2::operator[](int a){
   return mat + 2*a;
 }
 
-Matrix2 Matrix2::invert(){
+Matrix2 Matrix2::inverse() const {
   return (1/this->det())*Matrix2(mat[3], -mat[1],
 				 -mat[2], mat[0]);
 }
 
-float Matrix2::det(){
+float Matrix2::det() const {
   return mat[0]*mat[3] - mat[1]*mat[2];
 }
 
@@ -201,8 +201,37 @@ float* Matrix3::operator[](int a) {
   return mat + 3*a;
 }
 
-float Matrix3::get(int a, int b) const {
+float Matrix3::get(int a, int b) const { // x, y
   return mat[a + 3*b];
+}
+
+static float _det_submat(const Matrix3& m, int i, int j) { // column, row
+  int firstx = (i == 0 ? 1 : 0),
+    firsty = (j == 0 ? 1 : 0),
+    diffx = (i == 1 ? 2 : 1),
+    diffy = (j == 1 ? 2 : 1);
+  int sx = firstx + diffx,
+    sy = firsty + diffy;
+  return m.get(firstx, firsty) * m.get(sx, sy) -
+    m.get(firstx, sy) * m.get(sx, firsty);
+}
+
+// Not super thoroughly tested, but it worked in a random case, so it's probably good
+Matrix3 Matrix3::inverse() const {
+  float d = det();
+  float di = 1. / d;
+  Matrix3 res;
+  for(int j = 0; j < 3; j++) {
+    for(int i = 0; i < 3; i++) {
+      res[j][i] = _det_submat(*this, j, i) * di;
+      if((i + j) % 2 == 1) {
+	res[j][i] *= -1;
+      }
+      
+    }
+  }
+
+  return res;
 }
 
 Matrix3::Matrix3(int i){

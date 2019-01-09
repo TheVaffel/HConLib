@@ -43,8 +43,8 @@ struct Matrix2{
   float mat[9];
 
   float* operator[](int a);
-  Matrix2 invert();
-  float det();
+  Matrix2 inverse() const;
+  float det() const;
   float get(int a, int b) const;
 
   Matrix2(int i);
@@ -116,6 +116,8 @@ struct Matrix3{
   float* operator[](int a);
 
   float det() const;
+
+  Matrix3 inverse() const;
 
   float get(int a, int b) const;
 

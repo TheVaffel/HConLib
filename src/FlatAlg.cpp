@@ -487,13 +487,31 @@ Matrix4::Matrix4(int i, float arg1, float arg2){
 Matrix4::Matrix4(int i, const Point3& p){
   switch(i){
   case FLATALG_MATRIX_TRANSLATION:
-    for(int i = 0; i< 16; i++){
-      mat[i] = i%5 ==0;
+    for(int j = 0; j < 16; j++){
+      mat[j] = j%5 ==0;
     }
     mat[3] = p.get(0);
     mat[7] = p.get(1);
     mat[11] = p.get(2);
     break;
+  }
+}
+
+Matrix4::Matrix4(int i, const Matrix3& r, const Point3& v) {
+  switch(i) {
+  case FLATALG_MATRIX_TRANSFORM:
+    for(int j = 0; j < 3; j++) {
+      for(int k = 0; k < 3; k++) {
+	mat[j + 4 * k] = r.get(j, k);
+      }
+    }
+    mat[3] = v.get(0);
+    mat[7] = v.get(1);
+    mat[11] = v.get(2);
+    mat[12] = 0.f;
+    mat[13] = 0.f;
+    mat[14] = 0.f;
+    mat[15] = 1.f;
   }
 }
 

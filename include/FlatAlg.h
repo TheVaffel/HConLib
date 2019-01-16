@@ -10,6 +10,7 @@
 #define FLATALG_MATRIX_ROTATION_X 3
 #define FLATALG_MATRIX_ROTATION_Y 4
 #define FLATALG_MATRIX_ROTATION_Z 5
+#define FLATALG_MATRIX_TRANSFORM 6
 
 #include <string>
 
@@ -188,6 +189,8 @@ struct Matrix4{
   Matrix4(int i, float arg1, float arg2);
 
   Matrix4(int i, const Point3& p);
+
+  Matrix4(int i, const Matrix3& r, const Point3& v);
 
   Matrix4();
   Matrix4(float a1, float a2, float a3, float a4,

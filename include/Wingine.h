@@ -241,13 +241,13 @@ class WingineRenderObject{
   void setNumIndices(int num);
   uint32_t getNumIndices();
   uint32_t getIndexOffset();
-  const WingineBuffer& getIndexBuffer();
-
+  
   void setCommandBuffer(const VkCommandBuffer& cmd);
   VkCommandBuffer* getCommandBufferPointer();
 
   void setIndexBuffer(const WingineBuffer& indexBuffer);
   uint32_t getNumAttribs();
+  const WingineBuffer& getIndexBuffer();
   const WingineBuffer* getAttribs();
   void setVertexAttribs(const WingineBuffer& wb, int index);
 

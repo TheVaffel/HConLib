@@ -2556,6 +2556,10 @@ void WingineRenderObject::destroy(){
 }
 
 void Wingine::destroyObject(WingineRenderObject& obj){
+  destroyBuffer(obj.getIndexBuffer());
+  for(uint32_t i = 0; i < obj.getNumAttribs(); i++) {
+    destroyBuffer(obj.getAttribs()[i]);
+  }
   obj.destroy();
 }
 

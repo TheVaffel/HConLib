@@ -244,15 +244,8 @@ int main(){
   wg.destroyShader(fragmentShader);
   wg.destroyResourceSet(cameraSet);
   wg.destroyResourceSetLayout(rsl);
-  wg.destroyBuffer(cubeVertexBuffer);
-  wg.destroyBuffer(floorVertexBuffer);
-  wg.destroyBuffer(floorNormalBuffer);
-  wg.destroyBuffer(cubeNormalBuffer);
 
   wg.destroyPipeline(renderPipeline);
-
-  wg.destroyBuffer(cubeIndexBuffer);
-  wg.destroyBuffer(floorIndexBuffer);
 
   // Depth things
   wg.destroyShader(idVertexShader);

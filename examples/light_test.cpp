@@ -1,7 +1,7 @@
-#include <Winval.h>
+#include <Winval.hpp>
 
 #define WINGINE_WITH_GLSLANG
-#include <Wingine.h>
+#include <Wingine.hpp>
 
 #include <iostream>
 #include <cmath>

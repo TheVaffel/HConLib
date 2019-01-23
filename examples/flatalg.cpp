@@ -1,5 +1,5 @@
 #define FLATALG_IMPLEMENTATION
-#include <FlatAlg.h>
+#include <FlatAlg.hpp>
 
 #include <iostream>
 

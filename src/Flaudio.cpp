@@ -1,4 +1,4 @@
-#include <Flaudio.h>
+#include <Flaudio.hpp>
 
 #ifdef WIN32
 

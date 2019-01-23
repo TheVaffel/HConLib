@@ -1,4 +1,4 @@
-#include <Winval.h>
+#include <Winval.hpp>
 
 #ifdef WIN32
 Winval::Winval(){}

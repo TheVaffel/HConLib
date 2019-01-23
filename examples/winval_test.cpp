@@ -1,5 +1,5 @@
-#include "Winval.h"
-#include "HGraf.h"
+#include "Winval.hpp"
+#include "HGraf.hpp"
 #include <iostream>
 
 using namespace std;

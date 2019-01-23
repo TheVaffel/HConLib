@@ -1,5 +1,5 @@
 #include <cmath>
-#include <HGraf.h>
+#include <HGraf.hpp>
 #include <algorithm>
 
 static int msb(int a){

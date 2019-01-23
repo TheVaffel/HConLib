@@ -1,6 +1,6 @@
-#include "HGraf.h"
+#include "HGraf.hpp"
 #include <iostream>
-#include "Winval.h"
+#include "Winval.hpp"
 #include <cmath>
 
 using namespace std;

@@ -1,4 +1,4 @@
-#include <HCam.h>
+#include <HCam.hpp>
 
 #ifndef USE_TURBOJPEG
 #define STB_IMAGE_IMPLEMENTATION

@@ -2,7 +2,7 @@
 
 #ifndef INCLUDED_HGRAF
 #define INCLUDED_HGRAF
-#include "FlatAlg.h"
+#include "FlatAlg.hpp"
 
 
 namespace hg{

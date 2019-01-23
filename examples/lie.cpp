@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <FlatAlg.h>
+#include <FlatAlg.hpp>
 
 #include <cmath>
 

@@ -1,4 +1,4 @@
-#include <Wingine.h>
+#include <Wingine.hpp>
 
 #ifdef WINGINE_WITH_GLSLANG
 #include <external/glsl_util.h>
@@ -21,7 +21,7 @@
 #include <algorithm> //std::min, std::max
 #include <cmath>
 
-#include <FlatAlg.h>
+#include <FlatAlg.hpp>
 
 #define wgAssert(B, STR) {if(!(B)){printf("\"%s\" failed at line %d in file %s\n", STR, __LINE__, __FILE__); exit(0);}}
 

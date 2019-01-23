@@ -1,10 +1,10 @@
-#include <Winval.h>
+#include <Winval.hpp>
 
 #include <iostream>
 
 using namespace std;
 
-#include <HGraf.h>
+#include <HGraf.hpp>
 
 
 int main(){

@@ -1,5 +1,5 @@
 #include <iostream>
-#include <Flaudio.h>
+#include <Flaudio.hpp>
 
 #define _USE_MATH_DEFINES
 #include <math.h>

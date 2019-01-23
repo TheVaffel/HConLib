@@ -1,5 +1,5 @@
-#include <HCam.h>
-#include <Winval.h>
+#include <HCam.hpp>
+#include <Winval.hpp>
 
 #include <algorithm>
 #include <cmath>

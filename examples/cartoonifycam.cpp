@@ -1,7 +1,7 @@
-#include <Winval.h>
+#include <Winval.hpp>
 #include "cartoonify.h"
 
-#include <HCam.h>
+#include <HCam.hpp>
 
 int main(){
 	const int w = 640, h = 480;

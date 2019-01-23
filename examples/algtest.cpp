@@ -1,5 +1,5 @@
 #include <iostream>
-#include "FlatAlg.h"
+#include <FlatAlg.hpp>
 
 using namespace std;
 using namespace flatalg;

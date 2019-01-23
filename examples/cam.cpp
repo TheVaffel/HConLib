@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <HCam.h>
-#include <Winval.h>
+#include <HCam.hpp>
+#include <Winval.hpp>
 
 using namespace std;
 

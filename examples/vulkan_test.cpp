@@ -2,10 +2,10 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-#include <Winval.h>
+#include <Winval.hpp>
 
 #define WINGINE_WITH_GLSLANG
-#include <Wingine.h>
+#include <Wingine.hpp>
 
 #include <iostream>
 

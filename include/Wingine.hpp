@@ -5,13 +5,13 @@
 #ifndef INCLUDED_WINGINE
 #define INCLUDED_WINGINE
 
-#include <Winval.h>
+#include <Winval.hpp>
 
 #ifdef WINGINE_WITH_GLSLANG
 #include <external/vulkan/SPIRV/GlslangToSpv.h>
 #endif // WINGINE_WITH_GLSLANG
 
-#include <FlatAlg.h>
+#include <FlatAlg.hpp>
 
 #ifdef WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -39,7 +39,7 @@
 #define MAX_COLOR_ATTACHMENTS 4
 #define MAX_VERTEX_ATTRIBUTES 10
 #define MAX_DESCRIPTOR_SETS 3
-#define UNIFORM_DESCRIPTOR_POOL_SIZE 50
+#define UNIFORM_DESCRIPTOR_POOL_SIZE 1000
 #define TEXTURE_DESCRIPTOR_POOL_SIZE 10
 #define IMAGE_STORE_DESCRIPTOR_POOL_SIZE 10
 #define MAX_NUM_COMMANDS 50

@@ -1,4 +1,4 @@
-#include <FlatAlg.h>
+#include <FlatAlg.hpp>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <sstream> // For human-readable representations

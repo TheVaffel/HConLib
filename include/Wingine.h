@@ -611,6 +611,7 @@ namespace wgutil {
 			int numT, int numH, float t10, float t11);
     void initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs);
     void initCube(std::initializer_list<WgAttribType> attribs, float size);
+    void initSphere(std::initializer_list<WgAttribType> attribs, float size, int res);
     void initQuad(std::initializer_list<WgAttribType> attribs,
 		  const Vector3& side1, const Vector3& side2);
   public:
@@ -622,9 +623,13 @@ namespace wgutil {
 	  std::initializer_list<void (*)(float, float, float*)> generators,
 	  int numT, int numH, float t10 = 1.0f, float t11 = 1.0f);
 
-    // Basic geometric shapes (cube, sphere...)
+    // Basic geometric shapes (cube...)
     Model(Wingine& w, WgModelInitMode mode,
 	  std::initializer_list<WgAttribType> attribs, float size);
+
+    Model(Wingine& w, WgModelInitMode mode,
+	  std::initializer_list<WgAttribType> attribs,
+	  float t0, int t1);
     // Quad
     Model(Wingine& w, WgModelInitMode mode,
 	  std::initializer_list<WgAttribType> attribs,

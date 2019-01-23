@@ -2832,15 +2832,23 @@ namespace wgutil {
     case WG_MODEL_INIT_CUBE:
       initCube(attribs, size);
       break;
-    case WG_MODEL_INIT_SPHERE:
-      printf("Sphere model not yet implemented\n");
-      exit(-1);
     default:
       printf("No matching call to Model() with mode %d\n", mode);
       exit(-1);
     }
   }
 
+  Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<WgAttribType> attribs, float t0, int t1) {
+    initModel(wg);
+    switch(mode) {
+    case WG_MODEL_INIT_SPHERE:
+      initSphere(attribs, t0, t1);
+      break;
+    default:
+      printf("No matching call to Model() with mode %d\n", mode);
+    }
+  }
+  
   Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<WgAttribType> attribs,
 	       const Vector3& v2, const Vector3& v3){
     initModel(wg);
@@ -3031,6 +3039,124 @@ namespace wgutil {
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 0] = numT * (numH - 1) + i + 1;
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 1] = numT * (numH - 1) + i;
       indices[3 * 2 * numT * (numH - 1) + 3 * (numT - 2) + 2] = numT * (numH - 1);
+    }
+
+    indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices.data());
+  }
+
+  void Model::initSphere(std::initializer_list<WgAttribType> attribs_in, float radius, int resolution) {
+    const WgAttribType * attribs = std::begin(attribs_in);
+
+    for(uint32_t i = 0;  i < attribs_in.size(); i++) {
+      int attrib_size = WG_ATTRIB_TYPE_SIZE[attribs[i]];
+
+      std::vector<float> data(attrib_size * (resolution * 2 * (resolution - 1) + 2));
+
+      float invres = 1.f / resolution;
+      
+      if (attribs[i] == WG_ATTRIB_TYPE_POSITION ) {
+	for(int i = 0; i < resolution - 1; i++) {
+	  float phi = F_PI * (invres * (i + 1) - 1.f / 2);
+	  float cphi = cosf(phi);
+	  float sphi = sinf(phi);
+	  for(int j = 0; j < resolution * 2; j++) {
+	    float theta = F_PI * (invres * j);
+	    float ctheta = cosf(theta);
+	    float stheta = sinf(theta);
+	    
+	    data[attrib_size * (i * resolution * 2 + j) + 0] = cphi * ctheta * radius;
+	    data[attrib_size * (i * resolution * 2 + j) + 1] = sphi * radius;
+	    data[attrib_size * (i * resolution * 2 + j) + 2] = cphi * stheta * radius;
+	    data[attrib_size * (i * resolution * 2 + j) + 3] = 1.f;
+	  }
+	}
+
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 0] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 1] = - radius;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 2] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 3] = 1.f;
+
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 0] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 1] = radius;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 2] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 3] = 1.f;
+	
+      } else if (attribs[i] == WG_ATTRIB_TYPE_NORMAL ) {
+	for(int i = 0; i < resolution - 1; i++) {
+	  float phi = F_PI * (invres * (i + 1) - 1.f / 2);
+	  float cphi = cosf(phi);
+	  float sphi = sinf(phi);
+	  for(int j = 0; j < resolution * 2; j++) {
+	    float theta = F_PI * (invres * j);
+	    float ctheta = cosf(theta);
+	    float stheta = sinf(theta);
+
+	    data[attrib_size * (i * resolution * 2 + j) + 0] = cphi * ctheta;
+	    data[attrib_size * (i * resolution * 2 + j) + 1] = sphi;
+	    data[attrib_size * (i * resolution * 2 + j) + 2] = cphi * stheta;
+	    data[attrib_size * (i * resolution * 2 + j) + 3] = 0.f;
+	  }
+	}
+	
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 0] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 1] = -1.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 2] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 3] = 1.f;
+
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 0] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 1] = 1.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 2] = 0.f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 3] = 1.f;
+	
+      } else if (attribs[i] == WG_ATTRIB_TYPE_TEXTURE ) {
+	for(int i = 0; i < resolution - 1; i++) {
+	  float phi = invres * (i + 1);
+	  for(int j = 0; j < resolution * 2; j++) {
+	    float theta = invres * j;
+
+	    data[attrib_size * (i * resolution * 2 + j) + 0] = theta;
+	    data[attrib_size * (i * resolution * 2 + j) + 1] = phi;
+	  }
+	}
+
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 0] = 0.5f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 0) + 1] = 1.f;
+	
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 0] = 0.5f;
+	data[attrib_size * (resolution * 2 * (resolution - 1) + 1) + 1] = 0.f;
+      }
+      
+      vertexAttribs.push_back(wingine->createVertexBuffer(attrib_size * (resolution * 2 * (resolution - 1) + 2) * sizeof(float), data.data()));
+    }
+
+    numDrawIndices = 6 * resolution * 2 * (resolution - 2) + 2 * 3 * 2 * resolution;
+    indexOffset = 0;
+
+    std::vector<uint32_t> indices(numDrawIndices);
+
+    for(int i = 0; i < resolution - 2; i++){
+      for(int j = 0; j < resolution * 2; j++) {
+	indices[6 * (resolution * 2 * i + j) + 0] = (i + 0) * 2 * resolution + ((j + 0) % (2 * resolution));
+	indices[6 * (resolution * 2 * i + j) + 1] = (i + 0) * 2 * resolution + ((j + 1) % (2 * resolution));
+	indices[6 * (resolution * 2 * i + j) + 2] = (i + 1) * 2 * resolution + ((j + 0) % (2 * resolution));
+
+	indices[6 * (resolution * 2 * i + j) + 3] = (i + 1) * 2 * resolution + ((j + 0) % (2 * resolution));
+	indices[6 * (resolution * 2 * i + j) + 4] = (i + 0) * 2 * resolution + ((j + 1) % (2 * resolution));
+	indices[6 * (resolution * 2 * i + j) + 5] = (i + 1) * 2 * resolution + ((j + 1) % (2 * resolution));
+      }
+    }
+
+    for(int i = 0; i < resolution * 2; i++) {
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * i + 0] = resolution * 2 * (resolution - 1) + 0;
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * i + 1] = i;
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * i + 2] = (i + 1) % (2 * resolution);
+
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * (resolution * 2 + i) + 0] =
+	resolution * 2 * (resolution - 1) + 1;
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * (resolution * 2 + i) + 1] =
+	resolution * 2 * (resolution - 2) + i;
+      indices[6 * (resolution * 2 * (resolution - 2)) + 3 * (resolution * 2 + i) + 2] =
+	resolution * 2 * (resolution - 2) + ((i + 1) % (2 * resolution));
     }
 
     indexBuffer = wingine->createIndexBuffer(numDrawIndices * sizeof(uint32_t), indices.data());

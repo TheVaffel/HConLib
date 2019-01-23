@@ -2663,8 +2663,24 @@ void WingineObjectGroup::addObject(const WingineRenderObject& obj){
 }
 
 WingineObjectGroup::WingineObjectGroup(Wingine& wg, const WinginePipeline& newPipeline) : wingine(&wg), pipeline(newPipeline) {
+  for(int i = 0; i < 3; i++) {
+    clearColor[i] = 0.0f;
+  }
+  clearColor[3] = 1.0f;
+  
   shouldClearAttachments = newPipeline.clearAttachments;
   commandBuffer = wg.createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+}
+
+void WingineObjectGroup::setClearColor(float r, float g, float b, float alpha) {
+  clearColor[0] = r;
+  clearColor[1] = g;
+  clearColor[2] = b;
+  clearColor[3] = alpha;
+}
+
+const float* WingineObjectGroup::getClearColor() {
+  return clearColor;
 }
 
 void WingineObjectGroup::startRecording(){
@@ -2688,10 +2704,10 @@ void WingineObjectGroup::startRecording(const WingineFramebuffer& framebuffer){
     framebuffer_width = framebuffer.image.width;
     framebuffer_height = framebuffer.image.height;
 
-    clear_values[0].color.float32[0] = 0.2f;
-    clear_values[0].color.float32[1] = 0.2f;
-    clear_values[0].color.float32[2] = 0.2f;
-    clear_values[0].color.float32[3] = 1.0f;
+    for(uint32_t i = 0; i < 4; i++) {
+      clear_values[0].color.float32[i] = clearColor[i];
+    }
+    
     clear_values[1].depthStencil.depth = 1.0f;
     clear_values[1].depthStencil.stencil = 0;
   }else{

@@ -268,6 +268,9 @@ class WingineRenderObject{
 struct WingineObjectGroup{ // Collection of objects that are rendered with the same pipeline
 private:
   Wingine* wingine;
+
+  float clearColor[4];
+  
 public:
   WingineObjectGroup(Wingine& wg, const WinginePipeline& pipeline);
   bool altered  = true;
@@ -285,6 +288,9 @@ public:
   void recordRendering(WingineRenderObject& object,
 		      std::initializer_list<WingineResourceSet> sets);
   void recordRendering(WingineRenderObject& object, const WingineResourceSet* sets);
+
+  void setClearColor(float r, float g, float b, float alpha);
+  const float* getClearColor();
 };
 
 class WingineCamera{

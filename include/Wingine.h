@@ -70,12 +70,19 @@ typedef enum WgAttribFormat {
 } WgAttribFormat;
 
 #define WG_NUM_ATTRIB_TYPES 4
-  typedef enum WgAttribType {
-    WG_ATTRIB_TYPE_POSITION = 0x0,
-    WG_ATTRIB_TYPE_COLOR = 0x1,
-    WG_ATTRIB_TYPE_NORMAL = 0x2,
-    WG_ATTRIB_TYPE_TEXTURE = 0x3
-  } WgAttriblType;
+typedef enum WgAttribType {
+  WG_ATTRIB_TYPE_POSITION = 0x0,
+  WG_ATTRIB_TYPE_COLOR = 0x1,
+  WG_ATTRIB_TYPE_NORMAL = 0x2,
+  WG_ATTRIB_TYPE_TEXTURE = 0x3
+} WgAttriblType;
+
+const int WG_ATTRIB_TYPE_SIZE[WG_NUM_ATTRIB_TYPES] = {
+  4,
+  4,
+  4,
+  2
+};
 
 /* Amount of time, in nanoseconds, to wait for a command buffer to complete */
 #define FENCE_TIMEOUT 100000000

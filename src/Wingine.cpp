@@ -2998,21 +2998,7 @@ namespace wgutil {
     const WgAttribType * attribs = std::begin(attribs_in);
 
     for(unsigned int i = 0; i < attribs_in.size(); i++){
-      int attrib_size;
-      switch(attribs[i]){
-      case WG_ATTRIB_TYPE_POSITION:
-	attrib_size = 4;
-	break;
-      case WG_ATTRIB_TYPE_NORMAL:
-	attrib_size = 4;
-	break;
-      case WG_ATTRIB_TYPE_TEXTURE:
-	attrib_size = 2;
-	break;
-      default:
-	printf("Attrib type %d not implemented for cube\n", attribs[i]);
-	exit(-1);
-      }
+      int attrib_size = WG_ATTRIB_TYPE_SIZE[attribs[i]];
 
       std::vector<float> data(attrib_size * 4 * 6); // Make each face with separate vertices
 

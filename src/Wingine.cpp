@@ -966,6 +966,7 @@ void Wingine::destroy_descriptor_pool(){
 WingineBuffer Wingine::createVertexBuffer(uint32_t size, const void* data){
   return createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, size, data);
 }
+
 WingineBuffer Wingine::createIndexBuffer(uint32_t size, const void* data){
   return createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size, data);
 }
@@ -2575,7 +2576,9 @@ void WingineRenderObject::setPipeline(const WinginePipeline& p){
   pipeline = &p;
 }
 
-void WingineRenderObject::setIndexBuffer(const WingineBuffer& ib){
+
+// Not even sure why these were here
+/* void WingineRenderObject::setIndexBuffer(const WingineBuffer& ib){
   indexBuffer = ib;
   altered = true;
 }
@@ -2583,26 +2586,30 @@ void WingineRenderObject::setIndexBuffer(const WingineBuffer& ib){
 void WingineRenderObject::setVertexAttribs(const WingineBuffer& wb, int index){
   vertexAttribs[index] = wb;
   altered = true;
-}
+  } */
 
-uint32_t WingineRenderObject::getNumIndices(){
+uint32_t WingineRenderObject::getNumIndices() const {
   return numDrawIndices;
 }
 
-uint32_t WingineRenderObject::getIndexOffset(){
+uint32_t WingineRenderObject::getIndexOffset() const {
   return indexOffset;
 }
 
-const WingineBuffer& WingineRenderObject::getIndexBuffer(){
+const WingineBuffer& WingineRenderObject::getIndexBuffer() const {
   return indexBuffer;
 }
 
-uint32_t WingineRenderObject::getNumAttribs(){
+uint32_t WingineRenderObject::getNumAttribs() const {
   return vertexAttribs.size();
 }
 
-const WingineBuffer* WingineRenderObject::getAttribs(){
+const WingineBuffer* WingineRenderObject::getAttribs() const {
   return vertexAttribs.data();
+}
+
+void WingineRenderObject::addVertexAttrib(const WingineBuffer& buffer) {
+  vertexAttribs.push_back(buffer);
 }
 
 void WingineObjectGroup::recordRendering(WingineRenderObject& object,
@@ -2831,6 +2838,21 @@ namespace wgutil {
     }
   }
 
+  Model::Model(Wingine& wg, int numInds, int numVertexAttribs,
+	       const WingineBuffer* vertexBuffers, 
+	       const WingineBuffer& indBuffer) {
+    initModel(wg);
+
+    for(int i = 0; i < numVertexAttribs; i++) {
+      vertexAttribs.push_back(vertexBuffers[i]);
+    }
+    
+    indexBuffer = indBuffer;
+    numDrawIndices = numInds;
+    indexOffset = 0;
+    
+  }
+
   // Input from file. Only supports one set of values per attrib type
   void Model::initFromFile(const char* file_name, std::initializer_list<WgAttribType> attribs){
     int attribIndices[WG_NUM_ATTRIB_TYPES];
@@ -2912,12 +2934,16 @@ namespace wgutil {
   }
 
   void Model::destroy(){
+    destroyKeepBuffers();
+    
     for(uint32_t i = 0; i < vertexAttribs.size(); i++){
       wingine->destroyBuffer(vertexAttribs[i]);
     }
 
     wingine->destroyBuffer(indexBuffer);
+  }
 
+  void Model::destroyKeepBuffers() {
     wingine->destroyResourceSet(resourceSet);
     wingine->destroyUniform(transformUniform);
     

@@ -246,16 +246,18 @@ class WingineRenderObject{
   void setPipeline(const WinginePipeline& p);
   void setIndexOffset(int newIndex);
   void setNumIndices(int num);
-  uint32_t getNumIndices();
-  uint32_t getIndexOffset();
+  uint32_t getNumIndices() const ;
+  uint32_t getIndexOffset() const ;
+
+  void addVertexAttrib(const WingineBuffer& buffer);
   
   void setCommandBuffer(const VkCommandBuffer& cmd);
   VkCommandBuffer* getCommandBufferPointer();
 
   void setIndexBuffer(const WingineBuffer& indexBuffer);
-  uint32_t getNumAttribs();
-  const WingineBuffer& getIndexBuffer();
-  const WingineBuffer* getAttribs();
+  uint32_t getNumAttribs() const;
+  const WingineBuffer& getIndexBuffer() const;
+  const WingineBuffer* getAttribs() const;
   void setVertexAttribs(const WingineBuffer& wb, int index);
 
   void setObjectGroup(WingineObjectGroup& wog);
@@ -621,10 +623,16 @@ namespace wgutil {
     Model(Wingine& w, WgModelInitMode mode,
 	  std::initializer_list<WgAttribType> attribs,
 	  const Vector3& side1, const Vector3& side2);
+
+    Model(Wingine& w, int numInds, int numVertexAttribs,
+	  const WingineBuffer* vertexBuffers, 
+	  const WingineBuffer& indexBuffer);
     
     // Legacy, remove when ColorModel is removed and initCube is implemented
     Model(Wingine& w);
     void destroy();
+    // Recycle-friendly
+    void destroyKeepBuffers();
     
     WingineResourceSet& getTransformSet();
     void setTransform(const Matrix4& mat);

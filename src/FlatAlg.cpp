@@ -567,6 +567,11 @@ std::string Matrix4::str() const{
   return oss.str();
 }
 
+DualQuaternion Matrix4::toDualQuaternion() const {
+  Quaternion r = toMatrix3().toQuaternion();
+  Vector3 d = Vector3(mat[3], mat[7], mat[11]);
+  return DualQuaternion(r, 0.5f * Quaternion(d) * r);
+}
 
 Matrix3 Matrix4::toMatrix3() const {
   return Matrix3(mat[0], mat[1], mat[2],
@@ -1063,16 +1068,16 @@ Quaternion Quaternion::conjugate() const {
 		    w);
 }
 
-Vector3 Quaternion::vector() const {
+Vector3 Quaternion::getVector() const {
   return Vector3(x, y, z);
 }
 
-float Quaternion::real() const {
+float Quaternion::getReal() const {
   return w;
 }
 
 Vector3 Quaternion::rotate(const Vector3& v) const {
-  return ((*this) * Quaternion(v) * conjugate()).vector();
+  return ((*this) * Quaternion(v) * conjugate()).getVector();
 }
 
 Matrix3 Quaternion::toMatrix() const {
@@ -1106,4 +1111,109 @@ Quaternion operator-(const Quaternion& q1, const Quaternion& q2) {
 		    q1.y - q2.y,
 		    q1.z - q2.z,
 		    q1.w - q2.w);
+}
+
+Quaternion operator*(const Quaternion& q1, float f) {
+  return Quaternion(q1.x * f,
+		    q1.y * f,
+		    q1.z * f,
+		    q1.w * f);
+}
+
+Quaternion operator*(float f, const Quaternion& q1) {
+  return q1 * f;
+}
+
+Quaternion operator/(const Quaternion& q1, float f) {
+  return q1 * (1.f / f);
+}
+
+DualQuaternion::DualQuaternion() {
+  // Construct identity
+  q1 = Quaternion(0.f, 0.f, 0.f, 1.f);
+  q2 = Quaternion(0.f, 0.f, 0.f, 0.f);
+}
+
+DualQuaternion::DualQuaternion(const Quaternion& nq1, const Quaternion& nq2) {
+  q1 = nq1;
+  q2 = nq2;
+}
+
+DualQuaternion::DualQuaternion(const Vector3& v) {
+  q1 = Quaternion(0.f, 0.f, 0.f, 1.f);
+  q2 = Quaternion(v);
+}
+
+DualQuaternion::DualQuaternion(const Quaternion& q, const Vector3& v) {
+  q1 = q;
+  q2 = 0.5f * Quaternion(v) * q;
+}
+
+Vector3 DualQuaternion::getVector() const {
+  return q2.getVector();
+}
+
+Vector3 DualQuaternion::transform(const Vector3& v) const {
+  return ((*this) * DualQuaternion(v) * fullConjugate()).getVector();
+}
+
+DualQuaternion DualQuaternion::dualConjugate() const {
+  return DualQuaternion(q1, -1.f * q2);
+}
+
+DualQuaternion DualQuaternion::conjugate() const {
+  return DualQuaternion(q1.conjugate(), q2.conjugate());
+}
+
+DualQuaternion DualQuaternion::fullConjugate() const {
+  return DualQuaternion(q1.conjugate(), Quaternion(q2.x, q2.y, q2.z, -q2.w));
+}
+
+Matrix4 DualQuaternion::toMatrix() const {
+  Matrix3 rr = q1.toMatrix();
+  Vector3 v = (2 * q2 * q1.conjugate()).getVector();
+  return Matrix4(FLATALG_MATRIX_TRANSFORM, rr, v);
+}
+
+void DualQuaternion::normalize() {
+  float inv = 1.f / q1.norm();
+  q1 = q1 * inv;
+  q2 = q2 * inv;
+}
+
+DualQuaternion DualQuaternion::normalized() const {
+  float inv = 1.f / q1.norm();
+  return DualQuaternion(q1 * inv, q2 * inv);
+}
+
+DualQuaternion operator*(const DualQuaternion& q1, const DualQuaternion& q2) {
+  return DualQuaternion(q1.q1 * q2.q1, q1.q2 * q2.q1 + q1.q1 * q2.q2);
+}
+
+DualQuaternion operator*(const DualQuaternion& q1, float f) {
+  return DualQuaternion(q1.q1 * f, q1.q2 * f);
+}
+
+DualQuaternion operator*(float f, const DualQuaternion& q1) {
+  return q1 * f;
+}
+
+DualQuaternion operator+(const DualQuaternion& q1, const DualQuaternion& q2) {
+  return DualQuaternion(q1.q1 + q2.q1, q1.q2 + q2.q2);
+}
+
+DualQuaternion operator-(const DualQuaternion& q1, const DualQuaternion& q2) {
+  return DualQuaternion(q1.q1 - q2.q1, q1.q2 - q2.q2);
+}
+
+DualQuaternion operator/(const DualQuaternion& q1, float f) {
+  float inv = 1.f / f;
+  return DualQuaternion(q1.q1 * inv, q1.q2 * inv);
+}
+
+std::string DualQuaternion::str() const {
+  std::ostringstream oss;
+  oss << "[x1 = " << q1.p[0] << ", y1 = " << q1.p[1] << ", z1 = " << q1.p[2] << ", w1 = " << q1.p[3] << "]";
+  oss << "[x2 = " << q2.p[0] << ", y2 = " << q2.p[1] << ", z2 = " << q2.p[2] << ", w2 = " << q2.p[3] << "]";
+  return oss.str();
 }

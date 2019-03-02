@@ -42,6 +42,27 @@ int main(){
 
   cout << "Matrix rotated: " << rotated2.str() << endl;
   cout << "Quaternion rotated: " << rotated1.str() << endl;
+
+  Vector3 translation(14.2, 14.4, 4.21);
+  DualQuaternion dual(q, translation);
+  Matrix4 matmat = dual.toMatrix();
+  
+
+  Vector3 checkTransform = q.rotate(p) + translation;
+  Vector3 dualTransformed = dual.transform(p);
+  Vector3 matrixTransformed = matmat * p;
+
+  Vector3 justRotated = q.rotate(p);
+  Vector3 justRotatedMat = q.toMatrix() * p;
+
+  cout << "Just rotated: " << justRotated.str() << endl;
+  cout << "Just rotated mat: " << justRotatedMat.str() << endl;
+
+  cout << "Sanity check transformed: " << checkTransform.str() << endl;
+  cout << "Dual transformed: " << dualTransformed.str() << endl;
+  cout << "Matrix transformed: " << matrixTransformed.str() << endl;
+  cout << "Original dual quaternion: " << dual.str() << endl;
+  cout << "Inverted matrix: " << matmat.toDualQuaternion().str() << endl;
   
   return 0;
   

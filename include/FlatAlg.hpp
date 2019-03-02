@@ -175,6 +175,8 @@ Matrix3 operator~(const Matrix3& m);
 
 Matrix3 operator*(const Matrix3& m1, const Matrix3& m2);
 
+struct DualQuaternion;
+
 struct Matrix4{
   float mat[16];
 
@@ -203,6 +205,8 @@ struct Matrix4{
 
   std::string str() const;
   Matrix3 toMatrix3() const;
+
+  DualQuaternion toDualQuaternion() const;
 };
 
 Vector3 operator*(const Matrix4& m, const Vector3& v);
@@ -323,8 +327,8 @@ struct Quaternion {
   Quaternion normalized() const;
   Quaternion conjugate() const;
 
-  Vector3 vector() const;
-  float real() const;
+  Vector3 getVector() const;
+  float getReal() const;
   Vector3 rotate(const Vector3&) const;
   Matrix3 toMatrix() const;
 
@@ -334,5 +338,50 @@ struct Quaternion {
 Quaternion operator*(const Quaternion& q1, const Quaternion& q2);
 Quaternion operator+(const Quaternion& q1, const Quaternion& q2);
 Quaternion operator-(const Quaternion& q1, const Quaternion& q2);
+Quaternion operator*(const Quaternion& q1, float f);
+Quaternion operator*(float f, const Quaternion& q1);
+Quaternion operator/(const Quaternion& q1, float f);
+
+// These are an actual thing:
+struct DualQuaternion {
+  Quaternion q1, q2;
+
+  DualQuaternion();
+  
+  // Vector represented as dual quaternion (1 + ve)
+  DualQuaternion(const Vector3& v);
+
+  // Quaternion is rotation, Vector is translation
+  DualQuaternion(const Quaternion& q1, const Vector3& v);
+  
+  // KNOW WHAT YOU ARE DOING WITH THIS ONE (use the one above if in doubt)
+  DualQuaternion(const Quaternion& q1, const Quaternion& q2);
+
+  void normalize();
+  DualQuaternion normalized() const;
+  Vector3 transform(const Vector3& v) const;
+
+  // q1 + q2e -> q1 - q2e
+  DualQuaternion dualConjugate() const;
+
+  // q1 + q2e -> ~q1 + ~q2e
+  DualQuaternion conjugate() const;
+
+  // q1 + q2e -> ~q1 - ~q2e
+  DualQuaternion fullConjugate() const;
+
+  Vector3 getVector() const;
+  Matrix4 toMatrix() const;
+
+  std::string str() const;
+};
+
+DualQuaternion operator*(const DualQuaternion& q1, const DualQuaternion& q2);
+DualQuaternion operator*(const DualQuaternion& q, float f);
+DualQuaternion operator*(float f, const DualQuaternion& q);
+DualQuaternion operator+(const DualQuaternion& q1, const DualQuaternion& q2);
+DualQuaternion operator-(const DualQuaternion& q1, const DualQuaternion& q2);
+DualQuaternion operator/(const DualQuaternion& q1, float f);
+
 #endif // INCLUDED_FLATALG
 

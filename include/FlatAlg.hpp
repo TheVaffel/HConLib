@@ -111,6 +111,8 @@ public:
 
 typedef Point3 Vector3;
 
+struct Quaternion;
+
 struct Matrix3{
   float mat[9];
 
@@ -136,7 +138,8 @@ struct Matrix3{
 	  float a4, float a5, float a6,
 	  float a7, float a8, float a9);
   
-
+  Quaternion toQuaternion() const;
+  
   std::string str() const;
 };
 
@@ -293,11 +296,43 @@ GeneralMatrix operator*(float f, const GeneralMatrix& gm);
 
 GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2);
 
-namespace flatalg{
+namespace flatalg {
   
   typedef GeneralMatrix Matrix;
   typedef GeneralVector Vector;
 }
 
+struct Quaternion {
+  union {
+    struct {float x, y, z, w;};
+    float p[4];
+  };
+
+  // Identity rotation
+  Quaternion();
+  
+  Quaternion(float x, float y, float z, float w);
+  
+  // Rotation around axis, assumes axis is normalized
+  Quaternion(float theta, const Vector3& axis); 
+
+  Quaternion(const Vector3& v);
+  
+  float norm() const;
+  void normalize();
+  Quaternion normalized() const;
+  Quaternion conjugate() const;
+
+  Vector3 vector() const;
+  float real() const;
+  Vector3 rotate(const Vector3&) const;
+  Matrix3 toMatrix() const;
+
+  std::string str() const;
+};
+
+Quaternion operator*(const Quaternion& q1, const Quaternion& q2);
+Quaternion operator+(const Quaternion& q1, const Quaternion& q2);
+Quaternion operator-(const Quaternion& q1, const Quaternion& q2);
 #endif // INCLUDED_FLATALG
 

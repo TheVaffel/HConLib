@@ -329,6 +329,34 @@ float Matrix3::det() const {
 	 mat[2]*(mat[3]*mat[7] - mat[4]*mat[6]);
 }
 
+Quaternion Matrix3::toQuaternion() const {
+  // Following Wikipedia's approach:
+  // https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
+  
+  float trace = mat[0] + mat[4] + mat[8];
+  if (trace > -0.99) {
+    float r = sqrt(1 + trace);
+    float s = 1 / (2 * r);
+    
+    float w = 0.5f * r;
+    float x = (mat[7] - mat[5]) * s;
+    float y = (mat[2] - mat[6]) * s;
+    float z = (mat[3] - mat[1]) * s;
+
+    return Quaternion(x, y, z, w);
+  } else {
+    float r = sqrt(1 + mat[0] - mat[4] - mat[8]);
+    float s = 1 / (2 * r);
+
+    float w = (mat[7] - mat[5]) * s;
+    float x = 0.5f * r;
+    float y = (mat[1] + mat[3]) * s;
+    float z = (mat[6] + mat[2]) * s;
+    
+    return Quaternion(x, y, z, w);
+  }
+}
+
 Vector3 cross(const Vector3& v1, const Vector3& v2){
   return Vector3(v1.get(1)*v2.get(2) - v1.get(2)*v2.get(1),
 		 v1.get(2)*v2.get(0) - v1.get(0)*v2.get(2),
@@ -980,4 +1008,102 @@ GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2){
     }
   }
   return g;
+}
+
+
+Quaternion::Quaternion() {
+  x = 0.0;
+  y = 0.0;
+  z = 0.0;
+  w = 1.0f;
+}
+
+Quaternion::Quaternion(float nx, float ny, float nz, float nw) {
+  x = nx, y = ny, z = nz, w = nw;
+}
+
+Quaternion::Quaternion(float theta, const Vector3& axis) {
+  w = cos(theta / 2);
+  float st = sin(theta / 2);
+  x = axis.x * st;
+  y = axis.y * st;
+  z = axis.z * st;
+}
+
+Quaternion::Quaternion(const Vector3& v) {
+  x = v.x;
+  y = v.y;
+  z = v.z;
+}
+
+float Quaternion::norm() const {
+  return sqrt(x * x + y * y + z * z + w * w);
+}
+
+void Quaternion::normalize() {
+  float inv = 1.f / norm();
+  x *= inv;
+  y *= inv;
+  z *= inv;
+  w *= inv;
+}
+
+Quaternion Quaternion::normalized() const {
+  float inv = 1.f / norm();
+  return Quaternion(x * inv,
+		    y * inv,
+		    z * inv,
+		    w * inv);
+}
+
+Quaternion Quaternion::conjugate() const {
+  return Quaternion(-x,
+		    -y,
+		    -z,
+		    w);
+}
+
+Vector3 Quaternion::vector() const {
+  return Vector3(x, y, z);
+}
+
+float Quaternion::real() const {
+  return w;
+}
+
+Vector3 Quaternion::rotate(const Vector3& v) const {
+  return ((*this) * Quaternion(v) * conjugate()).vector();
+}
+
+Matrix3 Quaternion::toMatrix() const {
+  return Matrix3(w * w + x * x - y * y - z * z, 2 * (x * y - w * z),           2 * (x * z + w * y),
+		 2 * (x * y + w * z),           w * w - x * x + y * y - z * z, 2 * (y * z - w * x),
+		 2 * (x * z - w * y),           2 * (y * z + w * x),           w * w - x * x - y * y + z * z);
+}
+
+std::string Quaternion::str() const {
+  std::ostringstream oss;
+  oss<< "[x = " << p[0] << ", y = " << p[1] << ", z = " << p[2] << ", w = " << p[3] << "]";
+  return oss.str();
+}
+
+Quaternion operator*(const Quaternion& q1, const Quaternion& q2) {
+  return Quaternion(q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+		    q1.w * q2.y + q1.y * q2.w + q1.z * q2.x - q1.x * q2.z,
+		    q1.w * q2.z + q1.z * q2.w + q1.x * q2.y - q1.y * q2.x,
+		    q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z);
+}
+
+Quaternion operator+(const Quaternion& q1, const Quaternion& q2) {
+  return Quaternion(q1.x + q2.x,
+		    q1.y + q2.y,
+		    q1.z + q2.z,
+		    q1.w + q2.w);
+}
+
+Quaternion operator-(const Quaternion& q1, const Quaternion& q2) {
+  return Quaternion(q1.x - q2.x,
+		    q1.y - q2.y,
+		    q1.z - q2.z,
+		    q1.w - q2.w);
 }

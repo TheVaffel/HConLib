@@ -268,6 +268,10 @@ Matrix3::Matrix3(int i, float theta){
     mat[3] = 0; mat[4] = 1; mat[5] = 0;
     mat[6] = -st; mat[7] = 0; mat[8] = ct;
     break;
+  case FLATALG_MATRIX_SCALE:
+    mat[0] = theta; mat[1] = 0; mat[2] = 0;
+    mat[3] = 0; mat[4] = theta; mat[5] = 0;
+    mat[6] = 0; mat[7] = 0; mat[8] = theta;
   }
 }
 

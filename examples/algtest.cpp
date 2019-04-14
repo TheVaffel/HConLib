@@ -55,6 +55,7 @@ int main(){
   Vector3 justRotated = q.rotate(p);
   Vector3 justRotatedMat = q.toMatrix() * p;
 
+
   cout << "Just rotated: " << justRotated.str() << endl;
   cout << "Just rotated mat: " << justRotatedMat.str() << endl;
 
@@ -63,6 +64,16 @@ int main(){
   cout << "Matrix transformed: " << matrixTransformed.str() << endl;
   cout << "Original dual quaternion: " << dual.str() << endl;
   cout << "Inverted matrix: " << matmat.toDualQuaternion().str() << endl;
+
+  Vector3 v(1, 3, 4);
+  Vector3 v2(4, 5, 3);
+
+  cout << "Vector 1: " << v.str() << ", Vector2: " << v2.str() << endl;
+
+  v += v2;
+  v2 -= v;
+  
+  cout << "After v1 += v2, v2 -= v1: v1 = " << v.str() << ", v2 = " << v2.str() << endl;
   
   return 0;
   

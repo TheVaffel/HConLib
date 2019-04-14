@@ -37,6 +37,11 @@ public:
   float sqLength() const;
 
   std::string str() const;
+
+  Point2& operator-=(const Point2& v);
+  Point2& operator+=(const Point2& v);
+  Point2& operator*=(float f);
+  Point2& operator/=(float f);
 };
 
 typedef Point2 Vector2;
@@ -108,6 +113,12 @@ public:
   Point3 normalized() const;
 
   std::string str() const;
+  
+  Point3& operator-=(const Point3& v);
+  Point3& operator+=(const Point3& v);
+  Point3& operator*=(float f);
+  Point3& operator/=(float f);
+
 };
 
 typedef Point3 Vector3;
@@ -148,16 +159,12 @@ Vector3 cross(const Vector3& v1, const Vector3& v2);
 
 float operator*(const Vector3& v1, const Vector3& v2);
 
-Vector3 operator*(const Vector3& v, float f);
-
-Vector3 operator*(float f, const Vector3& v);
-
 Vector3 operator+(const Vector3& v1, const Vector3& v2);
-
 Vector3 operator-(const Vector3& v1, const Vector3& v2);
 
+Vector3 operator*(const Vector3& v, float f);
+Vector3 operator*(float f, const Vector3& v);
 Vector3 operator/(const Vector3& v, float f);
-
 Vector3 operator-(const Vector3& v);
 
 Vector3 operator*(const Matrix3& m, const Vector3& v);

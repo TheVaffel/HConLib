@@ -133,6 +133,31 @@ Vector2 operator*(const Vector2& v, const Matrix2& m){
   return Vector2(v.get(0)*m.get(0, 0) + v.get(1)*m.get(0, 1), v.get(0)*m.get(1, 0) + v.get(1)*m.get(1, 1));
 }
 
+Vector2& Vector2::operator-=(const Vector2& v) {
+  x -= v.get(0);
+  y -= v.get(1);
+  return *this;
+}
+
+Vector2& Vector2::operator+=(const Vector2& v) {
+  x += v.get(0);
+  y += v.get(1);
+  return *this;
+}
+
+Vector2& Vector2::operator*=(float f) {
+  x *= f;
+  y *= f;
+  return *this;
+}
+
+Vector2& Vector2::operator/=(float f) {
+  float invf = 1.f / f;
+  x *= invf;
+  y *= invf;
+  return *this;
+}
+
 Matrix2 operator~(const Matrix2& m){
   return Matrix2(m.get(0, 0), m.get(0, 1),
 		 m.get(1, 0), m.get(1, 1));
@@ -393,6 +418,35 @@ Vector3 operator/(const Vector3& v, float f){
 
 Vector3 operator-(const Vector3& v){
   return Vector3(-v.get(0), -v.get(1), -v.get(2));
+}
+
+Vector3& Vector3::operator-=(const Vector3& v) {
+  x -= v.get(0);
+  y -= v.get(1);
+  z -= v.get(2);
+  return *this;
+}
+
+Vector3& Vector3::operator+=(const Vector3& v) {
+  x += v.get(0);
+  y += v.get(1);
+  z += v.get(2);
+  return *this;
+}
+
+Vector3& Vector3::operator*=(float f) {
+  x *= f;
+  y *= f;
+  z *= f;
+  return *this;
+}
+
+Vector3& Vector3::operator/=(float f) {
+  float invf = 1.f / f;
+  x *= invf;
+  y *= invf;
+  z *= invf;
+  return *this;
 }
 
 Vector3 operator*(const Matrix3& m, const Vector3& v){

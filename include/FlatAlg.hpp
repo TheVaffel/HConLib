@@ -172,6 +172,9 @@ Vector3 operator*(const Matrix3& m, const Vector3& v);
 Vector3 operator*(const Vector3& v, const Matrix3& m);
 
 Matrix3 operator+(const Matrix3& m1, const Matrix3& m2);
+Matrix3 operator-(const Matrix3& m1, const Matrix3& m2);
+
+Matrix3 operator-(const Matrix3& m);
 
 Matrix3 operator*(const Matrix3& m, float f);
 
@@ -182,6 +185,7 @@ Matrix3 operator/(const Matrix3& m, float f);
 Matrix3 operator~(const Matrix3& m);
 
 Matrix3 operator*(const Matrix3& m1, const Matrix3& m2);
+
 
 struct DualQuaternion;
 

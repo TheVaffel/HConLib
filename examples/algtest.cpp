@@ -74,6 +74,12 @@ int main(){
   v2 -= v;
   
   cout << "After v1 += v2, v2 -= v1: v1 = " << v.str() << ", v2 = " << v2.str() << endl;
+
+  Matrix3 testm(1, 2, 3,
+		4, 5, 6,
+		7, 8, 9);
+  cout << "Testmat: " << testm.str() << endl;
+  cout << " - Testmat: " << (- testm).str() << endl;
   
   return 0;
   

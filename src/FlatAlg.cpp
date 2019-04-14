@@ -472,6 +472,16 @@ Matrix3 operator+(const Matrix3& m1, const Matrix3& m2){
 		 m1.get(0, 1) + m2.get(0, 1), m1.get(1, 1) + m2.get(1, 1), m1.get(2, 1) + m2.get(2, 1),
 		 m1.get(0, 2) + m2.get(0, 2), m1.get(1, 2) + m2.get(1, 2), m1.get(2, 2) + m2.get(2, 2));
 }
+
+Matrix3 operator-(const Matrix3& m1, const Matrix3& m2) {
+  return m1 + (-m2);
+}
+
+Matrix3 operator-(const Matrix3& m) {
+  return Matrix3(- m.get(0, 0), - m.get(1, 0), - m.get(2, 0),
+		 - m.get(0, 1), - m.get(1, 1), - m.get(2, 1),
+		 - m.get(0, 2), - m.get(1, 2), - m.get(2, 2));
+}
  
 Matrix3 operator*(const Matrix3& m, float f){
   return Matrix3(m.get(0, 0)*f, m.get(1, 0)*f, m.get(2, 0)*f,

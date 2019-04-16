@@ -90,6 +90,11 @@ Matrix2 operator*(const Matrix2& m1, float f);
 
 Matrix2 operator*(float f, const Matrix2& m1);
 
+Matrix2 operator+(const Matrix2& m1, const Matrix2& m2);
+Matrix2 operator-(const Matrix2& m1, const Matrix2& m2);
+
+Matrix2 operator-(const Matrix2& m);
+
 
 struct Point3{
 public:

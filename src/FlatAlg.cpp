@@ -180,6 +180,20 @@ Matrix2 operator*(float f, const Matrix2& m1){
 		 m1.get(0, 1)*f, m1.get(1, 1)*f);
 }
 
+Matrix2 operator+(const Matrix2& m1, const Matrix2& m2) {
+  return Matrix2(m1.get(0, 0) + m2.get(0, 0), m1.get(1, 0) + m2.get(1, 0),
+		 m1.get(0, 1) + m2.get(0, 1), m1.get(1, 1) + m2.get(1, 1));
+}
+
+Matrix2 operator-(const Matrix2& m1) {
+  return Matrix2(-m1.get(0, 0), -m1.get(1, 0),
+		 -m1.get(0, 1), -m1.get(1, 1));
+}
+
+Matrix2 operator-(const Matrix2& m1, const Matrix2& m2) {
+  return m1 + (-m2);
+}
+
 
 float& Point3::operator[](int a){
   return p[a];

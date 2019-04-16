@@ -80,6 +80,11 @@ int main(){
 		7, 8, 9);
   cout << "Testmat: " << testm.str() << endl;
   cout << " - Testmat: " << (- testm).str() << endl;
+
+  Matrix2 testm2(1, 4, 5, 7);
+
+  cout << "Testmat2: " << testm2.str() << endl;
+  cout << " - Testmat2: " << ( - testm2).str() << endl;
   
   return 0;
   

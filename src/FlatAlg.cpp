@@ -70,16 +70,15 @@ void Matrix<4, 4>::setProjection(flatalg_t horizontalFOVRadians, flatalg_t invAs
   flatalg_t fx = 1/tan(horizontalFOVRadians/2);
   flatalg_t fy = 1/(invAspect*tan(horizontalFOVRadians/2));
 
+  for(int i = 0; i < 4 * 4; i++) {
+    arr[i] = 0;
+  }
+  
   (*this)(0, 0) = fx;
   (*this)(1, 1) = fy;
   (*this)(2, 2) = -(far + near) / (far - near);
   (*this)(2, 3) = -(2 * far * near) / (far - near);
   (*this)(3, 2) = -1;
-  
-  /* return Matrix4(fx, .0f, .0f, .0f,
-		 .0f, fy, .0f, .0f,
-		 .0f,  .0f,  -(far + near)/(far - near), -(2*far*near)/(far - near),
-		 .0f, .0f, -1.0f, .0f); */
 		   
 }
 
@@ -158,11 +157,6 @@ void Matrix<4, 4>::setLookAt(const Matrix<3, 1>& pos, const Matrix<3, 1>& target
   (*this)(1, 0) = nUp.x();      (*this)(1, 1) = nUp.y();      (*this)(1, 2) = nUp.z();      (*this)(1, 3) = -pos * nUp;
   (*this)(2, 0) = -normDir.x(); (*this)(2, 1) = -normDir.y(); (*this)(2, 2) = -normDir.z(); (*this)(2, 3) = pos * normDir;
   (*this)(3, 0) = 0;            (*this)(3, 1) = 0;            (*this)(3, 2) = 0;            (*this)(3, 3) = 1;
-  
-  /* return Matrix4(right.x,    right.y,    right.z,    -position*right,
-		 nUp.x,      nUp.y,      nUp.z,      -position*nUp,
-		 -normDir.x, -normDir.y, -normDir.z, position*normDir,
-		 0.f,        0.f,        0.f,        1.f); */
 }
 
 template<>
@@ -175,15 +169,6 @@ void Matrix<4, 4>::init_args(FlatAlgMatrixFlag flag, const Matrix<3, 1>& arg0, c
     throw std::invalid_argument("No constructor for that flag-parameter combination");
   }
 }
-
-
-/*template<>
-constexpr flatalg_t Matrix<2, 2>::det() const {
-  return arr[0] * arr[3] - arr[1] * arr[2];
-  }*/
-
-
-
 
 flatalg_t cross(const Vector2& v1, const Vector2& v2) {
   return v1[0] * v2[1] - v1[1] * v2[0];

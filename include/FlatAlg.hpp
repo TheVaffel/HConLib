@@ -90,24 +90,7 @@ public:
   
   // Guarantees zero entries
   Matrix();
-
-  /* Matrix(FlatAlgMatrixFlag flag);
-
-  Matrix(FlatAlgMatrixFlag flag, const flatalg_t* data);
   
-  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg1);
-
-  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
-  
-  template<int a, int b>
-  Matrix<n, m>(FlatAlgMatrixFlag flag, const Matrix<a, b>& mat, const Matrix<a, 1>& vec);
-
-  template<int a>
-  Matrix(FlatAlgMatrixFlag flag, const Matrix<a, 1>& vec);
-
-  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg0, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
-  Matrix(FlatAlgMatrixFlag flag, const Matrix<3, 1>& arg0, const Matrix<3, 1>& arg1, const Matrix<3, 1>& arg2); */
-
   template<typename... fl_args>
   Matrix(fl_args... args);
   
@@ -147,9 +130,6 @@ public:
   
   constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
   constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
-
-  // constexpr Matrix<n, m> operator*(const flatalg_t& f) const;
-  // constexpr Matrix<n, m> operator/(const flatalg_t& f) const;
 
   constexpr Matrix<n - 1, m - 1> minor_matrix(int a, int b) const;
   constexpr flatalg_t det() const;
@@ -412,14 +392,6 @@ void Matrix<n, m>::init_args(FlatAlgMatrixFlag flag) {
   }
 }
 
-/* template<int n, int m>
-template<typename... fl_args>
-void Matrix<n, m>::checkAndInit(fl_args... args) {
-  constexpr size_t num_args = sizeof...(fl_args);
-  static_assert(num_args == n * m, "Number of initialization coefficients must equal number of elements in matrix"); 
-  
-  this->init(args...);
-  } */
 
 template<int n, int m>
 template<typename... fl_args>
@@ -617,25 +589,17 @@ constexpr Matrix<n - 1, m - 1> Matrix<n, m>::minor_matrix(int a, int b) const {
 template<int n, int m>
 constexpr flatalg_t Matrix<n, m>::det() const {
   static_assert(n == m, "Matrix must be quadratic in order for determinants to make sense");
-  // std::cout << "Computing determinant for " << n << "x" << m << " matrix" << std::endl;
-  // std::cout << "Matrix: " << this->str() << std::endl;
   if constexpr(n == 1 && m == 1) {
-      // std::cout << "Determinant of " << this->str() << " is " << (*this)(0, 0) << std::endl;
       return (*this)(0, 0);
     } else if constexpr(n == 2 && m == 2) {
       flatalg_t dd = (*this)(0, 0) * (*this)(1, 1)  - (*this)(1, 0) * (*this)(0, 1);
-      // std::cout << "Determinant of " << this->str() << " is " << dd << std::endl;
       return dd;
     } else {
     flatalg_t sum = 0;
-    // std::cout << "Determinant is sum of ";
     for(int i = 0; i < m; i++) {
       flatalg_t ff = (*this)(0, i) * ((i & 1) ? -1 : 1) * this->minor_matrix(0, i).det();
       sum += ff;
-      // std::cout << "\n" << ff << "\n";
-      // std::cout << "Total sum: " << sum << std::endl;
     }
-    // std::cout << "Sum became " << sum << std::endl;
     return sum;
   }
 }

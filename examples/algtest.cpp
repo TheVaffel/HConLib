@@ -2,22 +2,49 @@
 #include <FlatAlg.hpp>
 
 using namespace std;
-using namespace flatalg;
 
 
 int main(){
   float data[] = {
-    1, 3, 41, 21, 48, 87,
-    48, 48, 18, 84, 8, 8,
+    1, 3, 1, 21, 48, 87,
+    48, -14, 18, 84, 8, 8,
     18, 49, 78, 2, 99, 67,
-    89, 63, 8, 80, 30, 38,
+    89, -1414, 8, 80, 30, 38,
     93, 13, 0, 1, 3, 67,
-    28, 39, 46, 27, 96, 8
+    28, 3414, 46, 27, 96, 8
+  }; 
+  /* float data[] = {
+    1, 0, 0, 0, 0, 0,
+    0, 1, 0, 0, 0, 0,
+    0, 0, 1, 0, 0, 0,
+    0, 0, 0, 1, 0, 0,
+    0, 0, 0, 0, 1, 0,
+    0, 0, 0, 0, 0, 1
+    }; */
+
+  float data2[] = {
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
   };
   
-  Matrix mat(6, 6, data);
+  // Matrix mat(6, 6, data);
 
-  Matrix mm = mat.inv();
+  Matrix<6, 6> mat(FLATALG_MATRIX_FROM_DATA, data);
+
+  Matrix<4, 4> anotherMat(FLATALG_MATRIX_FROM_DATA, data2);
+  Matrix<4, 4> anotherInv = anotherMat.inv();
+  
+  Matrix<6, 6> mm = mat.inv();
+
+  cout << "Other matrix: \n" << anotherMat.str() << endl;
+  cout << "Other determinant: " << anotherMat.det() << endl;
+  cout << "Other matrix' inverse: \n" << anotherInv.str() << endl;
+  cout << "Other product: \n" << (anotherMat * anotherInv).str() << endl;
+  
+  cout << "This is the original matrix: \n" << mat.str() << endl;
+  cout << "Its determinant: \n" << mat.det() << endl;
   
   cout<<"This is our inverse:\n"<<mm.str()<<endl;
 
@@ -30,13 +57,13 @@ int main(){
 
   cout << "Quaternion: " << q.str() << endl;
   cout << "Matrix: " << rotation1.str() << endl;
-  cout << "Matrix to quaternion " << rotation1.toQuaternion().str() << endl;
+  cout << "Matrix to quaternion " << Quaternion(rotation1).str() << endl;
 
   Quaternion anotherQuaternion(0.9999 * F_PI, Vector3(100, 2, 1).normalized());
   Matrix3 anotherMatrix = anotherQuaternion.toMatrix();
   cout << "New quaternion: " << anotherQuaternion.str() << endl;
   cout << "Another matrix: " << anotherMatrix.str() << endl;
-  cout << "Another matrix to quaternion: " << anotherMatrix.toQuaternion().str() << endl;
+  cout << "Another matrix to quaternion: " << Quaternion(anotherMatrix).str() << endl;
   Vector3 rotated1 = q.rotate(p);
   Vector3 rotated2 = rotation1 * p;
 
@@ -63,7 +90,8 @@ int main(){
   cout << "Dual transformed: " << dualTransformed.str() << endl;
   cout << "Matrix transformed: " << matrixTransformed.str() << endl;
   cout << "Original dual quaternion: " << dual.str() << endl;
-  cout << "Inverted matrix: " << matmat.toDualQuaternion().str() << endl;
+  cout << "Converted to matrix: " << matmat.str() << endl;
+  cout << "Inverted matrix: " << DualQuaternion(matmat).str() << endl;
 
   Vector3 v(1, 3, 4);
   Vector3 v2(4, 5, 3);

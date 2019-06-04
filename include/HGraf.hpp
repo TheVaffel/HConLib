@@ -2,12 +2,13 @@
 
 #ifndef INCLUDED_HGRAF
 #define INCLUDED_HGRAF
+
 #include "FlatAlg.hpp"
 
 
 namespace hg{
 
-  typedef Point3 Color;
+  typedef Vector3 Color;
 
   struct Canvas{
   private:
@@ -52,7 +53,7 @@ namespace hg{
     void setWidth(float nw);
     void setHeight(float nh);
 
-    bool contains(const Point2& p) const;
+    bool contains(const Vector2& p) const;
   };
 
   void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c);
@@ -93,7 +94,7 @@ namespace hg{
   };
 
   struct LineModel{
-    Point3* points;
+    Vector3* points;
     int* indices;
     int numPoints;
     int numIndices;
@@ -107,10 +108,10 @@ namespace hg{
   };
   
   void getBoundaryIntersections(const int point[2], const float vector[2], const int boundary[2][2], int endPoints[2][2]);
-  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Point3& start, const Point3& end, int color);
+  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Vector3& start, const Vector3& end, int color);
   bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h);
 
-  void cutLineToZPlane(const Point3& p1, const Point3& p2, float plane, Point3& dst1, Point3& dst2);
+  void cutLineToZPlane(const Vector3& p1, const Vector3& p2, float plane, Vector3& dst1, Vector3& dst2);
   void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4&, int);
   void clearCanvas(Canvas& canvas);
 

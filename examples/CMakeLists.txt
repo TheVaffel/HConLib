@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 3.0)
 project(HConLib_examples)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++1z)
 
 if(NOT WIN32)
   add_definitions(-Wall -g)
@@ -14,7 +14,7 @@ if(WIN32)
   link_directories($ENV{VULKAN_SDK}/lib32)
 endif()
 
-#set(DEBUG true)
+# set(DEBUG true)
 
 if(WIN32)
   if(DEBUG)
@@ -43,7 +43,7 @@ if(NOT WIN32)
   set(glslang_libs ${glslang_libs} pthread)
 endif()
 
-set(common_wingine_libs FlatAlg ${vulkan_libs} ${VULKAN_LIB_NAME} ${winval_libs})
+set(common_wingine_libs ${vulkan_libs} ${VULKAN_LIB_NAME} ${winval_libs} FlatAlg)
 
 set(wingine_libs Wingine ${common_wingine_libs} )
 
@@ -64,6 +64,10 @@ target_link_libraries(lie FlatAlg)
 add_executable(flatalg flatalg.cpp)
 target_link_libraries(flatalg FlatAlg)
 
+# new_flatalg_test
+add_executable(new_flatalg_test new_flatalg_test.cpp)
+target_link_libraries(new_flatalg_test FlatAlg)
+
 find_library(FLAUDIO_LIB NAMES Flaudio PATHS ${lib_search_path} NO_DEFAULT_PATH)
 
 if(FLAUDIO_LIB)
@@ -78,15 +82,15 @@ find_library(WINVAL_LIB NAMES Winval PATHS ${lib_search_path} NO_DEFAULT_PATH)
 if(WINVAL_LIB)
   #winval_test
   add_executable(winval_test winval_test.cpp)
-  target_link_libraries(winval_test HGraf FlatAlg ${winval_libs})
+  target_link_libraries(winval_test HGraf ${winval_libs})
 
   #linetest
   add_executable(linetest linetest.cpp)
-  target_link_libraries(linetest HGraf FlatAlg ${winval_libs})
+  target_link_libraries(linetest HGraf ${winval_libs})
 
   #hgraftest
   add_executable(hgraftest hgraftest.cpp)
-  target_link_libraries(hgraftest HGraf FlatAlg ${winval_libs})
+  target_link_libraries(hgraftest FlatAlg HGraf ${winval_libs})
 
   #colors
   add_executable(colors colors.cpp)

@@ -7,7 +7,7 @@
 using namespace std;
 
 int main(){
-  Matrix3 rot = Matrix3(FLATALG_MATRIX_ROTATION, 0.0, 0.5);
+  Matrix3 rot = Matrix3(FLATALG_MATRIX_ROTATION, 0.0f, 0.5f);
 
   Vector3 rotvec = Vector3(0.5, 0, 0);
 
@@ -16,7 +16,7 @@ int main(){
 	rotvec[2], 0, -rotvec[0],
 	-rotvec[1], rotvec[0], 0);
 
-  Matrix3 rot2(FLATALG_MATRIX_ROTATION, rotvec, 0.5);
+  Matrix3 rot2(FLATALG_MATRIX_ROTATION, rotvec, 0.5f);
 
   cout<<"Rot2: "<<rot2.str()<<endl;
   

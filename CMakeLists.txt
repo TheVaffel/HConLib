@@ -15,7 +15,8 @@ else()
   set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib)
 endif()
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++1z)
+
 if(NOT WIN32)
   add_definitions(-g -Wall)
 endif()
@@ -27,9 +28,11 @@ include_directories(${includeDir} )
 #FlatAlg
 add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
+#FlatAlg_old for debugging
+add_library(FlatAlg_old STATIC ${srcDir}/FlatAlg_old.cpp)
+
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
-
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)
@@ -72,11 +75,14 @@ if(WINVAL_LIB)
       #WingineWithGlslang
 
       add_library(WingineWithGlslang STATIC ${srcDir}/Wingine.cpp ${srcDir}/glsl_util.cpp) # Wingine with glslang
+      
       if(WIN32)
-	       target_compile_definitions(WingineWithGlslang PRIVATE WINGINE_WITH_GLSLANG)
+	target_compile_definitions(WingineWithGlslang PRIVATE WINGINE_WITH_GLSLANG)
       else()
-	       target_compile_definitions(WingineWithGlslang PRIVATE -DWINGINE_WITH_GLSLANG)
+	target_compile_definitions(WingineWithGlslang PRIVATE -DWINGINE_WITH_GLSLANG)
       endif()
+
+	     
     else()
       message(">>>glslang is not initialized, Wingine not built")
     endif()

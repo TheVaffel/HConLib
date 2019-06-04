@@ -1,332 +1,211 @@
-//FlatAlg.h - Haakon Flatval
+// FlatAlg.hpp - Haakon Flatval (new version, started 24.05.2019
 
 #ifndef INCLUDED_FLATALG
 #define INCLUDED_FLATALG
 
-#define FLATALG_MATRIX_IDENTITY 0
+enum FlatAlgMatrixFlag {
+  FLATALG_MATRIX_IDENTITY = 0,
 //Rotations around: 1. Z-axis  2. X-axis 3. Y-axis
-#define FLATALG_MATRIX_ROTATION 1
-#define FLATALG_MATRIX_TRANSLATION 2
-#define FLATALG_MATRIX_ROTATION_X 3
-#define FLATALG_MATRIX_ROTATION_Y 4
-#define FLATALG_MATRIX_ROTATION_Z 5
-#define FLATALG_MATRIX_TRANSFORM 6
-#define FLATALG_MATRIX_SCALE 7
+  FLATALG_MATRIX_ROTATION = 1,
+  FLATALG_MATRIX_TRANSLATION = 2,
+  FLATALG_MATRIX_ROTATION_X = 3,
+  FLATALG_MATRIX_ROTATION_Y = 4,
+  FLATALG_MATRIX_ROTATION_Z = 5,
+  FLATALG_MATRIX_TRANSFORM = 6,
+  FLATALG_MATRIX_SCALE = 7,
+  FLATALG_MATRIX_PROJECTION = 8,
+  FLATALG_MATRIX_LOOK_AT = 9,
+  FLATALG_MATRIX_FROM_DATA = 10,
+  FLATALG_MATRIX_DIRECT = 11,
+};
 
 #include <string>
+#include <stdexcept>
+#include <iostream>
 
 #define F_PI 3.141592653589793f
 
-struct Point2{
+#ifndef FLATALG_REAL_TYPE
+
+#define FLATALG_REAL_TYPE float
+
+#endif // ndef FLATALG_REAL_TYPE
+
+typedef FLATALG_REAL_TYPE flatalg_t;
+
+template<int n, int m, int num>
+constexpr bool _assert_vector_length_name_access() {
+  static_assert(m == 1 && n > num && n <= 4, "Cannot access element by name if vector too small or too long, or not a vector but a matrix");
+  return true;
+}
+
+template <int n, int m>
+class Matrix {
+  
+  flatalg_t arr[n * m];
+  
+  
+  inline void init(flatalg_t* arr_pointer, const flatalg_t& f);
+
+  template<typename... fl_args>
+  inline void init(flatalg_t* arr_pointer, const flatalg_t& f, fl_args...);
+
+  /* template<typename... fl_args>
+     void checkAndInit(fl_args...); */
+
+  void init_2x2_rotation(flatalg_t theta); // for Matrix2
+  void init_3x3_rotation(int coordinate_offset, flatalg_t theta); // for Matrix3 and Matrix4
+  void init_rotation(flatalg_t theta);
+  void init_rotation(int coordinate_offset, flatalg_t theta);
+  void init_identity();
+
+  void set3x3(const Matrix<3, 3>& mat);
+  void set3Dtrans(const Matrix<3, 1>& vec);
+  void setProjection(flatalg_t horizontalFOVRadians, flatalg_t invAspect, flatalg_t near, flatalg_t far);
+  void setLookAt(const Matrix<3, 1>& pos, const Matrix<3, 1>& target, const Matrix<3, 1>& up);
+  void setRotation(const Matrix<3, 1>& vec, flatalg_t angle);
+  void setRotation(flatalg_t angle1, flatalg_t angle2);
+
+  void init_args(FlatAlgMatrixFlag flag);
+  void init_args(FlatAlgMatrixFlag flag, const flatalg_t* data);
+  void init_args(FlatAlgMatrixFlag flag, flatalg_t arg1);
+  void init_args(FlatAlgMatrixFlag flag, flatalg_t arg1, flatalg_t arg2);
+  void init_args(FlatAlgMatrixFlag flag, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
+
+  template<typename... fl_args>
+  void init_args(const flatalg_t& f, fl_args... args);
+  
+  template<int a, int b>
+  void init_args(FlatAlgMatrixFlag, const Matrix<a, b>& mat, const Matrix<a, 1>& vec);
+
+  template<int a>
+  void init_args(FlatAlgMatrixFlag flag, const Matrix<a, 1>& vec);
+
+  template<int a>
+  void init_args(FlatAlgMatrixFlag flag, const Matrix<a, 1>& vec, flatalg_t arg1);
+
+  void init_args(FlatAlgMatrixFlag flag, flatalg_t arg0, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
+  void init_args(FlatAlgMatrixFlag flag, const Matrix<3, 1>& arg0, const Matrix<3, 1>& arg1, const Matrix<3, 1>& arg2);
 public:
-  union{
-    struct{float x, y;};
-    float p[2];
-  };
-
-
-  float& operator[](int a);
-
-  float get(int a) const;
-
-  Point2();
   
-  Point2(float nx, float ny);
-  void normalize();
-  float length() const;
-  float sqLength() const;
+  // Guarantees zero entries
+  Matrix();
 
+  /* Matrix(FlatAlgMatrixFlag flag);
+
+  Matrix(FlatAlgMatrixFlag flag, const flatalg_t* data);
+  
+  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg1);
+
+  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
+  
+  template<int a, int b>
+  Matrix<n, m>(FlatAlgMatrixFlag flag, const Matrix<a, b>& mat, const Matrix<a, 1>& vec);
+
+  template<int a>
+  Matrix(FlatAlgMatrixFlag flag, const Matrix<a, 1>& vec);
+
+  Matrix(FlatAlgMatrixFlag flag, flatalg_t arg0, flatalg_t arg1, flatalg_t arg2, flatalg_t arg3);
+  Matrix(FlatAlgMatrixFlag flag, const Matrix<3, 1>& arg0, const Matrix<3, 1>& arg1, const Matrix<3, 1>& arg2); */
+
+  template<typename... fl_args>
+  Matrix(fl_args... args);
+  
+  flatalg_t& x() { _assert_vector_length_name_access<n, m, 0>(); return arr[0];};
+  flatalg_t& y() { _assert_vector_length_name_access<n, m, 1>(); return arr[1];};
+  flatalg_t& z() { _assert_vector_length_name_access<n, m, 2>(); return arr[2];};
+  flatalg_t& w() { _assert_vector_length_name_access<n, m, 3>(); return arr[3];};
+  
+  const flatalg_t& x() const { _assert_vector_length_name_access<n, m, 0>(); return arr[0];};
+  const flatalg_t& y() const { _assert_vector_length_name_access<n, m, 1>(); return arr[1];};
+  const flatalg_t& z() const { _assert_vector_length_name_access<n, m, 2>(); return arr[2];};
+  const flatalg_t& w() const { _assert_vector_length_name_access<n, m, 3>(); return arr[3];};
+  
+  flatalg_t& operator[](int a);
+  const flatalg_t& operator[](int a) const;
+
+  flatalg_t& operator()(int a);
+  const flatalg_t& operator()(int a) const;
+  
+  flatalg_t& operator()(int a, int b);
+  const flatalg_t& operator()(int a, int b) const;
+
+  operator flatalg_t() { static_assert(n == 1 && m == 1); return this->arr[0];}
+  
+  flatalg_t norm() const;
+  flatalg_t sqNorm() const;
+  Matrix<n, m> normalized() const;
   std::string str() const;
 
-  Point2& operator-=(const Point2& v);
-  Point2& operator+=(const Point2& v);
-  Point2& operator*=(float f);
-  Point2& operator/=(float f);
+  // Introduce new template parameters to hijack functions with better error messages
+  // (Instead of just requiring a=n, b=m here)
+  template<int a, int b>
+  constexpr Matrix<n, m>& operator+=(const Matrix<a, b>& mat);
+  
+  template<int a, int b>
+  constexpr Matrix<n, m>& operator-=(const Matrix<a, b>& mat);
+  
+  constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
+  constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
+
+  // constexpr Matrix<n, m> operator*(const flatalg_t& f) const;
+  // constexpr Matrix<n, m> operator/(const flatalg_t& f) const;
+
+  constexpr Matrix<n - 1, m - 1> minor_matrix(int a, int b) const;
+  constexpr flatalg_t det() const;
+  constexpr Matrix<n, m> inv() const;
+
+  template<int w, int h>
+  constexpr Matrix<h, w> submatrix(int y, int x) const;
 };
 
-typedef Point2 Vector2;
+template<int n, int m, int a, int b>
+constexpr Matrix<n, m> operator+(const Matrix<n, m>& m1, const Matrix<a, b>& m2);
 
-struct Matrix2{
-  float mat[9];
+template<int n, int m, int a, int b>
+constexpr Matrix<n, m> operator-(const Matrix<n, m>& m1, const Matrix<a, b>& m2);
 
-  float* operator[](int a);
-  Matrix2 inverse() const;
-  float det() const;
-  float get(int a, int b) const;
+template<int n, int m, int a, int b>
+constexpr Matrix<n, b> operator*(const Matrix<n, m>& m1, const Matrix<a, b>& m2);
 
-  Matrix2(int i);
-  Matrix2(int i, float theta);
+template<int n, int m>
+constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& m1);
 
-  Matrix2();
-  Matrix2(float a1, float a2,
-	  float a3, float a4);
+template<int n, int m>
+constexpr Matrix<n, m> operator*(const Matrix<n, m>& m1, const flatalg_t& f);
 
-  std::string str() const;
-};
+template<int n, int m>
+constexpr Matrix<n, m> operator/(const Matrix<n, m>& m1, const flatalg_t& f);
 
-float cross(const Vector2& v1, const Vector2& v2);
+template<int n, int m>
+constexpr Matrix<m, n> operator~(const Matrix<n, m>& m1);
 
-float operator*(const Vector2& v1, const Vector2& v2);
+template<int n, int m>
+constexpr Matrix<n, m> operator-(const Matrix<n, m>& mat);
 
-Vector2 operator*(const Vector2& v1, float f);
+template<int n, int m>
+constexpr flatalg_t operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2);
 
-Vector2 operator*(float f, const Vector2& v1);
+template<int n>
+constexpr Matrix<n - 1, 1> operator*(const Matrix<n, n>& mat, const Matrix<n - 1, 1> vec);
 
-Vector2 operator+(const Vector2& v1, const Vector2& v2);
+// Convenient typedefs, making API similar to old version
 
-Vector2 operator-(const Vector2& v1, const Vector2& v2);
-
-Vector2 operator/(const Vector2& v, float f);
-
-Vector2 operator*(const Matrix2& m, const Vector2& v);
-
-Vector2 operator*(const Vector2& v, const Matrix2& m);
-
-Matrix2 operator~(const Matrix2& m);
-
-Matrix2 operator*(const Matrix2& m1, const Matrix2& m2);
-
-Matrix2 operator*(const Matrix2& m1, float f);
-
-Matrix2 operator*(float f, const Matrix2& m1);
-
-Matrix2 operator+(const Matrix2& m1, const Matrix2& m2);
-Matrix2 operator-(const Matrix2& m1, const Matrix2& m2);
-
-Matrix2 operator-(const Matrix2& m);
-
-
-struct Point3{
-public:
-  union{
-    struct{float x, y, z;};
-    float p[3];
-  };
-  
-  float& operator[](int a);
-
-  float get(int a) const;
-
-  Point3();
-
-  Point3(float nx, float ny, float nz);
-
-  void normalize();
-  float length() const;
-  float sqLength() const;
-
-  Point3 normalized() const;
-
-  std::string str() const;
-  
-  Point3& operator-=(const Point3& v);
-  Point3& operator+=(const Point3& v);
-  Point3& operator*=(float f);
-  Point3& operator/=(float f);
-
-};
-
-typedef Point3 Vector3;
-
-struct Quaternion;
-
-struct Matrix3{
-  float mat[9];
-
-  float* operator[](int a);
-
-  float det() const;
-
-  Matrix3 inverse() const;
-
-  float get(int a, int b) const;
-
-  Matrix3(int i);
-
-  Matrix3(int i, float theta);
-
-  Matrix3(int i, float arg1, float arg2);
-
-  
-  Matrix3(int i, const Vector3& v, float arg1);
-
-  Matrix3();
-  Matrix3(float a1, float a2, float a3,
-	  float a4, float a5, float a6,
-	  float a7, float a8, float a9);
-  
-  Quaternion toQuaternion() const;
-  
-  std::string str() const;
-};
-
+typedef Matrix<2, 1> Vector2;
+typedef Matrix<3, 1> Vector3;
+typedef Matrix<2, 2> Matrix2;
+typedef Matrix<3, 3> Matrix3;
+typedef Matrix<4, 4> Matrix4;
+	      
+flatalg_t cross(const Vector2& v1, const Vector2& v2);
 Vector3 cross(const Vector3& v1, const Vector3& v2);
 
-float operator*(const Vector3& v1, const Vector3& v2);
 
-Vector3 operator+(const Vector3& v1, const Vector3& v2);
-Vector3 operator-(const Vector3& v1, const Vector3& v2);
-
-Vector3 operator*(const Vector3& v, float f);
-Vector3 operator*(float f, const Vector3& v);
-Vector3 operator/(const Vector3& v, float f);
-Vector3 operator-(const Vector3& v);
-
-Vector3 operator*(const Matrix3& m, const Vector3& v);
-
-Vector3 operator*(const Vector3& v, const Matrix3& m);
-
-Matrix3 operator+(const Matrix3& m1, const Matrix3& m2);
-Matrix3 operator-(const Matrix3& m1, const Matrix3& m2);
-
-Matrix3 operator-(const Matrix3& m);
-
-Matrix3 operator*(const Matrix3& m, float f);
-
-Matrix3 operator*(float f, const Matrix3& m);
-
-Matrix3 operator/(const Matrix3& m, float f);
-
-Matrix3 operator~(const Matrix3& m);
-
-Matrix3 operator*(const Matrix3& m1, const Matrix3& m2);
-
-
-struct DualQuaternion;
-
-struct Matrix4{
-  float mat[16];
-
-  float* operator[](int a);
-
-  float det();
-
-  float get(int a, int b) const;
-  float get(int a) const;
-  
-  Matrix4(int i);
-
-  Matrix4(int i, float theta);
-
-  Matrix4(int i, float arg1, float arg2);
-
-  Matrix4(int i, const Point3& p);
-
-  Matrix4(int i, const Matrix3& r, const Point3& v);
-
-  Matrix4();
-  Matrix4(float a1, float a2, float a3, float a4,
-	  float a5, float a6, float a7, float a8,
-	  float a9, float a10, float a11, float a12,
-	  float a13, float a14, float a15, float a16);
-
-  std::string str() const;
-  Matrix3 toMatrix3() const;
-
-  DualQuaternion toDualQuaternion() const;
-};
-
-Vector3 operator*(const Matrix4& m, const Vector3& v);
-
-Vector3 operator*(const Vector3& v, const Matrix4& m);
-
-Matrix4 operator*(const Matrix4& m, float f);
-
-Matrix4 operator*(float f, const Matrix4& m);
-
-Matrix4 operator~(const Matrix4& m);
-
-Matrix4 operator*(const Matrix4& m1, const Matrix4& m2);
-
-namespace flatalg{
-  Matrix4 lookAt(const Vector3& position,
-		 const Vector3& target,
-		 const Vector3& up);
-  
-  Matrix4 projection(float angle_radians,
-		     float ratio,
-		     float near,
-		     float far);
-};
- 
-struct GeneralVector{
-  float* vec;
-  int l;
-
-  float& operator[](int a);
-  int getLength() const;
-  int getL() const;
-  float get(int a) const;
-  GeneralVector(int l);
-  GeneralVector(int l, const float* p);
-  GeneralVector(const GeneralVector& gv);
-  ~GeneralVector();
-
-  std::string str() const;
-};
-
-float operator*(const GeneralVector& g1, const GeneralVector& g2);
-
-GeneralVector operator+(const GeneralVector& g1, const GeneralVector& g2);
-
-GeneralVector operator-(const GeneralVector& g1, const GeneralVector& g2);
-
-GeneralVector operator*(const GeneralVector& g1, float f);
-
-GeneralVector operator*(float f, const GeneralVector& g1);
-
-GeneralVector operator/(const GeneralVector& g1, float f);
-
-
-struct GeneralMatrix{
-  float* mat;
-  int w, h;
-
-  float* operator[](int a);
-
-  float get(int a, int b) const;
-  float get(int a) const;
-  int getWidth() const;
-  int getHeight() const;
-  int getW() const;
-  int getH() const;
-  float det() const;
-  float _det() const;
-  GeneralMatrix inv() const;
-  GeneralMatrix(int w, int h);
-  GeneralMatrix(int w, int h, const float* p);
-  GeneralMatrix(const GeneralMatrix& gm);
-  ~GeneralMatrix();
-  
-  GeneralMatrix _minor(int a, int b) const;
-
-  std::string str() const;
-};
-
-GeneralVector operator*(const GeneralMatrix& gm, const GeneralVector& gv);
-
-GeneralVector operator*(const GeneralVector& gv, const GeneralMatrix& gm);
-
-GeneralMatrix operator~(const GeneralMatrix& gm);
-
-GeneralMatrix operator*(const GeneralMatrix& gm, float f);
-
-GeneralMatrix operator/(const GeneralMatrix& gm, float f);
-
-GeneralMatrix operator*(float f, const GeneralMatrix& gm);
-
-GeneralMatrix operator*(const GeneralMatrix& g1, const GeneralMatrix& g2);
-
-namespace flatalg {
-  
-  typedef GeneralMatrix Matrix;
-  typedef GeneralVector Vector;
-}
 
 struct Quaternion {
   union {
-    struct {float x, y, z, w;};
-    float p[4];
+    struct {flatalg_t x, y, z, w;};
+    flatalg_t p[4];
   };
 
   // Identity rotation
@@ -338,6 +217,7 @@ struct Quaternion {
   Quaternion(float theta, const Vector3& axis); 
 
   Quaternion(const Vector3& v);
+  Quaternion(const Matrix3& mat);
   
   float norm() const;
   void normalize();
@@ -348,7 +228,7 @@ struct Quaternion {
   float getReal() const;
   Vector3 rotate(const Vector3&) const;
   Matrix3 toMatrix() const;
-
+  
   std::string str() const;
 };
 
@@ -373,6 +253,8 @@ struct DualQuaternion {
   
   // KNOW WHAT YOU ARE DOING WITH THIS ONE (use the one above if in doubt)
   DualQuaternion(const Quaternion& q1, const Quaternion& q2);
+
+  DualQuaternion(const Matrix4& mat);
 
   void normalize();
   DualQuaternion normalized() const;
@@ -400,5 +282,479 @@ DualQuaternion operator+(const DualQuaternion& q1, const DualQuaternion& q2);
 DualQuaternion operator-(const DualQuaternion& q1, const DualQuaternion& q2);
 DualQuaternion operator/(const DualQuaternion& q1, float f);
 
-#endif // INCLUDED_FLATALG
 
+
+/* 
+ * ***********************************
+ * Implementation begins here
+ * ***********************************
+ */
+
+
+#ifndef FLATALG_NO_IMPLEMENTATION
+
+#include <cmath>
+#include <sstream> // For str()
+
+template<int n, int m>
+flatalg_t& Matrix<n, m>::operator[](int a) {
+  return this->arr[a];
+}
+
+template<int n, int m>
+const flatalg_t& Matrix<n, m>::operator[](int a) const {
+  return this->arr[a];
+}
+
+template<int n, int m>
+flatalg_t& Matrix<n, m>::operator()(int a) {
+  static_assert(m == 1 || n == 1, "(<index>) notation can only be used if matrix is vector");
+  return this->arr[a];
+}
+
+template<int n, int m>
+const flatalg_t& Matrix<n, m>::operator()(int a) const {
+  static_assert(m == 1 || n == 1, "(<index>) notation can only be used if matrix is vector");
+  return this->arr[a];
+}
+
+
+template<int n, int m>
+flatalg_t& Matrix<n, m>::operator()(int a, int b) {
+  return this->arr[a * m + b];
+}
+
+template<int n, int m>
+const flatalg_t& Matrix<n, m>::operator()(int a, int b) const {
+  return this->arr[a * m + b];
+}
+
+template<int n, int m>
+flatalg_t Matrix<n, m>::norm() const {
+  return sqrt(this->sqNorm());
+}
+
+template<int n, int m>
+flatalg_t Matrix<n, m>::sqNorm() const {
+  flatalg_t sum = 0.0;
+  for(int i = 0; i < (n * m) ; i++) {
+    sum += (*this)[i] * (*this)[i];
+  }
+  
+  return sum;
+}
+
+template<int n, int m>
+Matrix<n, m> Matrix<n, m>::normalized() const {
+  return (*this) / this->norm();
+}
+
+template<int n, int m>
+std::string Matrix<n, m>::str() const {
+  std::ostringstream oss;
+  oss << '[';
+  for(int i = 0; i < n - 1; i++) {
+    for(int j = 0; j < m - 1; j++) {
+      oss << (*this)(i, j) << ", ";
+    }
+    oss << (*this)(i, m - 1) << ";\n";
+  }
+  
+  for(int j = 0; j < m - 1; j++) {
+    oss << (*this)(n - 1, j) << ", ";
+  }
+
+  oss << (*this)(n - 1, m - 1) << "]\n";
+
+  return oss.str();
+}
+
+template<int n, int m>
+inline void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg) {
+  (*pointer) = flalg;
+} 
+
+template<int n, int m>
+template<typename ... fl_args>
+inline void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg, fl_args... args) {
+  *(pointer++) = flalg;
+  init(pointer, args...);
+}
+
+// Public
+
+
+template<int n, int m>
+Matrix<n, m>::Matrix() {
+  static_assert(n > 0 && m > 0, "Matrix dimensions must be positive");
+  for(int i = 0; i < n * m; i++) {
+    arr[i] = static_cast<flatalg_t>(0);
+  }
+}
+
+template<int n, int m>
+void Matrix<n, m>::init_identity() {
+  for(int i = 0; i < n; i++) {
+    for(int j = 0; j < m; j++) {
+      (*this)(i, j) = (j == i) ? 1 : 0;
+    }
+  }
+}
+
+template<int n, int m>
+void Matrix<n, m>::init_args(FlatAlgMatrixFlag flag) {
+  switch(flag) {
+  case FLATALG_MATRIX_IDENTITY:
+    init_identity();
+    break;
+  default:
+    throw std::invalid_argument("No constructor for that flag-parameter combination");
+  }
+}
+
+/* template<int n, int m>
+template<typename... fl_args>
+void Matrix<n, m>::checkAndInit(fl_args... args) {
+  constexpr size_t num_args = sizeof...(fl_args);
+  static_assert(num_args == n * m, "Number of initialization coefficients must equal number of elements in matrix"); 
+  
+  this->init(args...);
+  } */
+
+template<int n, int m>
+template<typename... fl_args>
+void Matrix<n, m>::init_args(const flatalg_t& f, fl_args... args) {
+  init(this->arr, f, args...);
+}
+
+
+template<int n, int m> 
+template<typename... fl_args>
+Matrix<n, m>::Matrix(fl_args... args) {
+  static_assert(n > 0 && m > 0, "Matrix dimensions must be positive");
+  
+  init_args(args...);
+  
+}
+
+template<int n, int m>
+void Matrix<n, m>::init_args(FlatAlgMatrixFlag flag, const flatalg_t* f) {
+  static_assert(n > 0 && m > 0, "Matrix dimensions must be positive");
+  switch(flag) {
+
+  case FLATALG_MATRIX_FROM_DATA:
+    for(int i = 0; i < n * m; i++) {
+      arr[i] = f[i];
+    }
+    break;
+  default:
+    throw std::invalid_argument("No constructor for that flag-parameter combination");
+  }
+}
+
+template<int n, int m>
+void Matrix<n, m>::init_2x2_rotation(flatalg_t arg0) {
+  static_assert((n == 2 && m == 2), "Input to init_2x2_rotation must be 2x2 matrices");
+
+  flatalg_t st = sin(arg0);
+  flatalg_t ct = cos(arg0);
+  (*this)(0, 0) = ct; (*this)(0, 1) = -st;
+  (*this)(1, 0) = st; (*this)(1, 1) = ct;
+}
+
+template<int n, int m>
+void Matrix<n, m>::init_3x3_rotation(int offset, flatalg_t theta) {
+  static_assert((n == 3 && m == 3) || (n == 4 && m == 4), "Input to init_3x3 rotation must be 3x3 or 4x4 matrices");
+  
+  flatalg_t st, ct;
+  st = sin(theta), ct = cos(theta);
+  
+  switch(offset) {
+  case 0:
+    (*this)(0, 0) = ct; (*this)(0, 1) = -st; (*this)(0, 2) = 0;
+    (*this)(1, 0) = st; (*this)(1, 1) = ct;  (*this)(1, 2) = 0;
+    (*this)(2, 0) = 0;  (*this)(2, 1) = 0; (*this)(2, 2) = 1;
+    
+    break; 
+  case 1:
+    (*this)(0, 0) = 1; (*this)(0, 1) = 0;  (*this)(0, 2) = 0;
+    (*this)(1, 0) = 0; (*this)(1, 1) = ct; (*this)(1, 2) = -st;
+    (*this)(2, 0) = 0; (*this)(2, 1) = st; (*this)(2, 2) = ct;
+    
+    break;
+  case 2:
+    (*this)(0, 0) = ct;  (*this)(0, 1) = 0; (*this)(0, 2) = st;
+    (*this)(1, 0) = 0;   (*this)(1, 1) = 1; (*this)(1, 2) = 0;
+    (*this)(2, 0) = -st; (*this)(2, 1) = 0; (*this)(2, 2) = ct;
+    
+    break;
+  }
+}
+
+
+
+template<int n, int m>
+void Matrix<n, m>::init_args(FlatAlgMatrixFlag flag, flatalg_t arg0) {
+  switch(flag) {
+  case FLATALG_MATRIX_ROTATION:
+  case FLATALG_MATRIX_ROTATION_Z:
+    this->init_rotation(0, arg0);
+    break;
+  case FLATALG_MATRIX_ROTATION_X:
+    this->init_rotation(1, arg0);
+    break;
+  case FLATALG_MATRIX_ROTATION_Y:
+    this->init_rotation(2, arg0);
+    break;
+  default:
+    throw std::invalid_argument("No constructor for that flag-parameter combination");
+  }
+}
+
+template<int n, int m>
+void Matrix<n, m>::set3x3(const Matrix<3, 3>& mat) {
+  for(int i = 0; i < 3; i++) {
+    for(int j = 0; j < 3; j++) {
+      (*this)(i, j) = mat(i, j);
+    }
+  }
+}
+
+
+
+template<int n, int m>
+template<int a, int b>
+constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
+  static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
+  for(int i = 0; i < n * m; i++) {
+    this->arr[i] += mat[i];
+  }
+  
+  return *this;
+}
+
+template<int n, int m>
+template<int a, int b>
+constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
+  return (*this) += -mat;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
+  for(int i = 0; i < n * m; i++) {
+    this->arr[i] *= f;
+  }
+
+  return *this;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m>& Matrix<n, m>::operator/=(const flatalg_t& f) {
+  flatalg_t f_inv = static_cast<flatalg_t>(1) / f;
+  return (*this) *= f_inv;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
+  Matrix<n, m> nmat;
+  for(int i = 0; i < n; i++) {
+    for(int j = 0; j < m; j++) {
+      nmat(i, j) = mat(i, j) * f;
+    }
+  }
+  return nmat;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m> operator*(const Matrix<n, m>& mat, const flatalg_t& f) {
+  return f * mat;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m> operator/(const Matrix<n, m>& mat, const flatalg_t& f) {
+  return mat * (1.0 / f);
+}
+
+
+template<int n, int m>
+constexpr Matrix<n - 1, m - 1> Matrix<n, m>::minor_matrix(int a, int b) const {
+  static_assert(n > 1 && m > 1, "Matrix must be more than a single number to take minor");
+  Matrix<(n > 1 ? n - 1 : 0), (m > 1 ? m - 1 : 0)> mat;
+
+  int i = 0;
+  int curri = 0;
+  while(true) {
+    if(i == a) {
+      i++;
+    }
+
+    if(i >= n) {
+      break;
+    }
+
+    int currj = 0;
+    int j = 0;
+    while(true) {
+      if (j == b) {
+	j++;
+      }
+
+      if(j >= m) {
+	break;
+      }
+
+      mat(curri, currj) = (*this)(i, j);	
+      j++;
+      currj++;
+    }
+    i++;
+    curri++;
+  }
+
+  return mat;
+}
+
+template<int n, int m>
+constexpr flatalg_t Matrix<n, m>::det() const {
+  static_assert(n == m, "Matrix must be quadratic in order for determinants to make sense");
+  // std::cout << "Computing determinant for " << n << "x" << m << " matrix" << std::endl;
+  // std::cout << "Matrix: " << this->str() << std::endl;
+  if constexpr(n == 1 && m == 1) {
+      // std::cout << "Determinant of " << this->str() << " is " << (*this)(0, 0) << std::endl;
+      return (*this)(0, 0);
+    } else if constexpr(n == 2 && m == 2) {
+      flatalg_t dd = (*this)(0, 0) * (*this)(1, 1)  - (*this)(1, 0) * (*this)(0, 1);
+      // std::cout << "Determinant of " << this->str() << " is " << dd << std::endl;
+      return dd;
+    } else {
+    flatalg_t sum = 0;
+    // std::cout << "Determinant is sum of ";
+    for(int i = 0; i < m; i++) {
+      flatalg_t ff = (*this)(0, i) * ((i & 1) ? -1 : 1) * this->minor_matrix(0, i).det();
+      sum += ff;
+      // std::cout << "\n" << ff << "\n";
+      // std::cout << "Total sum: " << sum << std::endl;
+    }
+    // std::cout << "Sum became " << sum << std::endl;
+    return sum;
+  }
+}
+
+template<int n, int m>
+constexpr Matrix<n, m> Matrix<n, m>::inv() const {
+  static_assert(n == m, "Matrices must be square to be inverted");
+
+  Matrix<n, m> g;
+  for(int i= 0; i < n; i++){
+    for(int j = 0; j < m; j++){
+      g(i, j) = this->minor_matrix(i, j).det();
+    }
+  }
+  
+  for(int i = 0; i < n; i++){
+    for(int j = 0; j < m; j++){
+      g(i, j) = (i + j)&1?-g(i, j):g(i, j);
+    }
+  }
+  
+  Matrix<n, m> g2 = ~g;
+  return g2 / this->det();
+}
+
+template<int n, int m>
+template<int w, int h>
+constexpr Matrix<h, w> Matrix<n, m>::submatrix(int y, int x) const {
+  Matrix<h, w> res;
+  for(int i = 0; i < h; i++) {
+    for(int j = 0; j < w; j++) {
+      res(i, j) = (*this)(i + y, j + x);
+    }
+  }
+
+  return res;
+}
+
+template<int n, int m, int a, int b>
+constexpr Matrix<n, m> operator+(const Matrix<n, m>& m1, const Matrix<a, b>& m2) {
+  static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
+  Matrix<n, m> mat;
+  for(int i = 0; i < n*m; i++) {
+    mat[i] = m1[i] + m2[i];
+  }
+
+  return mat;
+}
+
+template<int n, int m, int a, int b>
+constexpr Matrix<n, m> operator-(const Matrix<n, m>& m1, const Matrix<a, b>& m2) {
+  return m1 + (-m2);
+}
+
+template<int n, int m, int a, int b>
+constexpr Matrix<n, b> operator*(const Matrix<n, m>& m1, const Matrix<a, b>& m2) {
+  static_assert(m == a, "Inner matrix dimensions must match in matrix product!");
+  Matrix<n, b> mat;
+  for(int i = 0; i < n; i++) {
+    for(int j = 0; j < b; j++) {
+      for(int k = 0; k < m; k++) {
+	mat(i, j) += m1(i, k) * m2(k, j);
+      }
+    }
+  }
+
+  return mat;
+}
+
+template<int n, int m>
+constexpr Matrix<m, n> operator~(const Matrix<n, m>& m1) {
+  Matrix<m, n> mat;
+  for(int i = 0; i < n; i++) {
+    for(int j = 0; j < m; j++) {
+      mat(j, i) = m1(i, j);
+    }
+  }
+
+  return mat;
+}
+
+template<int n, int m>
+constexpr Matrix<n, m> operator-(const Matrix<n, m>& m1) {
+  Matrix<n, m> mat;
+  for(int i = 0; i < n * m; i++) {
+    mat[i] = -m1[i];
+  }
+
+  return mat;
+}
+
+template<int n, int m>
+constexpr flatalg_t operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2) {
+  static_assert(n == m, "Vectors in dot product must have the same dimension");
+  flatalg_t sum = static_cast<flatalg_t>(0);
+  for(int i = 0; i < n ; i++) {
+    sum += m1[i] * m2[i];
+  }
+
+  return sum;
+}
+
+template<int n>
+constexpr Matrix<n - 1, 1> operator*(const Matrix<n, n>& mat, const Matrix<n - 1, 1> vec) {
+  Matrix<n - 1, 1> res;
+  for(int i = 0; i < n - 1; i++) {
+    for(int j = 0; j < n - 1; j++) {
+      res[i] += mat(i, j) * vec(j);
+    }
+  }
+
+  for(int i = 0; i < n - 1; i++) {
+    res[i] += mat(i, n - 1);
+  }
+
+  return res;
+}
+
+
+#endif // ndef FLATALG_NO_IMPLEMENTATION
+
+#endif // ndef INCLUDED_FLATALG

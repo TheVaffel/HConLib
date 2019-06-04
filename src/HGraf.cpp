@@ -53,8 +53,8 @@ namespace hg{
     h = nh;
   }
 
-  bool Rectangle::contains(const Point2& p) const {
-    return p.get(0) >= x && p.get(1) >= y && p.get(0) <= x + w && p.get(1) <= y + h;
+  bool Rectangle::contains(const Vector2& p) const {
+    return p[0] >= x && p[1] >= y && p[0] <= x + w && p[1] <= y + h;
   }
 
   void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c) {
@@ -372,32 +372,32 @@ namespace hg{
     }
   }
 
-  void cutLineToZPlane(const Point3& p1, const Point3& p2, float plane, Point3& dst1, Point3& dst2){
+  void cutLineToZPlane(const Vector3& p1, const Vector3& p2, float plane, Vector3& dst1, Vector3& dst2){
     Vector3 v = p2 - p1;
 
-    if(p1.z > -plane){
-      dst1 = p1 - v*((p1.z + plane)/v.z);
+    if(p1.z() > -plane){
+      dst1 = p1 - v*((p1.z() + plane)/v.z());
     }else dst1 = p1;
 
-    if(p2.z > -plane){
-      dst2 = p2 - v*((p2.z + plane)/v.z);
+    if(p2.z() > -plane){
+      dst2 = p2 - v*((p2.z() + plane)/v.z());
     }else dst2 = p2;
   }
 
 
-  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Point3& start, const Point3& end, int color){
-    Point3 nstart, nend;
+  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Vector3& start, const Vector3& end, int color){
+    Vector3 nstart, nend;
 
-    if(start.z > -camparam.nearPlane && end.z > -camparam.nearPlane){
+    if(start.z() > -camparam.nearPlane && end.z() > -camparam.nearPlane){
       return;
     }
     
     cutLineToZPlane(start, end, camparam.nearPlane, nstart, nend);
 
-    int ps[2] = {(int)((-nstart.x/nstart.z*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
-		 (int)((nstart.y/nstart.z*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
-    int pe[2] = {(int)((-nend.x/nend.z*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
-		 (int)((nend.y/nend.z*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
+    int ps[2] = {(int)((-nstart.x()/nstart.z()*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
+		 (int)((nstart.y()/nstart.z()*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
+    int pe[2] = {(int)((-nend.x()/nend.z()*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
+		 (int)((nend.y()/nend.z()*camparam.invtanfovvover2 + 1.0f)*camparam.screenHeight)/2};
 
     int di[2] = {pe[0] - ps[0], pe[1] - ps[1]};
     if(std::abs(di[0]) > 2*canvas.getWidth() || std::abs(di[1]) > 2*canvas.getHeight()){
@@ -422,11 +422,14 @@ namespace hg{
   }
   
   void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4& mat, int color){
-    Point3* p = new Point3[model.numPoints];
+    Vector3* p = new Vector3[model.numPoints];
     for(int i = 0; i< model.numPoints; i++){
       p[i] = mat*model.points[i];
     }
     for(int i = 0; i< model.numIndices; i++){
+      if(i == 2) {
+	std::cout << "Transformed point " << i << ": " << p[i].str() << std::endl;
+      }
       drawLine3D(canvas, camparam, p[model.indices[2*i]], p[model.indices[2*i + 1]], color);
       //std::cout<<p[model.indices[2*i]].str()<<" "<< p[model.indices[2*i + 1]].str()<<std::endl;
     }
@@ -498,7 +501,7 @@ namespace hg{
     numIndices= m;
     numPoints = n;
     indices = new int[2*m];
-    points = new Point3[n];
+    points = new Vector3[n];
   }
 
   LineModel::~LineModel(){
@@ -513,7 +516,7 @@ namespace hg{
     for(int i = 0; i < 2; i++){
       for(int j =0; j < 2; j++){
 	for(int k = 0;k < 2; k++){
-	  points[4*i + 2*j + k] = Point3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
+	  points[4*i + 2*j + k] = Vector3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
 	}
       }
     }

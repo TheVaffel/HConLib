@@ -27,21 +27,23 @@
 
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
   view = Matrix4(FLATALG_MATRIX_IDENTITY);
-  projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
+  // projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
+  projection = Matrix4(FLATALG_MATRIX_PROJECTION, horizontalFOVRadians, invAspect, near, far);
   altered = true;
 }
 
 void WingineCamera::setPosition(const Vector3& v){
-  view[0][3] = -Vector3(view[0][0], view[0][1], view[0][2])*v;
-  view[1][3] = -Vector3(view[1][0], view[1][1], view[1][2])*v;
-  view[2][3] = -Vector3(view[2][0], view[2][1], view[2][2])*v;
+  view(0, 3) = -Vector3(view(0, 0), view(0, 1), view(0, 2))*v;
+  view(1, 3) = -Vector3(view(1, 0), view(1, 1), view(1, 2))*v;
+  view(2, 3) = -Vector3(view(2, 0), view(2, 1), view(2, 2))*v;
   altered = true;
 }
 
 void WingineCamera::setLookAt(const Vector3& pos,
 			      const Vector3& target,
 			      const Vector3& up){
-  view = flatalg::lookAt(pos, target, up);
+  // view = flatalg::lookAt(pos, target, up);
+  view = Matrix4(FLATALG_MATRIX_LOOK_AT, pos, target, up);
   altered = true;
 }
 
@@ -52,11 +54,11 @@ void WingineCamera::setLookDirection(float rightAngle, float downAngle,
   Vector3 right = cross(dir, up).normalized();
   Vector3 viewUp = cross(right, dir);
 
-  Vector3 pos = (~view.toMatrix3())*-Vector3(view[0][3], view[1][3], view[2][3]);
+  Vector3 pos = (~view.submatrix<3, 3>(0, 0))*-Vector3(view(0, 3), view(1, 3), view(2, 3));
   
-  view = Matrix4(right.x, right.y, right.z, 0.f,
-		 viewUp.x, viewUp.y, viewUp.z, 0.f,
-		 -dir.x, -dir.y, -dir.z, 0.f,
+  view = Matrix4(right.x(), right.y(), right.z(), 0.f,
+		 viewUp.x(), viewUp.y(), viewUp.z(), 0.f,
+		 -dir.x(), -dir.y(), -dir.z(), 0.f,
 		 0.f, 0.f, 0.f, 1.f);
   setPosition(pos);
 }
@@ -79,19 +81,19 @@ Matrix4 WingineCamera::getViewMatrix(){
 }
 
 Vector3 WingineCamera::getForwardVector() {
-  return Vector3(-view.get(0, 2), -view.get(1, 2), -view.get(2, 2));
+  return Vector3(-view(2, 0), -view(2, 1), -view(2, 2));
 }
 
 Vector3 WingineCamera::getRightVector() {
-  return Vector3(view.get(0, 0), view.get(1, 0), view.get(2, 0));
+  return Vector3(view(0, 0), view(0, 1), view(0, 2));
 }
 
 Vector3 WingineCamera::getUpVector() {
-  return Vector3(view.get(0, 1), view.get(1, 1), view.get(2, 1));
+  return Vector3(view(1, 0), view(1, 1), view(1, 2));
 }
 
 Vector3 WingineCamera::getPosition() {
-  return (~view.toMatrix3())*-Vector3(view[0][3], view[1][3], view[2][3]);
+  return (~view.submatrix<3, 3>(0, 0))*-Vector3(view(0, 3), view(1, 3), view(2, 3));
 }
 
 WinginePipelineSetup::WinginePipelineSetup(std::initializer_list<WgAttachmentType> types)
@@ -3276,8 +3278,8 @@ namespace wgutil {
 	  const Vector3 v1 = (i & 1) ? - si1 : si1;
 	  const Vector3 v2 = (i & 2) ? - si2 : si2;
 	  for(int j = 0; j < 3; j++){
-	    data[attrib_size * i + j] = v1.get(j) + v2.get(j);
-	    data[attrib_size * 4 + attrib_size * i + j] = v1.get(j) + v2.get(j);
+	    data[attrib_size * i + j] = v1(j) + v2(j);
+	    data[attrib_size * 4 + attrib_size * i + j] = v1(j) + v2(j);
 	  }
 	  data[attrib_size * i + 3] = 1.0f;
 	  data[attrib_size * 4 + attrib_size * i + 3] = 1.0f;
@@ -3286,8 +3288,8 @@ namespace wgutil {
         const Vector3 norm = cross(side1, side2).normalized();
 	for(int i = 0; i < 4; i++){
 	  for(int j = 0; j < 3; j++){
-	    data[attrib_size * i + j] = norm.get(j);
-	    data[attrib_size * 4 + attrib_size * i + j] = -norm.get(j);
+	    data[attrib_size * i + j] = norm(j);
+	    data[attrib_size * 4 + attrib_size * i + j] = -norm(j);
 	  }
 	  data[attrib_size * i + 3] = 0.0f;
 	  data[attrib_size * 4 + attrib_size * i + 3] = 0.0f;

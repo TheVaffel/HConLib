@@ -8,18 +8,20 @@
 #include <Winval.hpp>
 
 #ifdef WINGINE_WITH_GLSLANG
-#include <external/vulkan/SPIRV/GlslangToSpv.h>
+#include <glsl_util.h>
 #endif // WINGINE_WITH_GLSLANG
 
 #include <FlatAlg.hpp>
 
+#include "vulkan/vulkan.h"
+
 #ifdef WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
+#include "vulkan/vulkan_win32.h"
 #else //WIN32
 #define VK_USE_PLATFORM_XLIB_KHR
+#include "vulkan/vulkan_xlib.h"
 #endif //WIN32
-
-#include "external/vulkan/vulkan.h"
 
 #include <stdio.h> // printf
 #include <vector> //vector

@@ -1,4 +1,4 @@
-#include <external/glsl_util.h>
+#include <glsl_util.h>
 //// Shamelessly copied from LunarG's Vulkan tutorial
 
 void init_resources(TBuiltInResource &Resources) {

@@ -37,7 +37,7 @@ else()
   set(VULKAN_LIB_NAME vulkan)
 endif()
 
-set(glslang_libs glslang OSDependent SPIRV SPVRemapper OGLCompiler HLSL)
+set(glslang_libs glslang OSDependent SPVRemapper OGLCompiler HLSL SPIRV SPIRV-Tools-opt SPIRV-Tools-reduce SPIRV-Tools)
 
 if(NOT WIN32)
   set(glslang_libs ${glslang_libs} pthread)
@@ -133,6 +133,10 @@ if(WINVAL_LIB)
 
   find_library(WINGINE_LIB NAMES Wingine PATHS ${lib_search_path} NO_DEFAULT_PATH)
   if(WINGINE_LIB)
+    
+    include_directories($ENV{VULKAN_SDK}/include)
+    link_directories($ENV{VULKAN_SDK}/lib)
+    
     #vulkan_test
     add_executable(vulkan_test vulkan_test.cpp)
     target_link_libraries(vulkan_test ${wingine_with_glslang_libs})

@@ -1,7 +1,7 @@
 #include <Wingine.hpp>
 
 #ifdef WINGINE_WITH_GLSLANG
-#include <external/glsl_util.h>
+#include <glsl_util.h>
 #endif // WINGINE_WITH_GLSLANG
 
 #include <string.h> // mem*

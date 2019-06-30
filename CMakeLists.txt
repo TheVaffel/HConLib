@@ -28,9 +28,6 @@ include_directories(${includeDir} )
 #FlatAlg
 add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
-#FlatAlg_old for debugging
-add_library(FlatAlg_old STATIC ${srcDir}/FlatAlg_old.cpp)
-
 #HGraf
 add_library(HGraf STATIC ${srcDir}/HGraf.cpp)
 

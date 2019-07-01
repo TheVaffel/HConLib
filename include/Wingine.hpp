@@ -13,14 +13,14 @@
 
 #include <FlatAlg.hpp>
 
-#include "vulkan/vulkan.h"
+#include "external/vulkan.h"
 
 #ifdef WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "vulkan/vulkan_win32.h"
+#include "external/vulkan_win32.h"
 #else //WIN32
 #define VK_USE_PLATFORM_XLIB_KHR
-#include "vulkan/vulkan_xlib.h"
+#include "external/vulkan_xlib.h"
 #endif //WIN32
 
 #include <stdio.h> // printf

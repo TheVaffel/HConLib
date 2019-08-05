@@ -126,6 +126,8 @@ struct WingineImage : WingineResource {
   uint32_t width, height;
   VkImage image;
   VkImageLayout layout;
+  VkImageLayout goalLayout;
+  VkImageUsageFlags usage;
   VkDeviceMemory mem;
   VkImageView view;
   VkDescriptorImageInfo imageInfo;

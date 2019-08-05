@@ -1946,8 +1946,8 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
 
 void Wingine::copyColorImage(WingineImage& src, WingineImage& dst){
 
-  VkImageLayout srcEndLayout = src.layout;
-  VkImageLayout dstEndLayout = dst.layout;
+  VkImageLayout srcEndLayout = src.goalLayout;
+  VkImageLayout dstEndLayout = dst.goalLayout;
 
   if(srcEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
     srcEndLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -1964,16 +1964,27 @@ void Wingine::copyColorImage(WingineImage& src, WingineImage& dst){
 
 void Wingine::copyDepthImage(WingineImage& src, WingineImage& dst){
 
-  VkImageLayout srcEndLayout = src.layout;
-  VkImageLayout dstEndLayout = dst.layout;
+  VkImageLayout srcEndLayout;
+  VkImageLayout dstEndLayout;
 
-  if(srcEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
-    srcEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  if (src.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+    srcEndLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  } else if(src.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    srcEndLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  } else {
+    printf("[Wingine] Error: Expected depth copy source to have either attachment usage or read only usage. Had usage 0x%x\n", src.usage);
+    exit(-1);
   }
 
-  if(dstEndLayout == VK_IMAGE_LAYOUT_UNDEFINED || dstEndLayout == VK_IMAGE_LAYOUT_PREINITIALIZED){
-    dstEndLayout = VK_IMAGE_LAYOUT_GENERAL;
+  if (dst.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+    dstEndLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  } else if(dst.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+    dstEndLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  } else {
+    printf("[Wingine] Error: Expected depth copy destination to have either attachment usage or read only usage. had usage 0x%x\n", dst.usage);
+    exit(-1);
   }
+  
   copyImage(src.width, src.height, src.image, src.layout, srcEndLayout,
 	    dst.width, dst.height, dst.image, dst.layout, dstEndLayout, VK_IMAGE_ASPECT_DEPTH_BIT);
   src.layout = srcEndLayout;
@@ -2281,8 +2292,11 @@ WingineImage Wingine::createDepthBuffer(uint32_t width, uint32_t height, uint32_
   depth_buffer.layout = VK_IMAGE_LAYOUT_UNDEFINED;
   depth_buffer.width = width;
   depth_buffer.height = height;
-  depth_buffer.imageInfo.imageView = depth_buffer.view;
+  depth_buffer.usage = usage;
 
+  depth_buffer.imageInfo.imageLayout = depth_buffer.layout;
+  depth_buffer.imageInfo.imageView = depth_buffer.view;
+  
   return depth_buffer;
 }
 
@@ -2336,7 +2350,9 @@ WingineTexture Wingine::createDepthTexture(int w, int h){
   resultTexture.image.height = h;
 
   //Now, create the actual image
-  resultTexture.image = createDepthBuffer(w,h, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+  resultTexture.image = createDepthBuffer(w,h, VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+					  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+					  VK_IMAGE_USAGE_SAMPLED_BIT);
 
   //Initialize sampler
   VkSamplerCreateInfo samplerInfo = {};
@@ -2359,11 +2375,12 @@ WingineTexture Wingine::createDepthTexture(int w, int h){
   res = vkCreateSampler(device, &samplerInfo, NULL, &resultTexture.sampler);
   wgAssert(res == VK_SUCCESS, "Creating image sampler");
 
-  resultTexture.image.imageInfo.imageLayout = resultTexture.image.layout;
   resultTexture.image.imageInfo.imageView = resultTexture.image.view;
   resultTexture.image.imageInfo.sampler = resultTexture.sampler;
-
-
+  
+  resultTexture.image.imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  resultTexture.image.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  resultTexture.image.goalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
   return resultTexture;
 }

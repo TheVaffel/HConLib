@@ -204,7 +204,7 @@ Wingine::~Wingine(){
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallbackFunction(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object,
     size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData ) {
 
-    printf("[%s] %s\n", pLayerPrefix, pMessage);
+  printf("[%s] Code: %d Message: %s\n", pLayerPrefix, messageCode, pMessage);
 
     return VK_FALSE;
 }

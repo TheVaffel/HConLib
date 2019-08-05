@@ -146,6 +146,16 @@ Wingine::Wingine(int inWidth, int inHeight,
   initVulkan(inWidth, inHeight, title,
              hinst, hwnd);
 }
+
+#else
+
+Wingine::Wingine(int inWidth, int inHeight,
+		 const char* title,
+		 Window window, Display* display) {
+  initVulkan(inWidth, inHeight, title,
+	     window, display);
+}
+
 #endif // WIN32
 
 Wingine::Wingine(const Winval& win){

@@ -584,7 +584,10 @@ class Wingine{
 
 #ifdef WIN32
   Wingine(int width, int height, const char* title, HINSTANCE hinst, HWND hwnd);
+#else
+  Wingine(int width, int height, const char* title, Window window, Display* display);
 #endif // WIN32
+  
   Wingine(const Winval&);
 
   ~Wingine();

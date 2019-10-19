@@ -122,14 +122,15 @@ public:
 
   // Introduce new template parameters to hijack functions with better error messages
   // (Instead of just requiring a=n, b=m here)
+
   template<int a, int b>
-  constexpr Matrix<n, m>& operator+=(const Matrix<a, b>& mat);
-  
+  inline constexpr Matrix<n, m>& operator+=(const Matrix<a, b>& mat);
+
   template<int a, int b>
-  constexpr Matrix<n, m>& operator-=(const Matrix<a, b>& mat);
-  
-  constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
-  constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
+  inline constexpr Matrix<n, m>& operator-=(const Matrix<a, b>& mat);
+
+  inline constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
+  inline constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
 
   constexpr Matrix<n - 1, m - 1> minor_matrix(int a, int b) const;
   constexpr flatalg_t det() const;
@@ -496,23 +497,23 @@ void Matrix<n, m>::set3x3(const Matrix<3, 3>& mat) {
 
 template<int n, int m>
 template<int a, int b>
-constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
+inline constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
   static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
   for(int i = 0; i < n * m; i++) {
     this->arr[i] += mat[i];
   }
-  
+
   return *this;
 }
 
 template<int n, int m>
 template<int a, int b>
-constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
+inline constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
   return (*this) += -mat;
 }
 
 template<int n, int m>
-constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
+inline constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
   for(int i = 0; i < n * m; i++) {
     this->arr[i] *= f;
   }
@@ -521,13 +522,13 @@ constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
 }
 
 template<int n, int m>
-constexpr Matrix<n, m>& Matrix<n, m>::operator/=(const flatalg_t& f) {
+inline constexpr Matrix<n, m>& Matrix<n, m>::operator/=(const flatalg_t& f) {
   flatalg_t f_inv = static_cast<flatalg_t>(1) / f;
   return (*this) *= f_inv;
 }
 
 template<int n, int m>
-constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
+inline constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
   Matrix<n, m> nmat;
   for(int i = 0; i < n; i++) {
     for(int j = 0; j < m; j++) {
@@ -538,12 +539,12 @@ constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
 }
 
 template<int n, int m>
-constexpr Matrix<n, m> operator*(const Matrix<n, m>& mat, const flatalg_t& f) {
+inline constexpr Matrix<n, m> operator*(const Matrix<n, m>& mat, const flatalg_t& f) {
   return f * mat;
 }
 
 template<int n, int m>
-constexpr Matrix<n, m> operator/(const Matrix<n, m>& mat, const flatalg_t& f) {
+inline constexpr Matrix<n, m> operator/(const Matrix<n, m>& mat, const flatalg_t& f) {
   return mat * (1.0 / f);
 }
 

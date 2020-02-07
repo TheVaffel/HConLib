@@ -7,6 +7,7 @@
 #include <cmath>
 
 using namespace std;
+using namespace falg;
 
 const char *vertShaderText =
   GLSL(
@@ -135,6 +136,7 @@ int main(){
   for(int i = 0; i < 6 * 4; i++){
     cube_vertices[4 * i + 1] += 0.5f;
   }
+
   WgBuffer floorVertexBuffer = wg.createVertexBuffer(4*4*sizeof(float), floor_vertices);
   WgBuffer floorNormalBuffer = wg.createVertexBuffer(4 * 4 * sizeof(float), floor_normals);
   WgBuffer floorIndexBuffer = wg.createIndexBuffer(2 * 3 * sizeof(uint32_t), floor_indices);
@@ -143,7 +145,7 @@ int main(){
   WgBuffer cubeNormalBuffer = wg.createVertexBuffer(4 * 6 * 4 * sizeof(float), cube_normals);
   WgBuffer cubeIndexBuffer = wg.createIndexBuffer(3 * 12 * sizeof(uint32_t), cube_indices);
 
-  WgUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
+  WgUniform cameraUniform = wg.createUniform(sizeof(Mat4));
 
   WgRSL rsl = wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM}, {VK_SHADER_STAGE_VERTEX_BIT});
 
@@ -155,7 +157,7 @@ int main(){
 
 
   // Depth rendering
-  WgUniform lightTransformUniform = wg.createUniform(sizeof(Matrix4));
+  WgUniform lightTransformUniform = wg.createUniform(sizeof(Mat4));
 
   WgTexture depthImage = wg.createDepthTexture(width, height);
 
@@ -185,18 +187,18 @@ int main(){
   wgutil::Model teapot(wg, wgutil::WG_MODEL_INIT_READ_OBJ, "teapot.obj", {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_NORMAL});
 
   WgCamera cam(F_PI/4, wg.getScreenHeight()/((float)wg.getScreenWidth()), 0.1f, 100.0f);
-  Vector3 camPos(9, 8, -6);
+  Vec3 camPos(9, 8, -6);
   cam.setLookAt(camPos,
-		Vector3(0, 0, 0),
-		Vector3(0, 1, 0));
+		Vec3(0, 0, 0),
+		Vec3(0, 1, 0));
 
 
   WgCamera lightCamera(F_PI/3, 9.0f/16.0f, 0.1f, 100.0f);
-  Matrix4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.015f);
-  Vector3 lightPos(-8, 15, 6);
+  Mat4 lightRot(FLATALG_MATRIX_ROTATION_Y, 0.015f);
+  Vec3 lightPos(-8, 15, 6);
   lightCamera.setLookAt(lightPos,
-			Vector3(0, 0, 0),
-			Vector3(0, 1, 0));
+			Vec3(0, 0, 0),
+			Vec3(0, 1, 0));
 
   int count = 0;
 
@@ -205,15 +207,15 @@ int main(){
 
     lightPos = lightRot * lightPos;
     lightCamera.setLookAt(lightPos,
-			  Vector3(0, 0, 0),
-			  Vector3(0, 1, 0));
+			  Vec3(0, 0, 0),
+			  Vec3(0, 1, 0));
 
     cam.setPosition(camPos + 0.3*camPos*sin(0.02f*count));
-    Matrix4 cmat = cam.getRenderMatrix();
-    wg.setUniform(cameraUniform, &cmat, sizeof(Matrix4));
+    Mat4 cmat = cam.getRenderMatrix();
+    wg.setUniform(cameraUniform, &cmat, sizeof(Mat4));
 
-    Matrix4 lightMat = lightCamera.getRenderMatrix();
-    wg.setUniform(lightTransformUniform, &lightMat, sizeof(Matrix4));
+    Mat4 lightMat = lightCamera.getRenderMatrix();
+    wg.setUniform(lightTransformUniform, &lightMat, sizeof(Mat4));
 
     depthObjectGroup.startRecording(depthFramebuffer);
     //depthObjectGroup.recordRendering(cube, {lightTransformSet});
@@ -227,6 +229,7 @@ int main(){
     //renderObjectGroup.recordRendering(cube, {cameraSet, lightSet});
     renderObjectGroup.recordRendering(teapot, {cameraSet, lightSet});
     renderObjectGroup.recordRendering(floor, {cameraSet, lightSet});
+    
     renderObjectGroup.endRecording();
 
     wg.present();

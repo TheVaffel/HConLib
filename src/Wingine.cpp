@@ -23,51 +23,53 @@
 
 #include <FlatAlg.hpp>
 
+using namespace falg;
+
 #define wgAssert(B, STR) {if(!(B)){printf("\"%s\" failed at line %d in file %s\n", STR, __LINE__, __FILE__); exit(0);}}
 
 WingineCamera::WingineCamera(float horizontalFOVRadians, float invAspect, float near, float far){
-  view = Matrix4(FLATALG_MATRIX_IDENTITY);
+  view = Mat4(FLATALG_MATRIX_IDENTITY);
   // projection = flatalg::projection(horizontalFOVRadians, invAspect, near, far);
-  projection = Matrix4(FLATALG_MATRIX_PROJECTION, horizontalFOVRadians, invAspect, near, far);
+  projection = Mat4(FLATALG_MATRIX_PROJECTION, horizontalFOVRadians, invAspect, near, far);
   altered = true;
 }
 
-void WingineCamera::setPosition(const Vector3& v){
-  view(0, 3) = -Vector3(view(0, 0), view(0, 1), view(0, 2))*v;
-  view(1, 3) = -Vector3(view(1, 0), view(1, 1), view(1, 2))*v;
-  view(2, 3) = -Vector3(view(2, 0), view(2, 1), view(2, 2))*v;
+void WingineCamera::setPosition(const Vec3& v){
+  view(0, 3) = -Vec3(view(0, 0), view(0, 1), view(0, 2))*v;
+  view(1, 3) = -Vec3(view(1, 0), view(1, 1), view(1, 2))*v;
+  view(2, 3) = -Vec3(view(2, 0), view(2, 1), view(2, 2))*v;
   altered = true;
 }
 
-void WingineCamera::setLookAt(const Vector3& pos,
-			      const Vector3& target,
-			      const Vector3& up){
+void WingineCamera::setLookAt(const Vec3& pos,
+			      const Vec3& target,
+			      const Vec3& up){
   // view = flatalg::lookAt(pos, target, up);
-  view = Matrix4(FLATALG_MATRIX_LOOK_AT, pos, target, up);
+  view = Mat4(FLATALG_MATRIX_LOOK_AT, pos, target, up);
   altered = true;
 }
 
 void WingineCamera::setLookDirection(float rightAngle, float downAngle,
-				     const Vector3& up){
+				     const Vec3& up){
   float cd = cos(-downAngle);
-  Vector3 dir(sin(-rightAngle) * cd, sin(-downAngle), cos(-rightAngle) * cd);
-  Vector3 right = cross(dir, up).normalized();
-  Vector3 viewUp = cross(right, dir);
+  Vec3 dir(sin(-rightAngle) * cd, sin(-downAngle), cos(-rightAngle) * cd);
+  Vec3 right = cross(dir, up).normalized();
+  Vec3 viewUp = cross(right, dir);
 
-  Vector3 pos = (~view.submatrix<3, 3>(0, 0))*-Vector3(view(0, 3), view(1, 3), view(2, 3));
+  Vec3 pos = (~view.submatrix<3, 3>(0, 0))*-Vec3(view(0, 3), view(1, 3), view(2, 3));
   
-  view = Matrix4(right.x(), right.y(), right.z(), 0.f,
+  view = Mat4(right.x(), right.y(), right.z(), 0.f,
 		 viewUp.x(), viewUp.y(), viewUp.z(), 0.f,
 		 -dir.x(), -dir.y(), -dir.z(), 0.f,
 		 0.f, 0.f, 0.f, 1.f);
   setPosition(pos);
 }
 
-Matrix4 WingineCamera::getRenderMatrix(){
+Mat4 WingineCamera::getRenderMatrix(){
   return ~getTransformMatrix();
 }
 
-Matrix4 WingineCamera::getTransformMatrix(){
+Mat4 WingineCamera::getTransformMatrix(){
   if(altered){
     total = clip*projection*view;
     altered = false;
@@ -76,24 +78,24 @@ Matrix4 WingineCamera::getTransformMatrix(){
   return total;
 }
 
-Matrix4 WingineCamera::getViewMatrix(){
+Mat4 WingineCamera::getViewMatrix(){
   return view;
 }
 
-Vector3 WingineCamera::getForwardVector() {
-  return Vector3(-view(2, 0), -view(2, 1), -view(2, 2));
+Vec3 WingineCamera::getForwardVector() {
+  return Vec3(-view(2, 0), -view(2, 1), -view(2, 2));
 }
 
-Vector3 WingineCamera::getRightVector() {
-  return Vector3(view(0, 0), view(0, 1), view(0, 2));
+Vec3 WingineCamera::getRightVector() {
+  return Vec3(view(0, 0), view(0, 1), view(0, 2));
 }
 
-Vector3 WingineCamera::getUpVector() {
-  return Vector3(view(1, 0), view(1, 1), view(1, 2));
+Vec3 WingineCamera::getUpVector() {
+  return Vec3(view(1, 0), view(1, 1), view(1, 2));
 }
 
-Vector3 WingineCamera::getPosition() {
-  return (~view.submatrix<3, 3>(0, 0))*-Vector3(view(0, 3), view(1, 3), view(2, 3));
+Vec3 WingineCamera::getPosition() {
+  return (~view.submatrix<3, 3>(0, 0))*-Vec3(view(0, 3), view(1, 3), view(2, 3));
 }
 
 WinginePipelineSetup::WinginePipelineSetup(std::initializer_list<WgAttachmentType> types)
@@ -1522,12 +1524,12 @@ WinginePipeline Wingine::createPipeline(int numResourceLayouts, const WingineRes
   for(int i=  0; i < numShaders; i++){
     mods[i] = shaders[i].shader;
   }
-
+  
   for(int i = 0; i < numVertexAttribs; i++){
     pipelineSetup.vi_bindings[i].binding = i;
     pipelineSetup.vi_bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     pipelineSetup.vi_bindings[i].stride = get_format_element_size(attribFormats[i]);
-
+    
     pipelineSetup.vi_attribs[i].binding = i;
     pipelineSetup.vi_attribs[i].location = i;
     pipelineSetup.vi_attribs[i].format = get_vkformat(attribFormats[i]);
@@ -1946,6 +1948,7 @@ void Wingine::copyImage(int w, int h, VkImage srcImage, VkImageLayout srcStartLa
   submitInfo.pSignalSemaphores = NULL;
 
   res = vkQueueSubmit(graphics_queue,1,&submitInfo, free_command_buffer_fence);
+  
   wgAssert(res == VK_SUCCESS, "Submitting command buffer for copying image");
 
   //Arh, or else, we must take care of the images, which I don't want to :(
@@ -2818,11 +2821,11 @@ namespace wgutil {
 
     objCount++;
 
-    transformUniform = wg.createUniform(sizeof(Matrix4));
+    transformUniform = wg.createUniform(sizeof(Mat4));
     resourceSet = wg.createResourceSet(transformSetLayout);
     wg.updateResourceSet(resourceSet, {&transformUniform});
 
-    wingine->setUniform(transformUniform, &transform, sizeof(Matrix4));
+    wingine->setUniform(transformUniform, &transform, sizeof(Mat4));
   }
   
   Model::Model(Wingine& wg, WgModelInitMode mode,
@@ -2879,7 +2882,7 @@ namespace wgutil {
   }
   
   Model::Model(Wingine& wg, WgModelInitMode mode, std::initializer_list<WgAttribType> attribs,
-	       const Vector3& v2, const Vector3& v3){
+	       const Vec3& v2, const Vec3& v3){
     initModel(wg);
     switch(mode){
     case WG_MODEL_INIT_QUAD:
@@ -3010,10 +3013,10 @@ namespace wgutil {
     return resourceSet;
   }
 
-  void Model::setTransform(const Matrix4& mat){
+  void Model::setTransform(const Mat4& mat){
     transform = mat;
-    Matrix4 tmp = ~transform;
-    wingine->setUniform(transformUniform, &tmp, sizeof(Matrix4));
+    Mat4 tmp = ~transform;
+    wingine->setUniform(transformUniform, &tmp, sizeof(Mat4));
   }
 
   void Model::initPolyhedron(std::initializer_list<uint32_t> sizes,
@@ -3272,7 +3275,7 @@ namespace wgutil {
   }
 
   void Model::initQuad(std::initializer_list<WgAttribType> attribs_in,
-		       const Vector3& side1, const Vector3& side2){
+		       const Vec3& side1, const Vec3& side2){
     const WgAttribType * attribs = std::begin(attribs_in);
 
     for(unsigned int i = 0; i < attribs_in.size(); i++){
@@ -3298,12 +3301,12 @@ namespace wgutil {
       std::vector<float> data(attrib_size * 4 * 2); // Make each face with separate vertices
 
       if(attribs[i] == WG_ATTRIB_TYPE_POSITION){
-	const Vector3 si1 = side1 / 2.f;
-	const Vector3 si2 = side2 / 2.f;
+	const Vec3 si1 = side1 / 2.f;
+	const Vec3 si2 = side2 / 2.f;
 
         for(int i = 0; i < 4; i++){
-	  const Vector3 v1 = (i & 1) ? - si1 : si1;
-	  const Vector3 v2 = (i & 2) ? - si2 : si2;
+	  const Vec3 v1 = (i & 1) ? - si1 : si1;
+	  const Vec3 v2 = (i & 2) ? - si2 : si2;
 	  for(int j = 0; j < 3; j++){
 	    data[attrib_size * i + j] = v1(j) + v2(j);
 	    data[attrib_size * 4 + attrib_size * i + j] = v1(j) + v2(j);
@@ -3312,7 +3315,7 @@ namespace wgutil {
 	  data[attrib_size * 4 + attrib_size * i + 3] = 1.0f;
 	}
       } else if (attribs[i] == WG_ATTRIB_TYPE_NORMAL) {
-        const Vector3 norm = cross(side1, side2).normalized();
+        const Vec3 norm = cross(side1, side2).normalized();
 	for(int i = 0; i < 4; i++){
 	  for(int j = 0; j < 3; j++){
 	    data[attrib_size * i + j] = norm(j);

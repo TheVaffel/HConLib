@@ -184,9 +184,15 @@ class Winval{
 #ifdef WIN32
   HINSTANCE getInstance() const;
   HWND getHWND() const;
+
+  HINSTANCE getWinProp0() const;
+  HWND getWinProp1() const;
 #else //WIN32
   Window getWindow() const;
   Display* getDisplay() const;
+
+  Window getWinProp0() const;
+  Display* getWinProp1() const;
 #endif //WIN32
 };
 

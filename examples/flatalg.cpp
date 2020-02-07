@@ -6,15 +6,15 @@
 using namespace std;
 
 int main(){
-	Vector3 v(100, 4, 10);
+  falg::Vec3 v(100, 4, 10);
 
 
 	cout<<v.normalized().str()<<endl;
 
-	Matrix3 mat(1, 0, 3,
+	falg::Mat3 mat(1, 0, 3,
 		3, 2, 5,
 		4, 2, 4);
-	Matrix3 mat_inv = mat.inv();
+	falg::Mat3 mat_inv = mat.inv();
        
 	cout << "Matrix: \n" << mat.str() << endl;
 	cout << "Its inverse: \n" << mat_inv.str() << endl;

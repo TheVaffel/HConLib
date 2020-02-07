@@ -4,6 +4,7 @@
 #include <cmath>
 
 using namespace std;
+using namespace falg;
 
 int main(){
   int w = 1000, h =  1000;
@@ -23,14 +24,14 @@ int main(){
     hg::drawLine3D(vas, par, Point3(1.5*sin(i*0.03), 1.5*cos(i*0.03), -2), Point3(0.5*sin(i*0.1), 0.5*cos(i*0.1), -1), 0xFF0000 +  (i%256)*(1 + (1<<8)));
     win.drawBuffer(vas.getData(), w, h);
   }*/
-  Matrix4 m(FLATALG_MATRIX_TRANSLATION, Vector3(0,0,-5));
-  Matrix4 r(FLATALG_MATRIX_IDENTITY);
-  Matrix4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05f);
+  Mat4 m(FLATALG_MATRIX_TRANSLATION, Vec3(0,0,-5));
+  Mat4 r(FLATALG_MATRIX_IDENTITY);
+  Mat4 rr(FLATALG_MATRIX_ROTATION_Y, 0.05f);
   int i = 0;
   hg::LineCube lc(1, 1, 1);
   while(win.isOpen() && !win.isKeyPressed(WK_ESC)){
     r = r*rr;
-    m = Matrix4(FLATALG_MATRIX_TRANSLATION, Vector3(0,0,-3 + 1.5f*cos(i*0.07f)));
+    m = Mat4(FLATALG_MATRIX_TRANSLATION, Vec3(0,0,-3 + 1.5f*cos(i*0.07f)));
     cout << "Translation matrix: " << m.str() << endl;
     cout << "Rotation matrix: " << r.str() << endl;
     

@@ -298,33 +298,33 @@ public:
 };
 
 class WingineCamera{
-  const Matrix4 clip = {1.f, 0.f, 0.f, 0.f,
+  const falg::Mat4 clip = {1.f, 0.f, 0.f, 0.f,
 			0.f, -1.f, 0.f, 0.f,
 			0.f, 0.f, 0.5f, 0.5f,
 			0.f, 0.f, 0.0f, 1.f};
-  Matrix4 projection, view, total;
+  falg::Mat4 projection, view, total;
   bool altered;
  public:
 
   WingineCamera(float horizontalFOVRadians = 45.f/180.f*F_PI, float invAspect = 9.0f/16.0f, float near = 0.1f, float far = 100.0f);
 
-  void setPosition(const Vector3& v);
+  void setPosition(const falg::Vec3& v);
 
-  void setLookAt(const Vector3& pos,
-		 const Vector3& target,
-		 const Vector3& up);
+  void setLookAt(const falg::Vec3& pos,
+		 const falg::Vec3& target,
+		 const falg::Vec3& up);
   void setLookDirection(float rightAngle, float upAngle,
-			const Vector3& up);
+			const falg::Vec3& up);
   
-  Matrix4 getRenderMatrix();
-  Matrix4 getTransformMatrix();
-  Matrix4 getViewMatrix();
+  falg::Mat4 getRenderMatrix();
+  falg::Mat4 getTransformMatrix();
+  falg::Mat4 getViewMatrix();
 
-  Vector3 getForwardVector();
-  Vector3 getRightVector();
-  Vector3 getUpVector();
+  falg::Vec3 getForwardVector();
+  falg::Vec3 getRightVector();
+  falg::Vec3 getUpVector();
 
-  Vector3 getPosition();
+  falg::Vec3 getPosition();
 };
 
 class Wingine{
@@ -439,7 +439,7 @@ class Wingine{
 
   void wg_cmd_set_image_layout(VkCommandBuffer, VkImage, VkImageAspectFlags, VkImageLayout, VkImageLayout);
 
-  void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const Matrix4& model, bool shouldClear = false);
+  void render_generic(VkPipeline, const WingineBuffer&, const WingineBuffer&, const WingineBuffer&, const falg::Mat4& model, bool shouldClear = false);
   void stage_next_image();
 
   void pushNewDrawSemaphore();
@@ -607,7 +607,7 @@ namespace wgutil {
   struct Model : public WingineRenderObject {
   protected:
     Wingine* wingine;
-    Matrix4 transform;
+    falg::Mat4 transform;
     WingineUniform transformUniform;
     WingineResourceSet resourceSet;
 
@@ -620,7 +620,7 @@ namespace wgutil {
     void initCube(std::initializer_list<WgAttribType> attribs, float size);
     void initSphere(std::initializer_list<WgAttribType> attribs, float size, int res);
     void initQuad(std::initializer_list<WgAttribType> attribs,
-		  const Vector3& side1, const Vector3& side2);
+		  const falg::Vec3& side1, const falg::Vec3& side2);
   public:
     // Create from .obj file
     Model(Wingine& w, WgModelInitMode mode, const char* filename, std::initializer_list<WgAttribType> attribs);
@@ -640,7 +640,7 @@ namespace wgutil {
     // Quad
     Model(Wingine& w, WgModelInitMode mode,
 	  std::initializer_list<WgAttribType> attribs,
-	  const Vector3& side1, const Vector3& side2);
+	  const falg::Vec3& side1, const falg::Vec3& side2);
 
     Model(Wingine& w, int numInds, int numVertexAttribs,
 	  const WingineBuffer* vertexBuffers, 
@@ -653,7 +653,7 @@ namespace wgutil {
     void destroyKeepBuffers();
     
     WingineResourceSet& getTransformSet();
-    void setTransform(const Matrix4& mat);
+    void setTransform(const falg::Mat4& mat);
   };
 };
 

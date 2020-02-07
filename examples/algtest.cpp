@@ -2,7 +2,7 @@
 #include <FlatAlg.hpp>
 
 using namespace std;
-
+using namespace falg;
 
 int main(){
   float data[] = {
@@ -50,37 +50,37 @@ int main(){
 
   cout<<"The product is "<<(mat*mm).str()<<endl;
 
-  Vector3 p(3.34, -13, 1.1310);
+  Vec3 p(3.34, -13, 1.1310);
   
-  Quaternion q(1, Vector3(3.03, 1.23, 3.94).normalized());
-  Matrix3 rotation1 = q.toMatrix();
+  Quaternion q(1, Vec3(3.03, 1.23, 3.94).normalized());
+  Mat3 rotation1 = q.toMatrix();
 
   cout << "Quaternion: " << q.str() << endl;
   cout << "Matrix: " << rotation1.str() << endl;
   cout << "Matrix to quaternion " << Quaternion(rotation1).str() << endl;
 
-  Quaternion anotherQuaternion(0.9999 * F_PI, Vector3(100, 2, 1).normalized());
-  Matrix3 anotherMatrix = anotherQuaternion.toMatrix();
+  Quaternion anotherQuaternion(0.9999 * F_PI, Vec3(100, 2, 1).normalized());
+  Mat3 anotherMatrix = anotherQuaternion.toMatrix();
   cout << "New quaternion: " << anotherQuaternion.str() << endl;
   cout << "Another matrix: " << anotherMatrix.str() << endl;
   cout << "Another matrix to quaternion: " << Quaternion(anotherMatrix).str() << endl;
-  Vector3 rotated1 = q.rotate(p);
-  Vector3 rotated2 = rotation1 * p;
+  Vec3 rotated1 = q.rotate(p);
+  Vec3 rotated2 = rotation1 * p;
 
   cout << "Matrix rotated: " << rotated2.str() << endl;
   cout << "Quaternion rotated: " << rotated1.str() << endl;
 
-  Vector3 translation(14.2, 14.4, 4.21);
+  Vec3 translation(14.2, 14.4, 4.21);
   DualQuaternion dual(q, translation);
-  Matrix4 matmat = dual.toMatrix();
+  Mat4 matmat = dual.toMatrix();
   
 
-  Vector3 checkTransform = q.rotate(p) + translation;
-  Vector3 dualTransformed = dual.transform(p);
-  Vector3 matrixTransformed = matmat * p;
+  Vec3 checkTransform = q.rotate(p) + translation;
+  Vec3 dualTransformed = dual.transform(p);
+  Vec3 matrixTransformed = matmat * p;
 
-  Vector3 justRotated = q.rotate(p);
-  Vector3 justRotatedMat = q.toMatrix() * p;
+  Vec3 justRotated = q.rotate(p);
+  Vec3 justRotatedMat = q.toMatrix() * p;
 
 
   cout << "Just rotated: " << justRotated.str() << endl;
@@ -93,8 +93,8 @@ int main(){
   cout << "Converted to matrix: " << matmat.str() << endl;
   cout << "Inverted matrix: " << DualQuaternion(matmat).str() << endl;
 
-  Vector3 v(1, 3, 4);
-  Vector3 v2(4, 5, 3);
+  Vec3 v(1, 3, 4);
+  Vec3 v2(4, 5, 3);
 
   cout << "Vector 1: " << v.str() << ", Vector2: " << v2.str() << endl;
 
@@ -103,13 +103,13 @@ int main(){
   
   cout << "After v1 += v2, v2 -= v1: v1 = " << v.str() << ", v2 = " << v2.str() << endl;
 
-  Matrix3 testm(1, 2, 3,
+  Mat3 testm(1, 2, 3,
 		4, 5, 6,
 		7, 8, 9);
   cout << "Testmat: " << testm.str() << endl;
   cout << " - Testmat: " << (- testm).str() << endl;
 
-  Matrix2 testm2(1, 4, 5, 7);
+  Mat2 testm2(1, 4, 5, 7);
 
   cout << "Testmat2: " << testm2.str() << endl;
   cout << " - Testmat2: " << ( - testm2).str() << endl;

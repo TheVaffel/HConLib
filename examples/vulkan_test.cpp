@@ -14,6 +14,7 @@
 #include <external/stb_image_write.h>
 
 using namespace std;
+using namespace falg;
 
 static const float test_vertices[] =
   { 0.0f, 0.0f, 0.5f, 1.0f,
@@ -158,9 +159,9 @@ int main(){
 
   WingineBuffer cubeTextureCoordBuffer = wg.createVertexBuffer(8*2*sizeof(float), cube_tex_coords);
 
-  WingineUniform cameraUniform = wg.createUniform(sizeof(Matrix4));
+  WingineUniform cameraUniform = wg.createUniform(sizeof(Mat4));
   WingineTexture texture = wg.createTexture(texWidth, texHeight, generic_pattern);
-  WingineUniform offsetUniform = wg.createUniform(sizeof(Matrix4));
+  WingineUniform offsetUniform = wg.createUniform(sizeof(Mat4));
 
   WingineResourceSetLayout resourceLayout =
     wg.createResourceSetLayout({WG_RESOURCE_TYPE_UNIFORM},
@@ -200,18 +201,18 @@ int main(){
 		      {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_POSITION}, 0.45f); // use position as color value
   // wgutil::Model quad(wg, wgutil::WG_MODEL_INIT_QUAD,
   //                    {WG_ATTRIB_TYPE_POSITION, WG_ATTRIB_TYPE_COLOR},
-  //                    Vector3(1, 3, 4), Vector3(-4, 2, 4));
+  //                    Vec3(1, 3, 4), Vec3(-4, 2, 4));
 
   WingineCamera cam(F_PI/4, 9.0f/16.0f, 0.1f, 100.0f);
-  Vector3 camPos(-5, 3, -10);
+  Vec3 camPos(-5, 3, -10);
   cam.setLookAt(camPos,
-		Vector3(0, 0, 0),
-		Vector3(0, 1, 0));
-  Matrix4 rotation = Matrix4(cosf(0.01f), sinf(0.01f), 0.0f, 0.0f,
+		Vec3(0, 0, 0),
+		Vec3(0, 1, 0));
+  Mat4 rotation = Mat4(cosf(0.01f), sinf(0.01f), 0.0f, 0.0f,
 			     -sinf(0.01f), cosf(0.01f), 0.0f, 0.0f,
 			     0.0f, 0.0f, 1.0f, 0.0f,
 			     0.0f, 0.0f, 0.0f, 1.0f);
-  Matrix4 offset = Matrix4(1.0f, .0f, .0f, 1.0f,
+  Mat4 offset = Mat4(1.0f, .0f, .0f, 1.0f,
 			   .0f, 1.0f, .0f, .0f,
 			   .0f, .0f, 1.0f, .5f,
 			   .0f, .0f, .0f, 1.0f);
@@ -246,11 +247,11 @@ int main(){
   while(win.isOpen()){
     cam.setPosition(camPos + 0.5f*camPos*sin(0.01f*count));
     offset = offset * rotation;
-    Matrix4 newOffset = ~((~cam.getRenderMatrix())*offset);
+    Mat4 newOffset = ~((~cam.getRenderMatrix())*offset);
     count++;
-    Matrix4 cMatrix = cam.getRenderMatrix();
-    wg.setUniform(cameraUniform, &cMatrix, sizeof(Matrix4));
-    wg.setUniform(offsetUniform, &newOffset, sizeof(Matrix4));
+    Mat4 cMatrix = cam.getRenderMatrix();
+    wg.setUniform(cameraUniform, &cMatrix, sizeof(Mat4));
+    wg.setUniform(offsetUniform, &newOffset, sizeof(Mat4));
  
     colorGroup.startRecording();
     colorGroup.recordRendering(object1, {cameraSet});

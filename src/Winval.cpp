@@ -1,11 +1,16 @@
 #include <Winval.hpp>
 
+#include <iostream>
+
 #ifdef WIN32
 Winval::Winval(){}
 
 Winval::Winval(int w, int h, bool fullscreen){
   hinstance = GetModuleHandle(0);
-  const char* AppTitle = "Winval";
+
+  wc = WNDCLASSEX{};
+
+  LPCSTR AppTitle = "Winval";
   wc.cbSize = sizeof(wc);
   wc.style= CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
   wc.lpfnWndProc=WindowProc;
@@ -18,8 +23,10 @@ Winval::Winval(int w, int h, bool fullscreen){
   wc.lpszMenuName=NULL;
   wc.lpszClassName=AppTitle;
 
-  if (!RegisterClassEx(&wc))
-    exit(0);
+  if (!RegisterClassEx(&wc)) {
+      std::cout << "Could not register Winval class" << std::endl;
+      exit(0);
+  }
   hwnd = CreateWindow(AppTitle,AppTitle,
     WS_OVERLAPPEDWINDOW | WS_VISIBLE,
     CW_USEDEFAULT,CW_USEDEFAULT,w,h,
@@ -28,20 +35,31 @@ Winval::Winval(int w, int h, bool fullscreen){
     height = h;
 
   windowOpen = true;
-  if (!hwnd)
-    exit(0);
+
+  if (!hwnd) {
+      std::cout << "Could not create window" << std::endl;
+      exit(0);
+  }
+
   pixelData = new COLORREF[w*h];
 
   hdc = GetDC(hwnd);
 
-  if(pixelData == 0)
-    exit(0);
+  if (pixelData == 0) {
+      std::cout << "Pixel data could not be allocated" << std::endl;
+      exit(0);
+  }
 
   if (fullscreen) {
     DEVMODE newSettings;
 	  EnumDisplaySettings(0, 0, &newSettings);
     long result = ChangeDisplaySettings(&newSettings, CDS_FULLSCREEN);
   }
+
+  for (int i = 0; i < this->_numKeys; i++) {
+      isDown[i] = false;
+  }
+
   ShowWindow(hwnd,10);
   UpdateWindow(hwnd);
 }
@@ -180,6 +198,14 @@ HINSTANCE Winval::getInstance() const {
 
 HWND Winval::getHWND() const {
   return hwnd;
+}
+
+
+winval_type_0 Winval::getWinType0() const {
+    return this->getInstance();
+}
+winval_type_1 Winval::getWinType1() const {
+    return this->getHWND();
 }
 
 const char* Winval::getTitle() const{
@@ -461,6 +487,14 @@ Window Winval::getWindow() const{
 
 Display* Winval::getDisplay() const{
   return dsp;
+}
+
+winval_type_0 getWinType0() const {
+    return getWindow();
+}
+
+winval_type_1 getWinType1() const {
+    return getDisplay();
 }
 
 int Winval::getWidth() const {

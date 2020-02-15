@@ -110,8 +110,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 #endif //WIN32
 
+#ifdef WIN32
+typedef HINSTANCE winval_type_0;
+typedef HWND winval_type_1;
+#else //WIN32
+typedef Window winval_type_0;
+typedef Display* winval_type_1;
+#endif //WIN32
+
 class Winval{
   int width, height;
+
 
 #ifdef WIN32
   COLORREF* pixelData;
@@ -182,12 +191,23 @@ class Winval{
   void sleepMilliseconds(int u);
 
 #ifdef WIN32
+  typedef HINSTANCE winval_type_0;
+  typedef HWND winval_type_1;
+
   HINSTANCE getInstance() const;
   HWND getHWND() const;
 #else //WIN32
+  typedef Window winval_type_0;
+  typedef Display* winval_type_1;
+
   Window getWindow() const;
   Display* getDisplay() const;
 #endif //WIN32
+
+  winval_type_0 getWinType0() const;
+  winval_type_1 getWinType1() const;
+
 };
+
 
 #endif // INCLUDED_WINVAL

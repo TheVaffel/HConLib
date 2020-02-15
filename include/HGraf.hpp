@@ -8,7 +8,7 @@
 
 namespace hg{
 
-  typedef Vector3 Color;
+  typedef falg::Vec3 Color;
 
   struct Canvas{
   private:
@@ -53,7 +53,7 @@ namespace hg{
     void setWidth(float nw);
     void setHeight(float nh);
 
-    bool contains(const Vector2& p) const;
+    bool contains(const falg::Vec2& p) const;
   };
 
   void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c);
@@ -94,7 +94,7 @@ namespace hg{
   };
 
   struct LineModel{
-    Vector3* points;
+    falg::Vec3* points;
     int* indices;
     int numPoints;
     int numIndices;
@@ -108,11 +108,11 @@ namespace hg{
   };
   
   void getBoundaryIntersections(const int point[2], const float vector[2], const int boundary[2][2], int endPoints[2][2]);
-  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Vector3& start, const Vector3& end, int color);
+  void drawLine3D(Canvas& canvas, const CamParam& camparam, const falg::Vec3& start, const falg::Vec3& end, int color);
   bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h);
 
-  void cutLineToZPlane(const Vector3& p1, const Vector3& p2, float plane, Vector3& dst1, Vector3& dst2);
-  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4&, int);
+  void cutLineToZPlane(const falg::Vec3& p1, const falg::Vec3& p2, float plane, falg::Vec3& dst1, falg::Vec3& dst2);
+  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const falg::Mat4&, int);
   void clearCanvas(Canvas& canvas);
 
   

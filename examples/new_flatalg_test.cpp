@@ -5,12 +5,12 @@
 using namespace std;
 
 int main() {
-  Matrix<2, 2> mat = Matrix<2, 2>((flatalg_t)1.0, (flatalg_t)2.0,
-				  (flatalg_t)3.0, (flatalg_t)4.0);
+  falg::Matrix<2, 2> mat = falg::Matrix<2, 2>((falg::flatalg_t)1.0, (falg::flatalg_t)2.0,
+					      (falg::flatalg_t)3.0, (falg::flatalg_t)4.0);
   cout << mat.str() << endl;
 
-  int n = sizeof(Matrix<2, 1>);
+  int n = sizeof(falg::Matrix<2, 1>);
   cout << "Yeee" << endl;
 
-  cout << "Size of vector2 = " << n << endl;
+  cout << "Size of Vec2 = " << n << endl;
 }

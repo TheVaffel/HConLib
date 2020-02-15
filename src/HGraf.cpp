@@ -2,6 +2,7 @@
 #include <HGraf.hpp>
 #include <algorithm>
 
+
 static int msb(int a){
 #ifdef WIN32
     int i = 31;
@@ -14,7 +15,9 @@ static int msb(int a){
 #endif //WIN32
   }
 
-namespace hg{
+namespace hg {
+  
+  using namespace falg;
   Rectangle::Rectangle() {}
   
   Rectangle::Rectangle(float nx, float ny, float nw, float nh){
@@ -53,7 +56,7 @@ namespace hg{
     h = nh;
   }
 
-  bool Rectangle::contains(const Vector2& p) const {
+  bool Rectangle::contains(const Vec2& p) const {
     return p[0] >= x && p[1] >= y && p[0] <= x + w && p[1] <= y + h;
   }
 
@@ -372,8 +375,8 @@ namespace hg{
     }
   }
 
-  void cutLineToZPlane(const Vector3& p1, const Vector3& p2, float plane, Vector3& dst1, Vector3& dst2){
-    Vector3 v = p2 - p1;
+  void cutLineToZPlane(const Vec3& p1, const Vec3& p2, float plane, Vec3& dst1, Vec3& dst2){
+    Vec3 v = p2 - p1;
 
     if(p1.z() > -plane){
       dst1 = p1 - v*((p1.z() + plane)/v.z());
@@ -385,8 +388,8 @@ namespace hg{
   }
 
 
-  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Vector3& start, const Vector3& end, int color){
-    Vector3 nstart, nend;
+  void drawLine3D(Canvas& canvas, const CamParam& camparam, const Vec3& start, const Vec3& end, int color){
+    Vec3 nstart, nend;
 
     if(start.z() > -camparam.nearPlane && end.z() > -camparam.nearPlane){
       return;
@@ -421,17 +424,15 @@ namespace hg{
     drawLineSafe(canvas, ps[0], ps[1], pe[0], pe[1], color);
   }
   
-  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Matrix4& mat, int color){
-    Vector3* p = new Vector3[model.numPoints];
+  void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Mat4& mat, int color){
+    Vec3* p = new Vec3[model.numPoints];
     for(int i = 0; i< model.numPoints; i++){
       p[i] = mat*model.points[i];
     }
     for(int i = 0; i< model.numIndices; i++){
-      if(i == 2) {
-	std::cout << "Transformed point " << i << ": " << p[i].str() << std::endl;
-      }
+      
       drawLine3D(canvas, camparam, p[model.indices[2*i]], p[model.indices[2*i + 1]], color);
-      //std::cout<<p[model.indices[2*i]].str()<<" "<< p[model.indices[2*i + 1]].str()<<std::endl;
+      
     }
     delete[] p;
   }
@@ -501,7 +502,7 @@ namespace hg{
     numIndices= m;
     numPoints = n;
     indices = new int[2*m];
-    points = new Vector3[n];
+    points = new Vec3[n];
   }
 
   LineModel::~LineModel(){
@@ -516,7 +517,7 @@ namespace hg{
     for(int i = 0; i < 2; i++){
       for(int j =0; j < 2; j++){
 	for(int k = 0;k < 2; k++){
-	  points[4*i + 2*j + k] = Vector3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
+	  points[4*i + 2*j + k] = Vec3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
 	}
       }
     }

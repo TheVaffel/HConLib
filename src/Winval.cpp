@@ -115,7 +115,7 @@ void Winval::flushEvents(){
     ClientToScreen(hwnd, &p);
     SetCursorPos(p.x, p.y);
   }
-  
+
   while(PeekMessage(&msg, hwnd, 0, 0,PM_NOREMOVE)){
     GetMessage(&msg, hwnd, 0, 0);
     handleEventProperly(msg);
@@ -287,7 +287,7 @@ Winval::Winval(int w, int h, bool fullscreen){
 
   pointerX = pointerY = 0;
   mouseButtonPressed = false;
-  
+
   do{
     XNextEvent(dsp, &e);
   }while(e.type != MapNotify);
@@ -363,7 +363,7 @@ void Winval::handleEventProperly(XEvent& e){
   case KeyPress:
     index = e.xkey.keycode - WINVAL_KEYMAP_OFFSET;
     key = ks[index*keysyms];
-    
+
     if(key < 1<<16)
       isDown[key] = true;
     break;
@@ -431,7 +431,7 @@ void Winval::flushEvents(){
   if(lockedPointer){
     XWarpPointer(dsp, None, win, 0, 0, 0, 0, lockedPointerX, lockedPointerY);
   }
-  
+
   int num = XEventsQueued(dsp, QueuedAfterFlush);
   XEvent e2;
   while(num--){
@@ -489,11 +489,11 @@ Display* Winval::getDisplay() const{
   return dsp;
 }
 
-winval_type_0 getWinType0() const {
+winval_type_0 Winval::getWinType0() const {
     return getWindow();
 }
 
-winval_type_1 getWinType1() const {
+winval_type_1 Winval::getWinType1() const {
     return getDisplay();
 }
 

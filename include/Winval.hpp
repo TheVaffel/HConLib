@@ -197,8 +197,8 @@ class Winval{
   HINSTANCE getInstance() const;
   HWND getHWND() const;
 
-  HINSTANCE getWinProp0() const;
-  HWND getWinProp1() const;
+  winval_type_0 getWinProp0() const;
+  winval_type_1 getWinProp1() const;
 #else //WIN32
   typedef Window winval_type_0;
   typedef Display* winval_type_1;
@@ -206,12 +206,9 @@ class Winval{
   Window getWindow() const;
   Display* getDisplay() const;
 
-  Window getWinProp0() const;
-  Display* getWinProp1() const;
+  winval_type_0 getWinProp0() const;
+  winval_type_1 getWinProp1() const;
 #endif //WIN32
-
-  winval_type_0 getWinType0() const;
-  winval_type_1 getWinType1() const;
 
 };
 

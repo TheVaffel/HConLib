@@ -201,10 +201,10 @@ HWND Winval::getHWND() const {
 }
 
 
-winval_type_0 Winval::getWinType0() const {
+winval_type_0 Winval::getWinProp0() const {
     return this->getInstance();
 }
-winval_type_1 Winval::getWinType1() const {
+winval_type_1 Winval::getWinProp1() const {
     return this->getHWND();
 }
 
@@ -489,11 +489,11 @@ Display* Winval::getDisplay() const{
   return dsp;
 }
 
-winval_type_0 Winval::getWinType0() const {
+winval_type_0 Winval::getWinProp0() const {
     return getWindow();
 }
 
-winval_type_1 Winval::getWinType1() const {
+winval_type_1 Winval::getWinProp1() const {
     return getDisplay();
 }
 

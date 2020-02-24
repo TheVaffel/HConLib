@@ -60,6 +60,9 @@ Winval::Winval(int w, int h, bool fullscreen){
       isDown[i] = false;
   }
 
+  lockedPointer = false;
+  autoRepeat = false;
+
   ShowWindow(hwnd,10);
   UpdateWindow(hwnd);
 }

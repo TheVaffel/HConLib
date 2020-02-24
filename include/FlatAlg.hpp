@@ -6,6 +6,7 @@
 #include <string>
 #include <stdexcept>
 #include <sstream>
+#include <array>
 
 namespace falg {
   enum FlatAlgMatrixFlag {
@@ -41,7 +42,7 @@ namespace falg {
   template <int n, int m>
   class Matrix {
 
-    flatalg_t arr[n * m];
+    std::array<flatalg_t, n * m> arr;
 
 
     inline void init(flatalg_t* arr_pointer, const flatalg_t& f);
@@ -397,7 +398,7 @@ namespace falg {
   template<int n, int m>
   template<typename... fl_args>
   void Matrix<n, m>::init_args(const flatalg_t& f, fl_args... args) {
-    init(this->arr, f, args...);
+    init(this->arr.data(), f, args...);
   }
 
 

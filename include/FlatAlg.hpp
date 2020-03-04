@@ -8,6 +8,8 @@
 #include <sstream>
 #include <array>
 
+#include <immintrin.h>
+
 namespace falg {
   enum FlatAlgMatrixFlag {
     FLATALG_MATRIX_IDENTITY = 0,
@@ -31,13 +33,26 @@ namespace falg {
 #define FLATALG_REAL_TYPE float
 #endif // ndef FLATALG_REAL_TYPE
 
-  typedef FLATALG_REAL_TYPE flatalg_t;
+typedef FLATALG_REAL_TYPE flatalg_t;
 
-  template<int n, int m, int num>
-  constexpr bool _assert_vector_length_name_access() {
+template<int n, int m, int num>
+constexpr bool _assert_vector_length_name_access() {
     static_assert(m == 1 && n > num && n <= 4, "Cannot access element by name if vector too small or too long, or not a vector but a matrix");
     return true;
-  }
+ }
+ 
+constexpr int per256 = sizeof(__m256) / sizeof(flatalg_t);
+constexpr int per128 = sizeof(__m128) / sizeof(flatalg_t);
+
+
+ template<int c>
+ constexpr int num_m256 = c / per256;
+
+ template<int c>
+ constexpr int num_m128 = (c % per256) / per128;
+
+ template<int c>
+ constexpr int num_normal = c % per128;
 
   template <int n, int m>
   class Matrix {
@@ -319,9 +334,66 @@ namespace falg {
   template<int n, int m>
   flatalg_t Matrix<n, m>::sqNorm() const {
     flatalg_t sum = 0.0;
-    for(int i = 0; i < (n * m) ; i++) {
-      sum += (*this)[i] * (*this)[i];
+    const flatalg_t* currp = this->arr.data();
+
+    for (int i = 0; i < 2 * (num_m256<n * m> / 2); i++) {
+        if (num_m256<n * m> - i >= 2) {
+            __m256 vals = _mm256_load_ps(currp);
+            __m256 vals2 = _mm256_load_ps(currp + per256);
+            __m256 mul1 = _mm256_mul_ps(vals, vals);
+            __m256 mul2 = _mm256_mul_ps(vals2, vals2);
+            __m256 addz = _mm256_hadd_ps(mul1, mul2);
+
+            __m256 zero = _mm256_setzero_ps();
+            
+            __m256 add2 = _mm256_hadd_ps(addz, zero);
+            __m256 add3 = _mm256_hadd_ps(add2, zero);
+
+            flatalg_t* vv = (flatalg_t*)&add3;
+            sum += vv[0] + vv[4];
+
+            currp += per256;
+            currp += per256;
+            i++;
+        }
+        
     }
+
+    if constexpr(num_m256<n * m> % 2 == 1) {
+
+        // Experiments show that, rather consistently, 
+        // SIMD operations for eight elements
+        // did not give profitable advantages
+
+        // (Which is weird, because we can get 
+        // speedups for n = 4)
+        for (int j = 0; j < per256; j++) {
+            sum += currp[j] * currp[j];
+        }
+        currp += per256;
+    }
+
+    // This will have max one iteration
+    for (int i = 0; i < num_m128<n * m>; i++) {
+        __m128 vals = _mm_load_ps(currp);
+        __m128 muls = _mm_mul_ps(vals, vals);
+
+        flatalg_t* vv = (flatalg_t*)&muls;
+        // Maybe _hadd again is better?
+        for (int j = 0; j < 4; j++) {
+            sum += vv[j];
+        }
+        currp += per128;
+    }
+
+    for (int i = 0; i < num_normal<n * m>; i++) {
+        sum += (*currp) * (*currp);
+        currp++;
+    } 
+
+    /* for(int i = 0; i < (n * m) ; i++) {
+      sum += (*this)[i] * (*this)[i];
+    } */
 
     return sum;
   }

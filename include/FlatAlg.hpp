@@ -57,7 +57,7 @@ constexpr int per128 = sizeof(__m128) / sizeof(flatalg_t);
   template <int n, int m>
   class Matrix {
 
-    std::array<flatalg_t, n * m> arr;
+      flatalg_t arr[n * m];
 
 
     inline void init(flatalg_t* arr_pointer, const flatalg_t& f);
@@ -334,7 +334,7 @@ namespace falg {
   template<int n, int m>
   flatalg_t Matrix<n, m>::sqNorm() const {
     flatalg_t sum = 0.0;
-    const flatalg_t* currp = this->arr.data();
+    const flatalg_t* currp = this->arr;
 
     for (int i = 0; i < 2 * (num_m256<n * m> / 2); i++) {
         if (num_m256<n * m> - i >= 2) {
@@ -389,11 +389,7 @@ namespace falg {
     for (int i = 0; i < num_normal<n * m>; i++) {
         sum += (*currp) * (*currp);
         currp++;
-    } 
-
-    /* for(int i = 0; i < (n * m) ; i++) {
-      sum += (*this)[i] * (*this)[i];
-    } */
+    }
 
     return sum;
   }
@@ -470,7 +466,7 @@ namespace falg {
   template<int n, int m>
   template<typename... fl_args>
   void Matrix<n, m>::init_args(const flatalg_t& f, fl_args... args) {
-    init(this->arr.data(), f, args...);
+    init(this->arr, f, args...);
   }
 
 
@@ -572,9 +568,42 @@ namespace falg {
   template<int a, int b>
   inline constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
     static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
-    for(int i = 0; i < n * m; i++) {
-      this->arr[i] += mat[i];
+    
+    flatalg_t* currp = this->arr;
+    const flatalg_t* currpb = mat.arr;
+
+    for (int i = 0; i < num_m256<n * m>; i++) {
+        __m256 a0 = _mm256_load_ps(currp);
+        __m256 b0 = _mm256_load_ps(currpb);
+
+        __m256 res = _mm256_add_ps(a0, b0);
+        _mm256_store_ps(currp, res);
+
+        currp += per256;
+        currpb += per256;
     }
+
+    for (int i = 0; i < num_m128<n * m>; i++) {
+        __m128 a0 = _mm_load_ps(currp);
+        __m128 b0 = _mm_load_ps(currpb);
+        
+        __m128 res = _mm_add_ps(a0, b0);
+        _mm_store_ps(currp, res);
+
+        currp += per128;
+        currpb += per128;
+    }
+
+    for (int i = 0; i < num_normal<n * m>; i++) {
+        *currp = *currp + *currpb;
+
+        currp++;
+        currpb++;
+    }
+    
+    /* for(int i = 0; i < n * m; i++) {
+      this->arr[i] += mat[i];
+    } */
 
     return *this;
   }
@@ -582,14 +611,80 @@ namespace falg {
   template<int n, int m>
   template<int a, int b>
   inline constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
-    return (*this) += -mat;
+      static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
+
+      // Actually just a copy-paste from above (with three changes).. Oh well
+      flatalg_t* currp = this->arr;
+      const flatalg_t* currpb = mat.arr;
+
+      for (int i = 0; i < num_m256<n * m>; i++) {
+          __m256 a0 = _mm256_load_ps(currp);
+          __m256 b0 = _mm256_load_ps(currpb);
+
+          __m256 res = _mm256_sub_ps(a0, b0);
+          _mm256_store_ps(currp, res);
+
+          currp += per256;
+          currpb += per256;
+      }
+
+      for (int i = 0; i < num_m128<n * m>; i++) {
+          __m128 a0 = _mm_load_ps(currp);
+          __m128 b0 = _mm_load_ps(currpb);
+
+          __m128 res = _mm_sub_ps(a0, b0);
+          _mm_store_ps(currp, res);
+
+          currp += per128;
+          currpb += per128;
+      }
+
+      for (int i = 0; i < num_normal<n * m>; i++) {
+          *currp = *currp - *currpb;
+
+          currp++;
+          currpb++;
+      }
+
+      /* for(int i = 0; i < n * m; i++) {
+        this->arr[i] += mat[i];
+      } */
+
+      return *this;
   }
 
   template<int n, int m>
   inline constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
-    for(int i = 0; i < n * m; i++) {
+      flatalg_t* currp = this->arr;
+      
+      __m256 mf = _mm256_set1_ps(f);
+      for (int i = 0; i < num_m256<n * m>; i++) {
+          __m256 a = _mm256_loadu_ps(currp);
+          __m256 rr = _mm256_mul_ps(a, mf);
+
+          _mm256_storeu_ps(currp, rr);
+
+          currp += per256;
+      }
+
+      __m128 mmf = _mm_set1_ps(f);
+      for (int i = 0; i < num_m128<n * m>; i++) {
+          __m128 a = _mm_loadu_ps(currp);
+          __m128 rr = _mm_mul_ps(a, mmf);
+
+          _mm_storeu_ps(currp, rr);
+
+          currp += per128;
+      }
+
+      for (int i = 0; i < num_normal<n * m>; i++) {
+          *currp *= f;
+          currp++;
+      }
+
+    /* for(int i = 0; i < n * m; i++) {
       this->arr[i] *= f;
-    }
+    } */
 
     return *this;
   }
@@ -602,12 +697,44 @@ namespace falg {
 
   template<int n, int m>
   inline constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
-    Matrix<n, m> nmat;
-    for(int i = 0; i < n; i++) {
-      for(int j = 0; j < m; j++) {
-	nmat(i, j) = mat(i, j) * f;
+      Matrix<n, m> nmat;
+
+      const flatalg_t* currp = &mat[0];
+      flatalg_t* currr = &nmat[0];
+
+      __m256 mf = _mm256_set1_ps(f);
+      for (int i = 0; i < num_m256<n * m>; i++) {
+          __m256 a = _mm256_load_ps(currp);
+          __m256 rr = _mm256_mul_ps(a, mf);
+
+          _mm256_store_ps(currr, rr);
+
+          currp += per256;
+          currr += per256;
       }
-    }
+
+      __m128 mmf = _mm_set1_ps(f);
+      for (int i = 0; i < num_m128<n * m>; i++) {
+          __m128 a = _mm_load_ps(currp);
+          __m128 rr = _mm_mul_ps(a, mmf);
+
+          _mm_store_ps(currr, rr);
+
+          currp += per128;
+          currr += per128;
+      }
+
+      for (int i = 0; i < num_normal<n * m>; i++) {
+          *currr = *currp * f;
+
+          currp++;
+          currr++;
+      } 
+
+
+    /* for(int i = 0; i < n * m; i++) {
+        nmat[i] = mat[i] * f;
+    } */
     return nmat;
   }
 

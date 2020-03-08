@@ -15,7 +15,7 @@ else()
   set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib)
 endif()
 
-add_definitions(-std=c++1z)
+add_definitions(-std=c++1z -mavx)
 
 if(NOT WIN32)
   add_definitions(-g -Wall)

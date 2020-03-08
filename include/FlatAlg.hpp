@@ -338,8 +338,8 @@ namespace falg {
 
     for (int i = 0; i < 2 * (num_m256<n * m> / 2); i++) {
         if (num_m256<n * m> - i >= 2) {
-            __m256 vals = _mm256_load_ps(currp);
-            __m256 vals2 = _mm256_load_ps(currp + per256);
+            __m256 vals = _mm256_loadu_ps(currp);
+            __m256 vals2 = _mm256_loadu_ps(currp + per256);
             __m256 mul1 = _mm256_mul_ps(vals, vals);
             __m256 mul2 = _mm256_mul_ps(vals2, vals2);
             __m256 addz = _mm256_hadd_ps(mul1, mul2);
@@ -375,7 +375,7 @@ namespace falg {
 
     // This will have max one iteration
     for (int i = 0; i < num_m128<n * m>; i++) {
-        __m128 vals = _mm_load_ps(currp);
+        __m128 vals = _mm_loadu_ps(currp);
         __m128 muls = _mm_mul_ps(vals, vals);
 
         flatalg_t* vv = (flatalg_t*)&muls;
@@ -573,22 +573,22 @@ namespace falg {
     const flatalg_t* currpb = mat.arr;
 
     for (int i = 0; i < num_m256<n * m>; i++) {
-        __m256 a0 = _mm256_load_ps(currp);
-        __m256 b0 = _mm256_load_ps(currpb);
+        __m256 a0 = _mm256_loadu_ps(currp);
+        __m256 b0 = _mm256_loadu_ps(currpb);
 
         __m256 res = _mm256_add_ps(a0, b0);
-        _mm256_store_ps(currp, res);
+        _mm256_storeu_ps(currp, res);
 
         currp += per256;
         currpb += per256;
     }
 
     for (int i = 0; i < num_m128<n * m>; i++) {
-        __m128 a0 = _mm_load_ps(currp);
-        __m128 b0 = _mm_load_ps(currpb);
+        __m128 a0 = _mm_loadu_ps(currp);
+        __m128 b0 = _mm_loadu_ps(currpb);
         
         __m128 res = _mm_add_ps(a0, b0);
-        _mm_store_ps(currp, res);
+        _mm_storeu_ps(currp, res);
 
         currp += per128;
         currpb += per128;
@@ -618,22 +618,22 @@ namespace falg {
       const flatalg_t* currpb = mat.arr;
 
       for (int i = 0; i < num_m256<n * m>; i++) {
-          __m256 a0 = _mm256_load_ps(currp);
-          __m256 b0 = _mm256_load_ps(currpb);
+          __m256 a0 = _mm256_loadu_ps(currp);
+          __m256 b0 = _mm256_loadu_ps(currpb);
 
           __m256 res = _mm256_sub_ps(a0, b0);
-          _mm256_store_ps(currp, res);
+          _mm256_storeu_ps(currp, res);
 
           currp += per256;
           currpb += per256;
       }
 
       for (int i = 0; i < num_m128<n * m>; i++) {
-          __m128 a0 = _mm_load_ps(currp);
-          __m128 b0 = _mm_load_ps(currpb);
+          __m128 a0 = _mm_loadu_ps(currp);
+          __m128 b0 = _mm_loadu_ps(currpb);
 
           __m128 res = _mm_sub_ps(a0, b0);
-          _mm_store_ps(currp, res);
+          _mm_storeu_ps(currp, res);
 
           currp += per128;
           currpb += per128;
@@ -704,10 +704,10 @@ namespace falg {
 
       __m256 mf = _mm256_set1_ps(f);
       for (int i = 0; i < num_m256<n * m>; i++) {
-          __m256 a = _mm256_load_ps(currp);
+          __m256 a = _mm256_loadu_ps(currp);
           __m256 rr = _mm256_mul_ps(a, mf);
 
-          _mm256_store_ps(currr, rr);
+          _mm256_storeu_ps(currr, rr);
 
           currp += per256;
           currr += per256;
@@ -715,10 +715,10 @@ namespace falg {
 
       __m128 mmf = _mm_set1_ps(f);
       for (int i = 0; i < num_m128<n * m>; i++) {
-          __m128 a = _mm_load_ps(currp);
+          __m128 a = _mm_loadu_ps(currp);
           __m128 rr = _mm_mul_ps(a, mmf);
 
-          _mm_store_ps(currr, rr);
+          _mm_storeu_ps(currr, rr);
 
           currp += per128;
           currr += per128;
@@ -843,16 +843,102 @@ namespace falg {
   constexpr Matrix<n, m> operator+(const Matrix<n, m>& m1, const Matrix<a, b>& m2) {
     static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
     Matrix<n, m> mat;
-    for(int i = 0; i < n*m; i++) {
-      mat[i] = m1[i] + m2[i];
+
+    const flatalg_t* currpa = &m1[0];
+    const flatalg_t* currpb = &m2[0];
+    flatalg_t* currpr = &mat[0];
+
+    for(int i = 0; i < num_m256<n * m>; i++) {
+      __m256 aa = _mm256_loadu_ps(currpa);
+      __m256 bb = _mm256_loadu_ps(currpb);
+
+      __m256 res = _mm256_add_ps(aa, bb);
+
+      _mm256_storeu_ps(currpr, res);
+
+      currpa += per256;
+      currpb += per256;
+      currpr += per256;
     }
+
+    for(int i = 0; i < num_m128<n * m>; i++) {
+      __m128 aa = _mm_loadu_ps(currpa);
+      __m128 bb = _mm_loadu_ps(currpb);
+
+      __m128 res = _mm_add_ps(aa, bb);
+
+      _mm_storeu_ps(currpr, res);
+
+      currpa += per128;
+      currpb += per128;
+      currpr += per128;
+    }
+
+    for(int i = 0; i < num_normal<n * m>; i++) {
+      *currpr = *currpa + *currpb;
+
+      currpr++;
+      currpa++;
+      currpb++;
+    }
+    
+    /* for(int i = 0; i < n*m; i++) {
+      mat[i] = m1[i] + m2[i];
+      } */
 
     return mat;
   }
 
   template<int n, int m, int a, int b>
   constexpr Matrix<n, m> operator-(const Matrix<n, m>& m1, const Matrix<a, b>& m2) {
-    return m1 + (-m2);
+    static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
+    Matrix<n, m> mat;
+
+    const flatalg_t* currpa = &m1[0];
+    const flatalg_t* currpb = &m2[0];
+    flatalg_t* currpr = &mat[0];
+
+    for(int i = 0; i < num_m256<n * m>; i++) {
+      __m256 aa = _mm256_loadu_ps(currpa);
+      __m256 bb = _mm256_loadu_ps(currpb);
+
+      __m256 res = _mm256_sub_ps(aa, bb);
+
+      _mm256_storeu_ps(currpr, res);
+
+      currpa += per256;
+      currpb += per256;
+      currpr += per256;
+    }
+
+    for(int i = 0; i < num_m128<n * m>; i++) {
+      __m128 aa = _mm_loadu_ps(currpa);
+      __m128 bb = _mm_loadu_ps(currpb);
+
+      __m128 res = _mm_sub_ps(aa, bb);
+
+      _mm_storeu_ps(currpr, res);
+
+      currpa += per128;
+      currpb += per128;
+      currpr += per128;
+    }
+
+    for(int i = 0; i < num_normal<n * m>; i++) {
+      *currpr = *currpa - *currpb;
+
+      currpr++;
+      currpa++;
+      currpb++;
+    }
+    
+    /* for(int i = 0; i < n*m; i++) {
+      mat[i] = m1[i] + m2[i];
+      } */
+
+    return mat;
+    
+    // return m1 + (-m2);
   }
 
   template<int n, int m, int a, int b>

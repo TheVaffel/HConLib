@@ -60,10 +60,10 @@ constexpr int per128 = sizeof(__m128) / sizeof(flatalg_t);
       flatalg_t arr[n * m];
 
 
-    inline void init(flatalg_t* arr_pointer, const flatalg_t& f);
+    void init(flatalg_t* arr_pointer, const flatalg_t& f);
 
     template<typename... fl_args>
-    inline void init(flatalg_t* arr_pointer, const flatalg_t& f, fl_args...);
+    void init(flatalg_t* arr_pointer, const flatalg_t& f, fl_args...);
 
     /* template<typename... fl_args>
        void checkAndInit(fl_args...); */
@@ -139,13 +139,13 @@ constexpr int per128 = sizeof(__m128) / sizeof(flatalg_t);
     // (Instead of just requiring a=n, b=m here)
 
     template<int a, int b>
-    inline constexpr Matrix<n, m>& operator+=(const Matrix<a, b>& mat);
+    constexpr Matrix<n, m>& operator+=(const Matrix<a, b>& mat);
 
     template<int a, int b>
-    inline constexpr Matrix<n, m>& operator-=(const Matrix<a, b>& mat);
+    constexpr Matrix<n, m>& operator-=(const Matrix<a, b>& mat);
 
-    inline constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
-    inline constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
+    constexpr Matrix<n, m>& operator*=(const flatalg_t& f);
+    constexpr Matrix<n, m>& operator/=(const flatalg_t& f);
 
     constexpr Matrix<n - 1, m - 1> minor_matrix(int a, int b) const;
     constexpr flatalg_t det() const;
@@ -420,13 +420,13 @@ namespace falg {
   }
 
   template<int n, int m>
-  inline void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg) {
+  void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg) {
     (*pointer) = flalg;
   }
 
   template<int n, int m>
   template<typename ... fl_args>
-  inline void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg, fl_args... args) {
+  void Matrix<n, m>::init(flatalg_t* pointer, const flatalg_t& flalg, fl_args... args) {
     *(pointer++) = flalg;
     init(pointer, args...);
   }
@@ -566,7 +566,7 @@ namespace falg {
 
   template<int n, int m>
   template<int a, int b>
-  inline constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
+  constexpr Matrix<n, m>& Matrix<n, m>::operator+=(const Matrix<a, b>& mat) {
     static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
     
     flatalg_t* currp = this->arr;
@@ -610,7 +610,7 @@ namespace falg {
 
   template<int n, int m>
   template<int a, int b>
-  inline constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
+  constexpr Matrix<n, m>& Matrix<n, m>::operator-=(const Matrix<a, b>& mat) {
       static_assert(n == a && m == b, "Matrix dimensions must match in additive operations!");
 
       // Actually just a copy-paste from above (with three changes).. Oh well
@@ -654,7 +654,7 @@ namespace falg {
   }
 
   template<int n, int m>
-  inline constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
+  constexpr Matrix<n, m>& Matrix<n, m>::operator*=(const flatalg_t& f) {
       flatalg_t* currp = this->arr;
       
       __m256 mf = _mm256_set1_ps(f);
@@ -690,13 +690,13 @@ namespace falg {
   }
 
   template<int n, int m>
-  inline constexpr Matrix<n, m>& Matrix<n, m>::operator/=(const flatalg_t& f) {
+  constexpr Matrix<n, m>& Matrix<n, m>::operator/=(const flatalg_t& f) {
     flatalg_t f_inv = static_cast<flatalg_t>(1) / f;
     return (*this) *= f_inv;
   }
 
   template<int n, int m>
-  inline constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
+  constexpr Matrix<n, m> operator*(const flatalg_t& f, const Matrix<n, m>& mat) {
       Matrix<n, m> nmat;
 
       const flatalg_t* currp = &mat[0];
@@ -739,12 +739,12 @@ namespace falg {
   }
 
   template<int n, int m>
-  inline constexpr Matrix<n, m> operator*(const Matrix<n, m>& mat, const flatalg_t& f) {
+  constexpr Matrix<n, m> operator*(const Matrix<n, m>& mat, const flatalg_t& f) {
     return f * mat;
   }
 
   template<int n, int m>
-  inline constexpr Matrix<n, m> operator/(const Matrix<n, m>& mat, const flatalg_t& f) {
+  constexpr Matrix<n, m> operator/(const Matrix<n, m>& mat, const flatalg_t& f) {
     return mat * (1.0 / f);
   }
 

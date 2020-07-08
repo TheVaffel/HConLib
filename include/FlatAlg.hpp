@@ -434,7 +434,7 @@ namespace falg {
       sum += this->arr[i] * this->arr[i];
     }
 #endif // __AVX__
-    
+
     return sum;
   }
 

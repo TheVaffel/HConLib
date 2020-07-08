@@ -4,7 +4,7 @@ project(HConLib_examples)
 add_definitions(-std=c++1z)
 
 if(NOT WIN32)
-  add_definitions(-Wall -g)
+  add_definitions(-Wall -g -mavx)
 endif()
 
 set(HConLibRoot ${CMAKE_HOME_DIRECTORY}/..)

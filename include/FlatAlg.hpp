@@ -222,6 +222,7 @@ namespace falg {
 
   typedef Matrix<2, 1> Vec2;
   typedef Matrix<3, 1> Vec3;
+  typedef Matrix<4, 1> Vec4;
   typedef Matrix<2, 2> Mat2;
   typedef Matrix<3, 3> Mat3;
   typedef Matrix<4, 4> Mat4;

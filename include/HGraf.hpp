@@ -5,6 +5,7 @@
 
 #include "FlatAlg.hpp"
 
+#include <vector>
 
 namespace hg{
 
@@ -116,7 +117,24 @@ namespace hg{
   void clearCanvas(Canvas& canvas);
 
   
-  
+    namespace voronoi {
+        struct TriInd {
+            uint32_t inds[3];
+        };
+
+        bool operator<(const TriInd& tr0, const TriInd& tr1);
+        
+
+    };
+
+    
+    struct DelaunayTriangles {
+        std::vector<falg::Vec2> points;
+        std::vector<voronoi::TriInd> indices;
+    };
+
+    DelaunayTriangles delaunay_triangulation(const std::vector<falg::Vec2>& in_points,
+                                             int bx, int by, int bw, int bh);
 
 };
 #endif // #ifndef INCLUDED_HGRAF

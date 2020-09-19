@@ -92,6 +92,10 @@ if(WINVAL_LIB)
   add_executable(hgraftest hgraftest.cpp)
   target_link_libraries(hgraftest FlatAlg HGraf ${winval_libs})
 
+  #delaunay
+  add_executable(delaunay delaunay.cpp)
+  target_link_libraries(delaunay FlatAlg HGraf ${winval_libs})
+
   #colors
   add_executable(colors colors.cpp)
   target_link_libraries(colors ${winval_libs})

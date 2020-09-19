@@ -134,23 +134,6 @@ if(WINVAL_LIB)
   else()
     message(">>>HCam not found, not building HCam dependent binaries")
   endif()
-
-  find_library(WINGINE_LIB NAMES Wingine PATHS ${lib_search_path} NO_DEFAULT_PATH)
-  if(WINGINE_LIB)
-    
-    include_directories($ENV{VULKAN_SDK}/include)
-    link_directories($ENV{VULKAN_SDK}/lib)
-    
-    #vulkan_test
-    add_executable(vulkan_test vulkan_test.cpp)
-    target_link_libraries(vulkan_test ${wingine_with_glslang_libs})
-
-    #light_test
-    add_executable(light_test light_test.cpp)
-    target_link_libraries(light_test ${wingine_with_glslang_libs})
-  else()
-    message(">>>Found no Wingine library, not building Wingine dependent binaries")
-  endif()
 else()
   message(">>>Found no Winval library, not building Winval dependent binaries")
 endif()

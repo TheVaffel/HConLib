@@ -46,10 +46,6 @@ int main() {
         
     }
 
-    std::cout << "Indices size = " << tris.indices.size() << std::endl;
-    
-    // hg::drawLineSafe(
-
     win.drawBuffer(cv.getData(), width, height);
 
     win.waitForKey();

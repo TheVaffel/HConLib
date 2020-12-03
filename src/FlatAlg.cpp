@@ -46,8 +46,41 @@ namespace falg {
             }
             set3Dtrans(vec);
             break;
+        case FLATALG_MATRIX_SCALE:
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (i == j) {
+                        (*this)(i, j) = 1;
+                    } else if (i == 3 && j < 3) {
+                        (*this)(i, j) = vec[j];
+                    } else {
+                        (*this)(i, j) = 0;
+                    }
+                }
+            }
         default:
             throw std::invalid_argument("No constructor for that flag-parameter combination");
+        }
+    }
+
+    template<>
+    void Matrix<4, 4>::init_args(FlatAlgMatrixFlag flag, flatalg_t arg0) {
+        switch(flag) {
+        case FLATALG_MATRIX_SCALE:
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (i == j && i < 3) {
+                        (*this)(i, j) = arg0;
+                    } else if (i == j) {
+                        (*this)(i, j) = 1;
+                    } else {
+                        (*this)(i, j) = 0;
+                    }
+                }
+            }
+            break;
+        default:
+            throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }
     }
 

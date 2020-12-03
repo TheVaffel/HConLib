@@ -59,7 +59,7 @@ namespace falg {
                 }
             }
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }
     }
 
@@ -94,7 +94,7 @@ namespace falg {
             (*this)(3, 0) = 0; (*this)(3, 1) = 0; (*this)(3, 2) = 0; (*this)(3, 3) = 1;
             break;
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }
     }
 
@@ -122,7 +122,7 @@ namespace falg {
             this->setProjection(arg0, arg1, arg2, arg3);
             break;
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }
     }
 
@@ -148,7 +148,7 @@ namespace falg {
             this->setRotation(vec, arg0);
             break;
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix3] No constructor for that flag-parameter combination");
         }
     }
 
@@ -169,7 +169,7 @@ namespace falg {
             setRotation(arg0, arg1);
             break;
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix3] No constructor for that flag-parameter combination");
         }
     }
 
@@ -199,7 +199,7 @@ namespace falg {
             this->setLookAt(arg0, arg1, arg2);
             break;
         default:
-            throw std::invalid_argument("No constructor for that flag-parameter combination");
+            throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }
     }
 

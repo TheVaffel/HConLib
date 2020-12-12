@@ -514,6 +514,7 @@ namespace falg {
     template<int n, int m>
     template<typename... fl_args>
     void Matrix<n, m>::init_args(const flatalg_t& f, fl_args... args) {
+        static_assert(sizeof...(fl_args) == n * m - 1, "[FlatAlg::Matrix] Matrix constructor did not take enough arguments. Maybe you used a float when a Matrix was expected?");
         init(this->arr, f, args...);
     }
 

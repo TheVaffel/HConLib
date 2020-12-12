@@ -541,7 +541,7 @@ namespace hg {
                               const falg::Vec2& p2) {
         falg::Vec2 v0 = p1 - p0;
         falg::Vec2 v1 = p2 - p0;
-        float t = (v1 - v0) / 2 * (-v1) / (v0.x() * v1.y() - v0.y() * v1.x());
+        float t = falg::dot(v1 - v0, -v1) / (2 * (v0.x() * v1.y() - v0.y() * v1.x()));
 
         falg::Vec2 xv0(v0.y(), -v0.x());
             
@@ -563,8 +563,8 @@ namespace hg {
         falg::Vec2 v1 = p2 - p0;
 
         float cross = v0.x() * v1.y() - v0.y() * v1.x();
-            
-        float t = (v1 - v0) / 2 * (-v1) / cross;
+
+        float t = falg::dot(v1 - v0, -v1) / (2 * cross);
 
         falg::Vec2 xv0(v0.y(), -v0.x());
             

@@ -213,7 +213,7 @@ namespace falg {
     constexpr Matrix<n, m> operator-(const Matrix<n, m>& mat);
 
     template<int n, int m>
-    constexpr flatalg_t operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2);
+    constexpr Matrix<n, 1> operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2);
 
     template<int n, int m>
     constexpr flatalg_t dot(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2);
@@ -1089,14 +1089,15 @@ namespace falg {
     }
 
     template<int n, int m>
-    constexpr flatalg_t operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2) {
-        static_assert(n == m, "Vectors in dot product must have the same dimension");
-        flatalg_t sum = static_cast<flatalg_t>(0);
+    constexpr Matrix<n, 1> operator*(const Matrix<n, 1>& m1, const Matrix<m, 1>& m2) {
+        static_assert(n == m, "Vectors in elementwise multiplication must have the same dimension");
+
+        Matrix<n, 1> mat;
         for(int i = 0; i < n ; i++) {
-            sum += m1[i] * m2[i];
+            mat[i] = m1[i] * m2[i];
         }
 
-        return sum;
+        return mat;
     }
 
     template<int n, int m>

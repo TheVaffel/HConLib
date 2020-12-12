@@ -186,9 +186,9 @@ namespace falg {
 
         Vec3 nUp = cross(right, normDir);
 
-        (*this)(0, 0) = right.x();    (*this)(0, 1) = right.y();    (*this)(0, 2) = right.z();    (*this)(0, 3) = -pos * right;
-        (*this)(1, 0) = nUp.x();      (*this)(1, 1) = nUp.y();      (*this)(1, 2) = nUp.z();      (*this)(1, 3) = -pos * nUp;
-        (*this)(2, 0) = -normDir.x(); (*this)(2, 1) = -normDir.y(); (*this)(2, 2) = -normDir.z(); (*this)(2, 3) = pos * normDir;
+        (*this)(0, 0) = right.x();    (*this)(0, 1) = right.y();    (*this)(0, 2) = right.z();    (*this)(0, 3) = - dot(pos, right);
+        (*this)(1, 0) = nUp.x();      (*this)(1, 1) = nUp.y();      (*this)(1, 2) = nUp.z();      (*this)(1, 3) = - dot(pos, nUp);
+        (*this)(2, 0) = -normDir.x(); (*this)(2, 1) = -normDir.y(); (*this)(2, 2) = -normDir.z(); (*this)(2, 3) = dot(pos, normDir);
         (*this)(3, 0) = 0;            (*this)(3, 1) = 0;            (*this)(3, 2) = 0;            (*this)(3, 3) = 1;
     }
 

@@ -50,7 +50,7 @@ namespace falg {
 
     // Utilities for use with AVX instructions
 #ifdef __AVX__
-    // We really only support this for float 
+    // We really only support this for float
     template<typename T = flatalg_t>
     static constexpr T _sum_m256(__m256 a) {
         static_assert(std::is_same<T, flatalg_t>::value, "_sum_m256 must be called with flatalg_t as template argument");
@@ -72,7 +72,7 @@ namespace falg {
         T* vv = (T*) &add;
         return vv[0] + vv[1];
     }
-  
+
     static constexpr int per256 = sizeof(__m256) / sizeof(flatalg_t);
     constexpr int per128 = sizeof(__m128) / sizeof(flatalg_t);
 
@@ -382,9 +382,9 @@ namespace falg {
             __m256 addz = _mm256_add_ps(mul1, mul2);
 
             sum += _sum_m256(addz);
-	
+
             /* __m256 zero = _mm256_setzero_ps();
-            
+
                __m256 add2 = _mm256_hadd_ps(addz, zero);
                __m256 add3 = _mm256_hadd_ps(add2, zero);
 
@@ -398,16 +398,16 @@ namespace falg {
 
         if constexpr(num_m256<n * m> % 2 == 1) {
 
-                // Experiments show that, rather consistently, 
+                // Experiments show that, rather consistently,
                 // SIMD operations for eight elements
                 // did not give profitable advantages
 
-                // (Which is weird, because we can get 
+                // (Which is weird, because we can get
                 // speedups for n = 4)
                 __m256 vals = _mm256_loadu_ps(currp);
                 __m256 mul = _mm256_mul_ps(vals, vals);
                 sum += _sum_m256(mul);
-	
+
                 /* for (int j = 0; j < per256; j++) {
                    sum += currp[j] * currp[j];
                    } */
@@ -636,7 +636,7 @@ namespace falg {
         for (int i = 0; i < num_m128<n * m>; i++) {
             __m128 a0 = _mm_loadu_ps(currp);
             __m128 b0 = _mm_loadu_ps(currpb);
-        
+
             __m128 res = _mm_add_ps(a0, b0);
             _mm_storeu_ps(currp, res);
 
@@ -651,7 +651,7 @@ namespace falg {
             currpb++;
         }
 #else // __AVX__
-    
+
         for(int i = 0; i < n * m; i++) {
             this->arr[i] += mat[i];
         }
@@ -715,7 +715,7 @@ namespace falg {
 
 #ifdef __AVX__
         flatalg_t* currp = this->arr;
-      
+
         __m256 mf = _mm256_set1_ps(f);
         for (int i = 0; i < num_m256<n * m>; i++) {
             __m256 a = _mm256_loadu_ps(currp);
@@ -796,9 +796,9 @@ namespace falg {
 
         for(int i = 0; i < n * m; i++) {
             nmat[i] = mat[i] * f;
-        } 
+        }
 #endif // __AVX__
-      
+
         return nmat;
     }
 
@@ -913,7 +913,7 @@ namespace falg {
         const flatalg_t* currpb = &m2[0];
         flatalg_t* currpr = &mat[0];
 
-    
+
         for(int i = 0; i < num_m256<n * m>; i++) {
             __m256 aa = _mm256_loadu_ps(currpa);
             __m256 bb = _mm256_loadu_ps(currpb);
@@ -1006,7 +1006,7 @@ namespace falg {
 #endif // __AVX__
 
         return mat;
-    
+
     }
 
     template<int n, int m, int a, int b>
@@ -1043,7 +1043,7 @@ namespace falg {
                 curr_row += per128;
             }
 
-      
+
             for(int j = 0; j < num_normal<m>; j++) {
                 for(int k = 0; k < n; k++) {
                     mat(k, i) += m2(curr_row, i) * m1(k, curr_row);
@@ -1053,7 +1053,7 @@ namespace falg {
         }
 #else // __AVX__
 
-	 
+
         for(int i = 0; i < n; i++) {
             for(int j = 0; j < b; j++) {
                 for(int k = 0; k < m; k++) {
@@ -1130,5 +1130,5 @@ namespace falg {
 #endif // ndef FLATALG_NO_IMPLEMENTATION
 
 };
-  
+
 #endif // ndef INCLUDED_FLATALG

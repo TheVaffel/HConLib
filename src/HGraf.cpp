@@ -20,14 +20,14 @@ static int msb(int a) {
 }
 
 namespace hg {
-  
+
     using namespace falg;
     Rectangle::Rectangle() {}
-  
+
     Rectangle::Rectangle(float nx, float ny, float nw, float nh) {
         x = nx; y = ny; w = nw; h = nh;
     }
-  
+
     float Rectangle::getX() const {
         return x;
     }
@@ -66,7 +66,7 @@ namespace hg {
 
     void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c) {
         int ic = colorToInt(c);
-    
+
         int ix = (int)rectangle.getX(), iy = (int)rectangle.getY();
         int iw = (int)rectangle.getWidth(), ih = (int)rectangle.getHeight();
 
@@ -80,7 +80,7 @@ namespace hg {
                 canvas->setPixel(i, iy, ic);
             }
         }
-    
+
         if (iy + ih == fy2) {
             for(int i = fx1; i < fx2 ; i++) {
                 canvas->setPixel(i, iy + ih, ic);
@@ -103,16 +103,16 @@ namespace hg {
     inline int _signum(int a) {
         return (a > 0) - (a < 0);
     }
-  
+
     inline int colorToInt(Color c) {
         return (255 << 24) | (((int)(c[0]*255))<<16) | (((int)(c[1]*255))<<8) | ((int)(c[2]*255));
     }
 
     //An implementation of Bresenham's algorithm
     void drawLine(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum) {
-    
+
         int dx = endx - startx, dy = endy - starty;
-    
+
         if(dx == 0 && dy == 0) {
             ((int*)buffer)[w*starty + startx] = colorNum;
             return;
@@ -130,7 +130,7 @@ namespace hg {
             psex = endy;
             iterx = &ny;
             itery = &nx;
-      
+
             int a = dx;
             dx = dy;
             dy = a;
@@ -170,9 +170,9 @@ namespace hg {
     }
 
     //return whether it is possible
-  
+
     bool moveEndpointsOntoScreen(int& sx, int& sy, int& ex, int& ey, int w, int h) {
-    
+
         int u = _signum(_cross(ex - sx, ey - sy, ex - 0, ey - 0));
         if((sx < 0 ||sy < 0 || sx >=w || sy >= h) && (ex < 0 || ey < 0 || ex >=w || ey >= h) &&
            _signum(_cross(ex - sx, ey - sy, ex - 0, ey - h)) == u &&
@@ -180,7 +180,7 @@ namespace hg {
            _signum(_cross(ex - sx, ey - sy, ex - w, ey - h)) == u) {
             return false;
         }
-    
+
         if(sx < 0) {
             sy = (int)(((float)-sx)/(ex - sx)*(ey - sy)) + sy;
             sx = 0;
@@ -216,7 +216,7 @@ namespace hg {
         return true;
     }
 
-  
+
     void drawLineSafe(unsigned char* buffer, int w, int h, int startx, int starty, int endx, int endy, int colorNum) {
         if(!moveEndpointsOntoScreen(startx, starty, endx, endy, w, h)) {
             return;
@@ -235,7 +235,7 @@ namespace hg {
         int dx = x1 - x0, dy = y1 - y0;
         int pssx, psex, pssy;
         int stepx, stepy;
-  
+
         int num = 0;
         int err = 0;
         int xind = 0, yind = 1;
@@ -299,7 +299,7 @@ namespace hg {
         dd[0] = std::abs(dd[0]);
         dd[1] = std::abs(dd[1]);
     }
-  
+
     LineIterator::LineIterator(const LineIterator& it) {
         currPoint[0] = it[0];
         currPoint[1] = it[1];
@@ -307,7 +307,7 @@ namespace hg {
     int LineIterator::operator[](int i) const{
         return currPoint[i];
     }
-  
+
     LineIterator LineIterator::operator++(int i) {
         LineIterator li(*this);
         currPoint[ground] += stepGround;
@@ -318,11 +318,11 @@ namespace hg {
         }
         return li;
     }
-  
+
     LineIterator LineIterator::end() {
         return LineIterator(endPoint[0], endPoint[1]);
     }
-  
+
     bool LineIterator::operator==(const LineIterator& li) {
         return currPoint[0] == li[0] && currPoint[1] == li[1];
     }
@@ -387,7 +387,7 @@ namespace hg {
         if(start.z() > -camparam.nearPlane && end.z() > -camparam.nearPlane) {
             return;
         }
-    
+
         cutLineToZPlane(start, end, camparam.nearPlane, nstart, nend);
 
         int ps[2] = {(int)((-nstart.x()/nstart.z()*camparam.invtanfovhover2 + 1.0f)*camparam.screenWidth)/2,
@@ -413,19 +413,19 @@ namespace hg {
                 }
             }
         }
-    
+
         drawLineSafe(canvas, ps[0], ps[1], pe[0], pe[1], color);
     }
-  
+
     void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const Mat4& mat, int color) {
         Vec3* p = new Vec3[model.numPoints];
         for(int i = 0; i< model.numPoints; i++) {
             p[i] = mat*model.points[i];
         }
         for(int i = 0; i< model.numIndices; i++) {
-      
+
             drawLine3D(canvas, camparam, p[model.indices[2*i]], p[model.indices[2*i + 1]], color);
-      
+
         }
         delete[] p;
     }
@@ -463,7 +463,7 @@ namespace hg {
     unsigned char* Canvas::getData() {
         return buffer;
     }
-  
+
     Canvas::~Canvas() {
         if(initializedBuffer)
             delete[] buffer;
@@ -526,7 +526,7 @@ namespace hg {
         }
     }
 
-    
+
     struct Circle {
         falg::Vec2 c;
         float r_sq;
@@ -535,7 +535,7 @@ namespace hg {
             return (c - p).sqNorm() <= r_sq;
         }
     };
-        
+
     float rightMostCircleEdge(const falg::Vec2& p0,
                               const falg::Vec2& p1,
                               const falg::Vec2& p2) {
@@ -544,16 +544,16 @@ namespace hg {
         float t = falg::dot(v1 - v0, -v1) / (2 * (v0.x() * v1.y() - v0.y() * v1.x()));
 
         falg::Vec2 xv0(v0.y(), -v0.x());
-            
+
         falg::Vec2 middle = p0 + v0 / 2 + xv0 * t;
 
         float r = (middle - p0).norm();
 
         return middle.x() + r;
-            
+
     }
 
-                
+
     Circle getCircumCircle(const falg::Vec2& p0,
                            const falg::Vec2& p1,
                            const falg::Vec2& p2) {
@@ -567,18 +567,18 @@ namespace hg {
         float t = falg::dot(v1 - v0, -v1) / (2 * cross);
 
         falg::Vec2 xv0(v0.y(), -v0.x());
-            
+
         falg::Vec2 middle = p0 + v0 / 2 + xv0 * t;
 
         float rsq = (middle - p0).sqNorm();
 
         cr.c = middle;
         cr.r_sq = rsq;
-            
+
         return cr;
     }
 
-        
+
 
     bool operator<(const TriInd& tr0, const TriInd& tr1) {
         return tr0.inds[0] == tr1.inds[0] ?
@@ -587,7 +587,7 @@ namespace hg {
              tr0.inds[1] < tr1.inds[1]) :
             tr0.inds[0] < tr1.inds[0];;
     }
-        
+
     bool triangleContains(const std::vector<falg::Vec2>& points,
                           const TriInd& tr0,
                           const falg::Vec2& p) {
@@ -608,27 +608,27 @@ namespace hg {
 
         return true;
     }
-                  
-    
+
+
     // Implementation of the Bowyer-Watson algorithm
     DelaunayTriangles delaunay_triangulation(const std::vector<falg::Vec2>& in_points,
                                              int boundary_x, int boundary_y,
                                              int boundary_w, int boundary_h) {
-        
+
         struct EdgeInd {
             uint32_t inds[2];
-            
+
             bool operator<(const EdgeInd& e1) const {
                 return this->inds[0] == e1.inds[0] ?
                           this->inds[1] < e1.inds[1] :
                     this->inds[0] < e1.inds[0];
             }
-        };          
-            
+        };
+
         DelaunayTriangles del_tri;
         std::list<TriInd> triangulation;
         std::list<Circle> circumcircles;
-        
+
         int num_discarded = 0;
         for(uint32_t i = 0; i < in_points.size(); i++) {
             bool ok = true;
@@ -636,9 +636,9 @@ namespace hg {
                 if((in_points[i] - in_points[j]).sqNorm() < boundary_w * boundary_h * 1e-4) {
                     ok = false;
                     break;
-                } 
+                }
             }
-            
+
             if(ok) {
                 del_tri.points.push_back(in_points[i]);
             } else {
@@ -648,15 +648,15 @@ namespace hg {
 
         std::cerr << "[hg::delaunay_triangulation] Discarded "
                   << num_discarded << " points to avoid degeneracy" << std::endl;
-        
+
         std::vector<falg::Vec2>& points = del_tri.points;
 
         boundary_x -= 5;
         boundary_y -= 5;
         boundary_w += 10;
         boundary_h += 10;
-        
-        
+
+
         falg::Vec2 p0 = falg::Vec2(boundary_x, boundary_y),
             p1 = falg::Vec2(boundary_x + boundary_w, boundary_y),
             p2 = falg::Vec2(boundary_x, boundary_y + boundary_h),
@@ -669,12 +669,12 @@ namespace hg {
         TriInd tri1 = { (uint32_t)points.size() + 2,
                         (uint32_t)points.size() + 1,
                         (uint32_t)points.size() + 3 };
-        
+
         points.push_back(p0);
         points.push_back(p1);
         points.push_back(p2);
         points.push_back(p3);
-        
+
         triangulation.push_back(tri0);
         triangulation.push_back(tri1);
         circumcircles.push_back(getCircumCircle(points[tri0.inds[0]], points[tri0.inds[1]], points[tri0.inds[2]]));
@@ -692,7 +692,7 @@ namespace hg {
                 if((*cit).contains(points[i])) {
                     bad_triangles.push_back(std::make_pair(it, cit));
                 }
-                        
+
                 cit++;
             }
 
@@ -721,7 +721,7 @@ namespace hg {
                 for(unsigned int l = 0; l < 3; l++) {
                     int b0 = l;
                     int b1 = (l + 1) % 3;
-                            
+
                     uint32_t mintr = std::min((*bad_triangles[k].first).inds[b0],
                                               (*bad_triangles[k].first).inds[b1]);
                     uint32_t maxtr = std::max((*bad_triangles[k].first).inds[b0],
@@ -744,15 +744,15 @@ namespace hg {
                 if(num > 1) {
                     continue;
                 }
-                
+
                 TriInd tri;
                 tri.inds[0] = (*it).first.inds[0];
                 tri.inds[1] = (*it).first.inds[1];
                 tri.inds[2] = i;
-                
+
                 triangulation.push_back(tri);
                 circumcircles.push_back(getCircumCircle(points[tri.inds[0]], points[tri.inds[1]], points[tri.inds[2]]));
-                
+
             }
         }
 
@@ -762,7 +762,7 @@ namespace hg {
 
             del_tri.indices.push_back(pr);
         }
-        
+
         // Switch winding direction for triangles whos direction is wrong
         for(uint32_t i = 0; i < del_tri.indices.size(); i++) {
             falg::Vec2& p0 = del_tri.points[del_tri.indices[i].inds[0]];

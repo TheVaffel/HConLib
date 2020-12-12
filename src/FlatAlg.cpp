@@ -116,13 +116,13 @@ namespace falg {
         for(int i = 0; i < 4 * 4; i++) {
             arr[i] = 0;
         }
-  
+
         (*this)(0, 0) = fx;
         (*this)(1, 1) = fy;
         (*this)(2, 2) = -(far + near) / (far - near);
         (*this)(2, 3) = -(2 * far * near) / (far - near);
         (*this)(3, 2) = -1;
-		   
+
     }
 
     template<>
@@ -143,7 +143,7 @@ namespace falg {
                   vec.z(), 0, -vec.x(),
                   -vec.y(), vec.x(), 0);
         Mat3 u = Mat3(FLATALG_MATRIX_IDENTITY) + what * (sin(arg0) / norm) + what * what * ((1 - cos(arg0)) /  (norm * norm));
-  
+
         for(int i = 0; i < 3 * 3; i++) {
             this->arr[i] = u[i];
         }
@@ -164,7 +164,7 @@ namespace falg {
 
     template<>
     void Matrix<3, 3>::setRotation(flatalg_t arg0, flatalg_t arg1) {
-  
+
         flatalg_t st = sin(arg0), ct = cos(arg0),
             sp = sin(arg1), cp = cos(arg1);
         arr[0] = ct; arr[1] = -st; arr[2] = 0;
@@ -302,7 +302,7 @@ namespace falg {
         if (trace > -0.99) {
             float r = sqrt(1 + trace);
             float s = 1 / (2 * r);
-    
+
             this->w = 0.5f * r;
             this->x = (mat[7] - mat[5]) * s;
             this->y = (mat[2] - mat[6]) * s;

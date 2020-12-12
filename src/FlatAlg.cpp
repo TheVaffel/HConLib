@@ -79,6 +79,16 @@ namespace falg {
                 }
             }
             break;
+        case FLATALG_MATRIX_ROTATION:
+        case FLATALG_MATRIX_ROTATION_Z:
+            this->init_rotation(0, arg0);
+            break;
+        case FLATALG_MATRIX_ROTATION_X:
+            this->init_rotation(1, arg0);
+            break;
+        case FLATALG_MATRIX_ROTATION_Y:
+            this->init_rotation(2, arg0);
+            break;
         default:
             throw std::invalid_argument("[FlatAlg::Matrix4] No constructor for that flag-parameter combination");
         }

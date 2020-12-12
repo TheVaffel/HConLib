@@ -9,7 +9,7 @@ const int w = 640, h = 480;
 
 int main(){
   Winval win(w, h);
-  HCam cam(w, h, "/dev/video1", HCAM_MODE_YUYV, false); //Last three arguments are optional
+  HCam cam(w, h, "/dev/video0", HCAM_MODE_YUYV, false); //Last three arguments are optional
   //Also, the "mode"-argument and width/height does nothing in Windows.
   //You have to run the program and see the printed width and height before you go on
   //I don't like Windows either

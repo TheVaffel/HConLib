@@ -373,7 +373,6 @@ namespace falg {
         flatalg_t sum = 0.0;
 #ifdef __AVX__
         const flatalg_t* currp = this->arr;
-
         for (int i = 0; i < 2 * (num_m256<n * m> / 2); i++) {
             __m256 vals = _mm256_loadu_ps(currp);
             __m256 vals2 = _mm256_loadu_ps(currp + per256);
@@ -424,7 +423,9 @@ namespace falg {
             for (int j = 0; j < 4; j++) {
             sum += vv[j];
             } */
+
             sum += _sum_m128(muls);
+
             currp += per128;
         }
 
@@ -449,20 +450,28 @@ namespace falg {
 
     template<int n, int m>
     std::string Matrix<n, m>::str() const {
+
         std::ostringstream oss;
         oss << '[';
-        for(int i = 0; i < n - 1; i++) {
-            for(int j = 0; j < m - 1; j++) {
-                oss << (*this)(i, j) << ", ";
+        if constexpr (n == 1 || m == 1) {
+            for (int i = 0; i < n * m - 1; i++) {
+                oss << (*this)[i] << ", ";
             }
-            oss << (*this)(i, m - 1) << ";\n";
-        }
+            oss << (*this)[n * m - 1] << ']';
+        } else {
+            for(int i = 0; i < n - 1; i++) {
+                for(int j = 0; j < m - 1; j++) {
+                    oss << (*this)(i, j) << ", ";
+                }
+                oss << (*this)(i, m - 1) << ";\n";
+            }
 
-        for(int j = 0; j < m - 1; j++) {
-            oss << (*this)(n - 1, j) << ", ";
-        }
+            for(int j = 0; j < m - 1; j++) {
+                oss << (*this)(n - 1, j) << ", ";
+            }
 
-        oss << (*this)(n - 1, m - 1) << "]\n";
+            oss << (*this)(n - 1, m - 1) << "]\n";
+        }
 
         return oss.str();
     }

@@ -22,53 +22,12 @@ static int msb(int a) {
 namespace hg {
 
     using namespace falg;
-    Rectangle::Rectangle() {}
-
-    Rectangle::Rectangle(float nx, float ny, float nw, float nh) {
-        x = nx; y = ny; w = nw; h = nh;
-    }
-
-    float Rectangle::getX() const {
-        return x;
-    }
-
-    float Rectangle::getY() const {
-        return y;
-    }
-
-    float Rectangle::getWidth() const {
-        return w;
-    }
-
-    float Rectangle::getHeight() const {
-        return h;
-    }
-
-    void Rectangle::setX(float nx) {
-        x = nx;
-    }
-
-    void Rectangle::setY(float ny) {
-        y = ny;
-    }
-
-    void Rectangle::setWidth(float nw) {
-        w = nw;
-    }
-
-    void Rectangle::setHeight(float nh) {
-        h = nh;
-    }
-
-    bool Rectangle::contains(const Vec2& p) const {
-        return p[0] >= x && p[1] >= y && p[0] <= x + w && p[1] <= y + h;
-    }
 
     void drawRectangle(Canvas* canvas, const Rectangle& rectangle, const Color c) {
         int ic = colorToInt(c);
 
-        int ix = (int)rectangle.getX(), iy = (int)rectangle.getY();
-        int iw = (int)rectangle.getWidth(), ih = (int)rectangle.getHeight();
+        int ix = (int)rectangle.min.x(), iy = (int)rectangle.min.y();
+        int iw = (int)(rectangle.getDims().x()), ih = (int)(rectangle.getDims().y());
 
         int fx1 = std::max(std::min(ix, canvas->getWidth() - 1), 0);
         int fx2 = std::max(std::min(ix + iw, canvas->getWidth() - 1), 0);
@@ -526,16 +485,6 @@ namespace hg {
         }
     }
 
-
-    struct Circle {
-        falg::Vec2 c;
-        float r_sq;
-
-        bool contains(const falg::Vec2& p) {
-            return (c - p).sqNorm() <= r_sq;
-        }
-    };
-
     float rightMostCircleEdge(const falg::Vec2& p0,
                               const falg::Vec2& p1,
                               const falg::Vec2& p2) {
@@ -557,7 +506,6 @@ namespace hg {
     Circle getCircumCircle(const falg::Vec2& p0,
                            const falg::Vec2& p1,
                            const falg::Vec2& p2) {
-        Circle cr;
 
         falg::Vec2 v0 = p1 - p0;
         falg::Vec2 v1 = p2 - p0;
@@ -572,10 +520,7 @@ namespace hg {
 
         float rsq = (middle - p0).sqNorm();
 
-        cr.c = middle;
-        cr.r_sq = rsq;
-
-        return cr;
+        return Circle(middle, sqrtf(rsq));
     }
 
 

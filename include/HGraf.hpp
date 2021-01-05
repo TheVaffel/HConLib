@@ -4,7 +4,9 @@
 #define INCLUDED_HGRAF
 
 #include "FlatAlg.hpp"
+
 #include "HGraf/primitives.hpp"
+#include "HGraf/triangulation.hpp"
 
 #include "HGraf/primitives_impl.hpp"
 
@@ -96,24 +98,6 @@ namespace hg {
     void cutLineToZPlane(const falg::Vec3& p1, const falg::Vec3& p2, float plane, falg::Vec3& dst1, falg::Vec3& dst2);
     void drawLineModel(Canvas& canvas, const CamParam& camparam, const LineModel& model, const falg::Mat4&, int);
     void clearCanvas(Canvas& canvas);
-
-
-    struct TriInd {
-        uint32_t inds[3];
-    };
-    bool operator<(const TriInd& tr0, const TriInd& tr1);
-
-    bool triangleContains(const std::vector<falg::Vec2>& points,
-                          const TriInd& tri0,
-                          const falg::Vec2& p);
-
-    struct DelaunayTriangles {
-        std::vector<falg::Vec2> points;
-        std::vector<TriInd> indices;
-    };
-
-    DelaunayTriangles delaunay_triangulation(const std::vector<falg::Vec2>& in_points,
-                                             int bx, int by, int bw, int bh);
 
 };
 #endif // #ifndef INCLUDED_HGRAF

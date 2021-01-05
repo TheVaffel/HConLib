@@ -45,7 +45,7 @@ namespace hg {
     }
 
     template<int n>
-    const falg::Matrix<n, 1>& RangeN<n>::getDims() const {
+    falg::Matrix<n, 1> RangeN<n>::getDims() const {
         return this->max - this->min;
     }
 

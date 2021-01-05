@@ -22,7 +22,7 @@ namespace hg {
 
         const falg::Matrix<n, 1>& getMiddle() const;
         const falg::Matrix<n, 1>& getRange() const;
-        const falg::Matrix<n, 1>& getDims() const;
+        falg::Matrix<n, 1> getDims() const;
 
         falg::Matrix<n, 1>& getMin();
         falg::Matrix<n, 1>& getMax();

@@ -29,7 +29,7 @@ include_directories(${includeDir} )
 add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
 #HGraf
-add_library(HGraf STATIC ${srcDir}/HGraf.cpp ${srcDir}/HGraf/primitives.cpp)
+add_library(HGraf STATIC ${srcDir}/HGraf.cpp ${srcDir}/HGraf/primitives.cpp ${srcDir}/HGraf/triangulation.cpp)
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)
@@ -57,7 +57,7 @@ if(WINVAL_LIB)
   #Winval
   add_library(Winval STATIC ${srcDir}/Winval.cpp)
 
-  
+
 else()
   if(NOT WIN32)
     message(">>>XLib library not found, Winval not built")

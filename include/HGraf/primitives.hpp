@@ -29,6 +29,7 @@ namespace hg {
 
         void add(const falg::Matrix<n, 1>& p);
         bool contains(const falg::Matrix<n, 1>& p) const;
+        bool containsWithin(const falg::Matrix<n, 1>& p, float eps) const;
     };
 
 
@@ -43,6 +44,7 @@ namespace hg {
 
         SphereN(const falg::Matrix<n, 1>& center, float r);
         bool contains(const falg::Matrix<n, 1>& p) const;
+        bool containsWithin(const falg::Matrix<n, 1>& p, float eps) const;
 
         const float& getRadius() const;
         float& getRadius();

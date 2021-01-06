@@ -81,6 +81,16 @@ namespace hg {
         return outside;
     }
 
+    template<int n>
+    bool RangeN<n>::containsWithin(const falg::Matrix<n, 1>& p, float eps) const {
+        bool outside = false;
+        for (int i = 0; i < n; i++) {
+            outside = outside || p[i] + eps < this->min[i] || p[i] - eps > this->max[i];
+        }
+
+        return outside;
+    }
+
     /*
      * SphereN member functions
      */
@@ -117,5 +127,10 @@ namespace hg {
     template<int n>
     bool SphereN<n>::contains(const falg::Matrix<n, 1>& p) const {
         return r * r >= (p - this->center).sqNorm();
+    }
+
+    template<int n>
+    bool SphereN<n>::containsWithin(const falg::Matrix<n, 1>& p, float eps) const {
+        return (r + eps) * (r + eps) >= (p - this->center).sqNorm();
     }
 };

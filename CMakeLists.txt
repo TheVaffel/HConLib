@@ -29,7 +29,10 @@ include_directories(${includeDir} )
 add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 
 #HGraf
-add_library(HGraf STATIC ${srcDir}/HGraf.cpp ${srcDir}/HGraf/primitives.cpp ${srcDir}/HGraf/triangulation.cpp)
+add_library(HGraf STATIC
+  ${srcDir}/HGraf/primitives.cpp
+  ${srcDir}/HGraf/triangulation.cpp
+  ${srcDir}/HGraf/draw.cpp)
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)

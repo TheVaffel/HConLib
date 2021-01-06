@@ -1,11 +1,9 @@
-#include <cmath>
-#include <HGraf.hpp>
-#include <algorithm>
+#include <HGraf/draw.hpp>
 
-#include <iostream>
 #include <list>
 #include <iterator>
 #include <map>
+
 
 static int msb(int a) {
 #ifdef WIN32
@@ -64,7 +62,7 @@ namespace hg {
     }
 
     inline int colorToInt(Color c) {
-        return (255 << 24) | (((int)(c[0]*255))<<16) | (((int)(c[1]*255))<<8) | ((int)(c[2]*255));
+        return (255 << 24) | (((int)(c[0] * 255)) << 16) | (((int)(c[1] * 255)) << 8) | ((int)(c[2] * 255));
     }
 
     //An implementation of Bresenham's algorithm
@@ -125,7 +123,7 @@ namespace hg {
     }
 
     inline int _cross(int x1, int y1, int x2, int y2) {
-        return x1*y2 - x2*y1;
+        return x1 * y2 - x2*y1;
     }
 
     //return whether it is possible
@@ -296,7 +294,7 @@ namespace hg {
             up = boundary[0][1] - point[1], down = boundary[1][1] - point[1];
 
         //Check against right quarter
-        if((vector[0] > 0 && vector[1] < 0) || (vector[1] > 0 && vector[0] < 0)) {
+        if ((vector[0] > 0 && vector[1] < 0) || (vector[1] > 0 && vector[0] < 0)) {
             int temp = right;
             right = left;
             left = temp;
@@ -304,24 +302,24 @@ namespace hg {
 
         float a, b;
 
-        if((a = std::abs(right*vector[1])) < (b = std::abs(down*vector[0]))) {
+        if ((a = std::abs(right*vector[1])) < (b = std::abs(down*vector[0]))) {
             endPoints[0][0] = point[0] + right;
             endPoints[0][1] = point[1] + (int)(right*vector[1]/vector[0]);
-        }else if(a > b) {
+        } else if(a > b) {
             endPoints[0][0] = point[0] + (int)(down*vector[0]/vector[1]);
             endPoints[0][1] = point[1] + down;
-        }else{
+        } else {
             endPoints[0][0] = point[0] + right;
             endPoints[0][1] = point[1] + down;
         }
 
-        if((a = std::abs(left*vector[1])) < (b = std::abs(up*vector[0]))) {
+        if ((a = std::abs(left*vector[1])) < (b = std::abs(up*vector[0]))) {
             endPoints[1][0] = point[0] + left;
             endPoints[1][1] = point[1] + (int)(left*vector[1]/vector[0]);
-        }else if(a > b) {
+        } else if(a > b) {
             endPoints[1][0] = point[0] + (int)(up*vector[0]/vector[1]);
             endPoints[1][1] = point[1] + up;
-        }else{
+        } else {
             endPoints[1][0] = point[0] + left;
             endPoints[1][1] = point[1] + up;
         }
@@ -330,13 +328,17 @@ namespace hg {
     void cutLineToZPlane(const Vec3& p1, const Vec3& p2, float plane, Vec3& dst1, Vec3& dst2) {
         Vec3 v = p2 - p1;
 
-        if(p1.z() > -plane) {
+        if (p1.z() > -plane) {
             dst1 = p1 - v*((p1.z() + plane)/v.z());
-        }else dst1 = p1;
+        } else {
+            dst1 = p1;
+        }
 
-        if(p2.z() > -plane) {
-            dst2 = p2 - v*((p2.z() + plane)/v.z());
-        }else dst2 = p2;
+        if (p2.z() > -plane) {
+            dst2 = p2 - v * ((p2.z() + plane) / v.z());
+        } else {
+            dst2 = p2;
+        }
     }
 
 
@@ -467,18 +469,19 @@ namespace hg {
 
     LineCube::LineCube(float w, float h, float l):LineModel(8,12) {
         for(int i = 0; i < 2; i++) {
-            for(int j =0; j < 2; j++) {
-                for(int k = 0;k < 2; k++) {
-                    points[4*i + 2*j + k] = Vec3((i - 0.5f)*w , (j - 0.5f)*h, (k - 0.5f)*l);
+            for(int j = 0; j < 2; j++) {
+                for(int k = 0; k < 2; k++) {
+                    points[4 * i + 2 * j + k] = Vec3((i - 0.5f) * w, (j - 0.5f) * h, (k - 0.5f) * l);
                 }
             }
         }
+
         int u= 0;
-        for(int i = 0; i < 8; i++) {
-            for(int j = 0; j < 3; j++) {
-                if(! ((1<<j)&i)) {
-                    indices[2*u] = i;
-                    indices[2*u + 1] = i | (1<<j);
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (! ((1 << j) & i)) {
+                    indices[2 * u] = i;
+                    indices[2 * u + 1] = i | (1 << j);
                     u++;
                 }
             }

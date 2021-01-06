@@ -274,7 +274,16 @@ Winval::Winval(int w, int h, bool fullscreen){
 		    XInternAtom(dsp, "_NET_WM_STATE", False),
 		    XA_ATOM, 32, PropModeReplace, (unsigned char*)atoms, 1
 		    );
+  } else {
+      // Ensure window becomes floating by default in tiling window managers
+      Atom atoms[2] = { XInternAtom(dsp, "_NET_WM_WINDOW_TYPE_SPLASH", False), None };
+      XChangeProperty(dsp,
+                      win,
+                      XInternAtom(dsp, "_NET_WM_WINDOW_TYPE", False),
+                      XA_ATOM, 32, PropModeReplace, (unsigned char*) atoms, 1);
   }
+
+
 
   long eventMask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
   XSelectInput(dsp, win, eventMask);

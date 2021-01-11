@@ -109,8 +109,9 @@ namespace hg {
         this->half_edges.push_back(top_left);
 
         bool valid = this->validateHalfEdgeMesh();
-        std::cout << "Valid = " << valid << std::endl;
+
         if (valid == false) {
+            std::cerr << "[HGraf::HalfEdgeMesh::splitEdge] Got invalid mesh after splitting edge (or before?)" << std::endl;
             exit(-1);
         }
     }

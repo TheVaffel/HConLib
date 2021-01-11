@@ -11,6 +11,14 @@ namespace hg {
     // Constructors
 
     template<int n>
+    RangeN<n>::RangeN() {
+        for (int i = 0; i < n; i++) {
+            this->min[i] = 1e8;
+            this->max[i] = 1e-8;
+        }
+    }
+
+    template<int n>
     RangeN<n>::RangeN(const falg::Matrix<n, 1>& minp, const falg::Matrix<n, 1>& maxp) {
         this->min = minp;
         this->max = maxp;

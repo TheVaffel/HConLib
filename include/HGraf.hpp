@@ -8,8 +8,12 @@
 #include "HGraf/primitives.hpp"
 #include "HGraf/triangulation.hpp"
 #include "HGraf/draw.hpp"
+#include "HGraf/bvh.hpp"
+#include "HGraf/mesh.hpp"
 
 #include "HGraf/primitives_impl.hpp"
+#include "HGraf/bvh_impl.hpp"
+#include "HGraf/mesh_impl.hpp"
 
 #include <vector>
 

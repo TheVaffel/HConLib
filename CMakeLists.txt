@@ -15,7 +15,7 @@ else()
   set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib)
 endif()
 
-add_definitions(-std=c++1z -mavx)
+add_definitions(-std=c++2a -mavx -fconcepts)
 
 if(NOT WIN32)
   add_definitions(-g -Wall -fPIC)
@@ -32,7 +32,9 @@ add_library(FlatAlg STATIC ${srcDir}/FlatAlg.cpp)
 add_library(HGraf STATIC
   ${srcDir}/HGraf/primitives.cpp
   ${srcDir}/HGraf/triangulation.cpp
-  ${srcDir}/HGraf/draw.cpp)
+  ${srcDir}/HGraf/draw.cpp
+  ${srcDir}/HGraf/mesh.cpp
+  ${srcDir}/HGraf/bvh.cpp)
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)

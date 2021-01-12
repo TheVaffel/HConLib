@@ -1,6 +1,7 @@
 #include <HGraf/mesh.hpp>
 
 #include <iostream>
+#include <set>
 
 namespace hg {
 
@@ -113,6 +114,26 @@ namespace hg {
         if (valid == false) {
             std::cerr << "[HGraf::HalfEdgeMesh::splitEdge] Got invalid mesh after splitting edge (or before?)" << std::endl;
             exit(-1);
+        }
+    }
+
+    void HalfEdgeMesh::constructIndices(std::vector<uint32_t>& indices) const {
+        indices.clear();
+
+        std::set<std::pair<int, int>> taken_edges;
+
+        for (unsigned int i = 0; i < this->half_edges.size(); i++) {
+            HalfEdge* p = this->half_edges[i];
+            if (taken_edges.find(std::make_pair(p->start_index, p->end_index)) != taken_edges.end()) {
+                // Edge already added, continue
+                continue;
+            }
+
+            for (int j = 0; j < 3; j++) {
+                indices.push_back(p->start_index);
+                taken_edges.insert(std::make_pair(p->start_index, p->end_index));
+                p = p->next;
+            }
         }
     }
 

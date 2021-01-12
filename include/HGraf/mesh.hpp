@@ -61,6 +61,7 @@ namespace hg {
         unsigned int getSize() const;
 
         void splitEdge(HalfEdge* edge, int new_vertex_index);
+        void constructIndices(std::vector<uint32_t>& indices) const;
 
         template<Mesh_C T>
         HalfEdgeMesh(const T& mesh);

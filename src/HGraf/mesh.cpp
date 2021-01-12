@@ -148,4 +148,10 @@ namespace hg {
     unsigned int HalfEdgeMesh::getSize() const {
         return half_edges.size();
     }
+
+    HalfEdgeMesh::~HalfEdgeMesh() {
+        for (unsigned int i = 0; i < this->half_edges.size(); i++) {
+            delete half_edges[i];
+        }
+    }
 };

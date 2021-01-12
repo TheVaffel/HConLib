@@ -65,5 +65,6 @@ namespace hg {
 
         template<Mesh_C T>
         HalfEdgeMesh(const T& mesh);
+        ~HalfEdgeMesh();
     };
 };

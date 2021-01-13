@@ -119,95 +119,100 @@ typedef Display* winval_type_1;
 #endif //WIN32
 
 class Winval{
-  int width, height;
+    int width, height;
 
 
 #ifdef WIN32
-  COLORREF* pixelData;
+    COLORREF* pixelData;
 
-  WNDCLASSEX wc;
-  HWND hwnd;
-  HINSTANCE hinstance;
-  MSG msg;
-  HDC hdc;
+    WNDCLASSEX wc;
+    HWND hwnd;
+    HINSTANCE hinstance;
+    MSG msg;
+    HDC hdc;
 
-  bool windowOpen;
+    bool windowOpen;
 
-  void handleEventProperly(MSG& msg);
+    void handleEventProperly(MSG& msg);
 #else //WIN32
-  Display *dsp;
-  int screenNum;
-  GC gc;
-  Window win;
-  Window focusWindow;
-  char* pixelData;
-  XImage *image;
-  KeySym *ks;
-  Atom wm_delete_window;
-  int keysyms;
+    Display *dsp;
+    int screenNum;
+    GC gc;
+    Window win;
+    Window focusWindow;
+    char* pixelData;
+    XImage *image;
+    KeySym *ks;
+    Atom wm_delete_window;
+    int keysyms;
 
-  void handleEventProperly(XEvent& e);
-  int getKeySym(int keycode);
+    void handleEventProperly(XEvent& e);
+    int getKeySym(int keycode);
 #endif //WIN32
 
-  static const int _numKeys = 1 << 16;
-  bool isDown[_numKeys];
+    static const int _numKeys = 1 << 16;
+    bool isDown[_numKeys];
+    int mouseButtonsPressed[6];
 
-  bool autoRepeat;
+    bool autoRepeat;
 
-  int pointerX, pointerY;
-  bool mouseButtonPressed;
+    int pointerX, pointerY;
 
-  bool lockedPointer;
-  int lockedPointerX, lockedPointerY;
+    bool lockedPointer;
+    int lockedPointerX, lockedPointerY;
 
- public:
-  Winval(int w, int h, bool fullscreen = false);
-  Winval();
-  ~Winval();
+    void resetBeforeFlush();
 
-  std::string window_title;
+public:
+    Winval(int w, int h, bool fullscreen = false);
+    Winval();
+    ~Winval();
 
+    std::string window_title;
 
-  void flushEvents();
+    void flushEvents();
 
-  void getPointerPosition(int* x, int* y) const;
-  bool isMouseButtonPressed() const;
-  bool isKeyPressed(int i) const;
-  int waitForKey();
-  void getButtonStateAndMotion(bool& valid, int& x, int& y);
-  void waitForButtonPress(int& x, int& y);
-  void drawBuffer(unsigned char* p, int w, int h);
-  void enableAutoRepeat(bool enable);
-  const char* getTitle() const;
-  void setTitle(const char* window_name);
-  int getWidth() const;
-  int getHeight() const;
-  bool isOpen();
-  void setPointerVisible(bool visible);
-  void lockPointer(bool lock, int x = 300, int y = 300);
-  bool isPointerLocked();
-  void getPointerLockPosition(int* x, int* y);
-  void sleepMilliseconds(int u);
+    void getPointerPosition(int* x, int* y) const;
+    bool isMouseButtonPressed() const;
+    int getScroll() const;
+    bool isKeyPressed(int i) const;
+    int waitForKey();
+    void getButtonStateAndMotion(bool& valid, int& x, int& y);
+    void waitForButtonPress(int& x, int& y);
+    void drawBuffer(unsigned char* p, int w, int h);
+    void enableAutoRepeat(bool enable);
+
+    const char* getTitle() const;
+    void setTitle(const char* window_name);
+
+    int getWidth() const;
+    int getHeight() const;
+    bool isOpen();
+
+    void setPointerVisible(bool visible);
+    void lockPointer(bool lock, int x = 300, int y = 300);
+    bool isPointerLocked();
+    void getPointerLockPosition(int* x, int* y);
+    void sleepMilliseconds(int u);
 
 #ifdef WIN32
-  typedef HINSTANCE winval_type_0;
-  typedef HWND winval_type_1;
+    typedef HINSTANCE winval_type_0;
+    typedef HWND winval_type_1;
 
-  HINSTANCE getInstance() const;
-  HWND getHWND() const;
+    HINSTANCE getInstance() const;
+    HWND getHWND() const;
 
-  winval_type_0 getWinProp0() const;
-  winval_type_1 getWinProp1() const;
+    winval_type_0 getWinProp0() const;
+    winval_type_1 getWinProp1() const;
 #else //WIN32
-  typedef Window winval_type_0;
-  typedef Display* winval_type_1;
+    typedef Window winval_type_0;
+    typedef Display* winval_type_1;
 
-  Window getWindow() const;
-  Display* getDisplay() const;
+    Window getWindow() const;
+    Display* getDisplay() const;
 
-  winval_type_0 getWinProp0() const;
-  winval_type_1 getWinProp1() const;
+    winval_type_0 getWinProp0() const;
+    winval_type_1 getWinProp1() const;
 #endif //WIN32
 
 };

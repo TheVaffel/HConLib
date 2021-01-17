@@ -6,6 +6,13 @@
 
 namespace hg {
 
+    /*
+     * Class forward declarations
+     */
+
+    struct HalfEdgeMesh;
+
+
     template<typename T>
     concept bool Mesh_C = requires(T t) {
         { t.positions } -> std::vector<falg::Vec3>;
@@ -42,6 +49,11 @@ namespace hg {
     struct HalfEdge {
         HalfEdge *opposite = nullptr, *next = nullptr;
         int start_index, end_index;
+
+    private:
+        unsigned int index_in_half_edge_mesh;
+
+        friend class HalfEdgeMesh;
     };
 
 

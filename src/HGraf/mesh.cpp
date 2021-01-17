@@ -138,19 +138,101 @@ namespace hg {
         top_right->next->next = rcross_edge_top;
         // rcross_edge_bottom->next-next is already the original edge
 
+        rcross_edge_bottom->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(rcross_edge_bottom);
+
+        rcross_edge_top->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(rcross_edge_top);
+
+        lcross_edge_bottom->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(lcross_edge_bottom);
+
+        lcross_edge_top->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(lcross_edge_top);
+
+        top_right->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(top_right);
+
+        top_left->index_in_half_edge_mesh = this->half_edges.size();
         this->half_edges.push_back(top_left);
 
-        bool valid = this->validateHalfEdgeMesh();
+        /* bool valid = this->validateHalfEdgeMesh();
 
         if (valid == false) {
             std::cerr << "[HGraf::HalfEdgeMesh::splitEdge] Got invalid mesh after splitting edge (or before?)" << std::endl;
             exit(-1);
+            } */
+    }
+
+    void HalfEdgeMesh::remove_edge_from_list(HalfEdge* edge) {
+        int i = edge->index_in_half_edge_mesh;
+        this->half_edges[i] = this->half_edges[this->half_edges.size() - 1];
+        this->half_edges[i]->index_in_half_edge_mesh = i;
+        this->half_edges.pop_back();
+    }
+
+    // Returns deleted vertex index
+    int HalfEdgeMesh::mergeEdge(HalfEdge* edge) {
+        int vert_to_keep = edge->start_index;
+        int vert_to_delete = edge->end_index;
+
+        HalfEdge* top_right_keep = edge->next->opposite;
+        HalfEdge* bottom_right_keep = edge->next->next->opposite;
+        HalfEdge* bottom_left_keep = edge->opposite->next->opposite;
+        HalfEdge* top_left_keep = edge->opposite->next->next->opposite;
+
+        int dudu = 0;
+        HalfEdge* cur = top_right_keep->next;
+        while (cur != top_left_keep) {
+            // Check whether any of the affected triangles already refers to the start index (then this operation is aborted)
+            HalfEdge* ccur = cur->next->opposite;
+            while (ccur != cur) {
+                if (ccur->start_index == vert_to_keep) {
+                    return -1;
+                }
+
+                ccur = ccur->next->opposite;
+            }
+
+            dudu++;
+            cur = cur->opposite->next;
         }
+
+        this->remove_edge_from_list(top_right_keep->opposite);
+        this->remove_edge_from_list(bottom_right_keep->opposite);
+        this->remove_edge_from_list(bottom_left_keep->opposite);
+        this->remove_edge_from_list(top_left_keep->opposite);
+        this->remove_edge_from_list(edge->opposite);
+        this->remove_edge_from_list(edge);
+
+        // NB: Need to delete edges from list of edges :(
+        // Perhaps better to only have reference to one edge instead?
+        // But then we can't iterate through them in a good way
+
+        top_right_keep->opposite = bottom_right_keep;
+        bottom_right_keep->opposite = top_right_keep;
+
+        top_left_keep->opposite = bottom_left_keep;
+        bottom_left_keep->opposite = top_left_keep;
+
+        cur = bottom_right_keep;
+        while (cur != top_left_keep) {
+
+
+            cur->opposite->end_index = vert_to_keep;
+            cur->opposite->next->start_index = vert_to_keep;
+
+            cur = cur->opposite->next;
+        }
+
+        /* bool valid = this->validateHalfEdgeMesh();
+
+        if (valid == false) {
+            std::cerr << "[HGraf::HalfEdgeMesh::mergeEdge] Got invalid mesh after merging edge (or before?)" << std::endl;
+            exit(-1);
+            } */
+
+        return vert_to_delete;
     }
 
     void HalfEdgeMesh::constructIndices(std::vector<uint32_t>& indices) const {
@@ -171,6 +253,38 @@ namespace hg {
                 p = p->next;
             }
         }
+    }
+
+    void HalfEdgeMesh::reconstructMesh(NormalMesh& mesh) {
+        std::vector<int> index_map(mesh.positions.size(), -1);
+
+        std::vector<falg::Vec3> new_positions;
+        std::vector<falg::Vec3> new_normals;
+
+        int curr_ind = 0;
+        for (unsigned int i = 0; i < this->half_edges.size(); i++) {
+            HalfEdge* edge = this->half_edges[i];
+            int v0 = edge->start_index;
+            int v1 = edge->end_index;
+            if (index_map[v0] < 0) {
+                index_map[v0] = curr_ind++;
+                new_positions.push_back(mesh.positions[v0]);
+                new_normals.push_back(mesh.normals[v0]);
+            }
+
+            if (index_map[v1] < 0) {
+                index_map[v1] = curr_ind++;
+                new_positions.push_back(mesh.positions[v1]);
+                new_normals.push_back(mesh.normals[v1]);
+            }
+
+            edge->start_index = index_map[v0];
+            edge->end_index = index_map[v1];
+        }
+
+        mesh.positions = new_positions;
+        mesh.normals = new_normals;
+        this->constructIndices(mesh.indices);
     }
 
     const HalfEdge* const* HalfEdgeMesh::getData() const {

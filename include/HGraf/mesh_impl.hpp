@@ -14,6 +14,7 @@ namespace hg {
 
         for (unsigned int i = 0; i < this->half_edges.size(); i++) {
             this->half_edges[i] = new HalfEdge;
+            this->half_edges[i]->index_in_half_edge_mesh = i;
         }
 
         std::map<std::pair<int, int>, int> indmap;

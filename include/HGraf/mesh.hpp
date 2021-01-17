@@ -65,6 +65,7 @@ namespace hg {
         std::vector<HalfEdge*> half_edges;
 
         bool validateHalfEdgeMesh() const;
+        void remove_edge_from_list(HalfEdge* edge);
 
     public:
 
@@ -73,7 +74,9 @@ namespace hg {
         unsigned int getSize() const;
 
         void splitEdge(HalfEdge* edge, int new_vertex_index);
+        int mergeEdge(HalfEdge* edge);
         void constructIndices(std::vector<uint32_t>& indices) const;
+        void reconstructMesh(NormalMesh& mesh);
 
         template<Mesh_C T>
         HalfEdgeMesh(const T& mesh);

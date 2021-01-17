@@ -11,6 +11,8 @@ namespace hg {
     bool HalfEdgeMesh::validateHalfEdgeMesh() const {
         bool ok = true;
 
+        std::set<std::pair<int, int> > found_indices;
+
         for (unsigned int i = 0; i < this->half_edges.size(); i++) {
             bool ok0 = this->half_edges[i]->next == nullptr || this->half_edges[i]->next->next == nullptr || this->half_edges[i]->next->next->next == this->half_edges[i];
             bool ok01 = this->half_edges[i]->next == nullptr;
@@ -19,6 +21,12 @@ namespace hg {
             bool ok2 = this->half_edges[i]->next->start_index == this->half_edges[i]->end_index;
             bool ok3 = this->half_edges[i]->opposite->start_index == this->half_edges[i]->end_index;
             bool ok4 = this->half_edges[i]->opposite->end_index == this->half_edges[i]->start_index;
+            bool ok5 = this->half_edges[i]->index_in_half_edge_mesh == i;
+
+            std::pair<int, int> pp = std::make_pair(this->half_edges[i]->start_index, this->half_edges[i]->end_index);
+            bool ok6 = found_indices.find(pp) == found_indices.end();
+
+            found_indices.insert(pp);
 
             if (!ok0) {
                 std::cout << "Not ok0 on half edge " << i << std::endl;
@@ -39,6 +47,8 @@ namespace hg {
             if (!ok3) {
                 std::cout << "Not ok3 on half edge " << i << std::endl;
                 std::cout << "Between vertices " << this->half_edges[i]->start_index << " and " << this->half_edges[i]->end_index << std::endl;
+                std::cout << "Had registered index " << this->half_edges[i]->index_in_half_edge_mesh << std::endl;
+                std::cout << "Opposite edge had indices " << this->half_edges[i]->opposite->start_index << " and " << this->half_edges[i]->opposite->end_index << std::endl;
             }
 
             if (!ok4) {
@@ -46,10 +56,36 @@ namespace hg {
                 std::cout << "Between vertices " << this->half_edges[i]->start_index << " and " << this->half_edges[i]->end_index << std::endl;
             }
 
+            if (!ok5) {
+                std::cout << "Not ok5 on half edge " << i << std::endl;
+                std::cout << "Edge did not have correct index in half_edge list, had index " << this->half_edges[i]->index_in_half_edge_mesh << std::endl;
+            }
 
-            ok = ok && ok0;
-            ok = ok && ok1;
+            if (!ok6) {
+                std::cout << "Not ok6 on half edge " << i << std::endl;
+                std::cout << "Edge between " << this->half_edges[i]->start_index << " and " << this->half_edges[i]->end_index << " was already inserted " << std::endl;
+            }
+
+            bool dook = false;
+            int ti = 0;
+            HalfEdge* ce = this->half_edges[i];
+            while (ti++ < 1000) {
+                ce = ce->next->opposite;
+                if (ce == this->half_edges[i]) {
+                    dook = true;
+                    break;
+                }
+            }
+
+            if (! dook) {
+                std::cout << "Travel around vertex " << this->half_edges[i]->end_index << " starting at edge " << i << " failed " << std::endl;
+            }
+
+
+            ok = ok && ok0 && ok1 && ok2 && ok3 && ok4 && ok5 && dook && ok6;
         }
+
+
 
         return ok;
     }

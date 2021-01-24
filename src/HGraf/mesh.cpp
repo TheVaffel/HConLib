@@ -85,9 +85,12 @@ namespace hg {
             ok = ok && ok0 && ok1 && ok2 && ok3 && ok4 && ok5 && dook && ok6;
         }
 
-
-
         return ok;
+    }
+
+    void HalfEdgeMesh::add_edge_to_list(HalfEdge* edge) {
+        edge->index_in_half_edge_mesh = this->half_edges.size();
+        this->half_edges.push_back(edge);
     }
 
     void HalfEdgeMesh::splitEdge(HalfEdge *edge, int new_vertex_index) {
@@ -138,23 +141,12 @@ namespace hg {
         top_right->next->next = rcross_edge_top;
         // rcross_edge_bottom->next-next is already the original edge
 
-        rcross_edge_bottom->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(rcross_edge_bottom);
-
-        rcross_edge_top->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(rcross_edge_top);
-
-        lcross_edge_bottom->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(lcross_edge_bottom);
-
-        lcross_edge_top->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(lcross_edge_top);
-
-        top_right->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(top_right);
-
-        top_left->index_in_half_edge_mesh = this->half_edges.size();
-        this->half_edges.push_back(top_left);
+        this->add_edge_to_list(rcross_edge_bottom);
+        this->add_edge_to_list(rcross_edge_top);
+        this->add_edge_to_list(lcross_edge_bottom);
+        this->add_edge_to_list(lcross_edge_top);
+        this->add_edge_to_list(top_right);
+        this->add_edge_to_list(top_left);
 
         /* bool valid = this->validateHalfEdgeMesh();
 
@@ -204,10 +196,6 @@ namespace hg {
         this->remove_edge_from_list(top_left_keep->opposite);
         this->remove_edge_from_list(edge->opposite);
         this->remove_edge_from_list(edge);
-
-        // NB: Need to delete edges from list of edges :(
-        // Perhaps better to only have reference to one edge instead?
-        // But then we can't iterate through them in a good way
 
         top_right_keep->opposite = bottom_right_keep;
         bottom_right_keep->opposite = top_right_keep;

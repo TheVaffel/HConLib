@@ -65,6 +65,7 @@ namespace hg {
         std::vector<HalfEdge*> half_edges;
 
         bool validateHalfEdgeMesh() const;
+        void add_edge_to_list(HalfEdge* edge);
         void remove_edge_from_list(HalfEdge* edge);
 
     public:

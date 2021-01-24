@@ -223,6 +223,71 @@ namespace hg {
         return vert_to_delete;
     }
 
+
+    void HalfEdgeMesh::splitTriangle(HalfEdge* one_edge, int new_vertex_index) {
+        HalfEdge *h1 = new HalfEdge,
+            *h1o = new HalfEdge,
+            *h2 = new HalfEdge,
+            *h2o = new HalfEdge,
+            *h3 = new HalfEdge,
+            *h3o = new HalfEdge;
+
+        HalfEdge *e1 = one_edge;
+        HalfEdge *e2 = e1->next;
+        HalfEdge *e3 = e2->next;
+
+        this->add_edge_to_list(h1);
+        this->add_edge_to_list(h1o);
+        this->add_edge_to_list(h2);
+        this->add_edge_to_list(h2o);
+        this->add_edge_to_list(h3);
+        this->add_edge_to_list(h3o);
+
+        e1->next = h1;
+        h1->next = h3o;
+        h3o->next = e1;
+
+        e2->next = h2;
+        h2->next = h1o;
+        h1o->next = e2;
+
+        e3->next = h3;
+        h3->next = h2o;
+        h2o->next = e3;
+
+        h1->opposite = h1o;
+        h1o->opposite = h1;
+
+        h2->opposite = h2o;
+        h2o->opposite = h2;
+
+        h3->opposite = h3o;
+        h3o->opposite = h3;
+
+        h1->start_index = e1->end_index;
+        h1->end_index = new_vertex_index;
+        h1o->start_index = new_vertex_index;
+        h1o->end_index = h1->start_index;
+
+        h2->start_index = e2->end_index;
+        h2->end_index = new_vertex_index;
+        h2o->start_index = new_vertex_index;
+        h2o->end_index = h2->start_index;
+
+        h3->start_index = e3->end_index;
+        h3->end_index = new_vertex_index;
+        h3o->start_index = new_vertex_index;
+        h3o->end_index = h3->start_index;
+
+        bool valid = this->validateHalfEdgeMesh();
+
+        if (valid == false) {
+            std::cerr << "[HGraf::HalfEdgeMesh::splitTriangle] Got invalid mesh after merging edge (or before?)" << std::endl;
+            exit(-1);
+        }
+    }
+
+
     void HalfEdgeMesh::constructIndices(std::vector<uint32_t>& indices) const {
         indices.clear();
 

@@ -76,6 +76,7 @@ namespace hg {
 
         void splitEdge(HalfEdge* edge, int new_vertex_index);
         int mergeEdge(HalfEdge* edge);
+        void splitTriangle(HalfEdge* one_edge, int new_vertex_index);
         void constructIndices(std::vector<uint32_t>& indices) const;
         void reconstructMesh(NormalMesh& mesh);
 

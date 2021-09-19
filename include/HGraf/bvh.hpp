@@ -4,6 +4,7 @@
 
 #include <random>
 #include <memory>
+#include <concepts>
 
 
 namespace hg {
@@ -13,8 +14,9 @@ namespace hg {
      */
 
     template<typename T>
-    concept bool Positioned = requires(T t) {
-        { t.getPosition() } -> falg::Vec3;
+
+    concept Positioned = requires(T t) {
+        { t.getPosition() } -> std::same_as<falg::Vec3>;
     };
 
 
@@ -68,7 +70,7 @@ namespace hg {
 
         void destroyRecursive();
 
-        template<typename tt>
+        template<Positioned tt>
         friend class BVH;
     };
 };

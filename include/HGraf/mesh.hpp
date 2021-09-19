@@ -3,6 +3,7 @@
 #include <FlatAlg.hpp>
 
 #include <vector>
+#include <concepts>
 
 namespace hg {
 
@@ -14,10 +15,11 @@ namespace hg {
 
 
     template<typename T>
-    concept bool Mesh_C = requires(T t) {
-        { t.positions } -> std::vector<falg::Vec3>;
-        { t.indices } -> std::vector<uint32_t>;
+    concept Mesh_C = requires(T t) {
+        { t.positions } -> std::same_as<std::vector<falg::Vec3>&>;
+        { t.indices } -> std::same_as<std::vector<uint32_t>&>;
     };
+    
 
     /*
      * IndexedMesh - Mesh with positions and indices

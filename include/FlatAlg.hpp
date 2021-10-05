@@ -373,7 +373,7 @@ namespace falg {
         flatalg_t sum = 0.0;
 #ifdef __AVX__
         const flatalg_t* currp = this->arr;
-        for (int i = 0; i < 2 * (num_m256<n * m> / 2); i++) {
+        for (int i = 0; i < num_m256<n * m> / 2; i++) {
             __m256 vals = _mm256_loadu_ps(currp);
             __m256 vals2 = _mm256_loadu_ps(currp + per256);
             __m256 mul1 = _mm256_mul_ps(vals, vals);
@@ -392,8 +392,7 @@ namespace falg {
 
             currp += per256;
             currp += per256;
-            i++;
-        }
+	}
 
         if constexpr(num_m256<n * m> % 2 == 1) {
 
@@ -411,7 +410,7 @@ namespace falg {
                    sum += currp[j] * currp[j];
                    } */
                 currp += per256;
-            }
+	}
 
         // This will have max one iteration
         for (int i = 0; i < num_m128<n * m>; i++) {

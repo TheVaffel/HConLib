@@ -11,7 +11,7 @@ namespace hg {
      * Class forward declarations
      */
 
-    struct HalfEdgeMesh;
+    class HalfEdgeMesh;
 
 
     template<typename T>

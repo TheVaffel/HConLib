@@ -9,16 +9,16 @@ namespace hg {
      * BVH member functions
      */
 
-    template<typename T>
+    template<Positioned T>
     BVH<T>::BVH() : rand_int(1, 3) { }
 
-    template<typename T>
+    template<Positioned T>
     BVH<T>::~BVH() {
         this->root->destroyRecursive();
         delete this->root;
     }
 
-    template<typename T>
+    template<Positioned T>
     std::shared_ptr<const BVH<T>> BVH<T>::createBVH(T* elements, int numElements) {
         BVH<T>* ptr = new BVH<T>();
 
@@ -27,7 +27,7 @@ namespace hg {
         return std::shared_ptr<const BVH<T>>(ptr);
     }
 
-    template<typename T>
+    template<Positioned T>
     void BVH<T>::getWithin(const falg::Vec3& p, float eps, std::vector<T>& results) const {
         this->root->getWithin(p, eps, results);
     }
@@ -36,22 +36,22 @@ namespace hg {
      * BVHNode member functions
      */
 
-    template<typename T>
+    template<Positioned T>
     bool _comparator_x(const T& p0, const T& p1) {
         return p0.getPosition().x() < p1.getPosition().x();
     }
 
-    template<typename T>
+    template<Positioned T>
     bool _comparator_y(const T& p0, const T& p1) {
         return p0.getPosition().y() < p1.getPosition().y();
     }
 
-    template<typename T>
+    template<Positioned T>
     bool _comparator_z(const T& p0, const T& p1) {
         return p0.getPosition().z() < p1.getPosition().z();
     }
 
-    template<typename T>
+    template<Positioned T>
     BVHNode<T>::BVHNode(T* elements, int num_elements, RandInt& rand_int) {
         for (int i = 0; i < num_elements; i++) {
             this->bounding_box.add(elements[i].getPosition());
@@ -80,7 +80,7 @@ namespace hg {
         this->right = new BVHNode<T>(elements + half_count, other_half, rand_int);
     }
 
-    template<typename T>
+    template<Positioned T>
     void BVHNode<T>::getWithin(const falg::Vec3& p, float eps, std::vector<T>& results) const {
         if (this->left == nullptr && this->right == nullptr) {
             for (const T& tp : leaf_elements) {
@@ -101,7 +101,7 @@ namespace hg {
         }
     }
 
-    template<typename T>
+    template<Positioned T>
     void BVHNode<T>::destroyRecursive() {
         if (this->left != nullptr) {
             this->left->destroyRecursive();

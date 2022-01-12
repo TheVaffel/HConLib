@@ -49,8 +49,8 @@ set(wingine_libs Wingine ${common_wingine_libs} )
 
 set(wingine_with_glslang_libs WingineWithGlslang ${common_wingine_libs} ${glslang_libs})
 
-include_directories(${HConLibRoot}/include)
-link_directories(${HConLibRoot}/lib)
+include_directories(${HConLibRoot}/include ${HConLibRoot}/../flawed/include)
+link_directories(${HConLibRoot}/lib ${HConLibRoot}/../flawed/lib)
 
 #algtest
 add_executable(algtest algtest.cpp)
@@ -67,6 +67,10 @@ target_link_libraries(flatalg FlatAlg)
 # new_flatalg_test
 add_executable(new_flatalg_test new_flatalg_test.cpp)
 target_link_libraries(new_flatalg_test FlatAlg)
+
+# improc
+add_executable(improc_test improc.cpp)
+target_link_libraries(improc_test HGraf flawed)
 
 find_library(FLAUDIO_LIB NAMES Flaudio PATHS ${lib_search_path} NO_DEFAULT_PATH)
 

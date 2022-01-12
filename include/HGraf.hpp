@@ -14,11 +14,8 @@
 #include "HGraf/primitives_impl.hpp"
 #include "HGraf/bvh_impl.hpp"
 #include "HGraf/mesh_impl.hpp"
+#include "HGraf/improc.hpp"
 
 #include <vector>
 
-namespace hg {
-
-
-};
 #endif // #ifndef INCLUDED_HGRAF

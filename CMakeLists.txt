@@ -18,9 +18,9 @@ endif()
 add_definitions(-std=c++2a -mavx -fconcepts)
 
 if(NOT WIN32)
-  add_definitions(-g -Wall -fPIC)
+  add_definitions(-g -Wall -fPIC -Wno-sign-compare)
 endif()
-set(includeDir ${CMAKE_HOME_DIRECTORY}/include)
+set(includeDir ${CMAKE_HOME_DIRECTORY}/include  ${CMAKE_HOME_DIRECTORY}/../flawed/include)
 set(srcDir ${CMAKE_HOME_DIRECTORY}/src)
 
 include_directories(${includeDir} )
@@ -61,10 +61,17 @@ endif()
 if(WINVAL_LIB)
   #Winval
   add_library(Winval STATIC ${srcDir}/Winval.cpp)
-
-
 else()
   if(NOT WIN32)
     message(">>>XLib library not found, Winval not built")
   endif()
 endif()
+
+set(FLAWED_PATH ${CMAKE_HOME_DIRECTORY}/../flawed)
+set(FLAWED_OUTPUT_PATH flawed_tests)
+
+include(${FLAWED_PATH}/FlawedTest.cmake)
+
+flawed_add_tests(${srcDir}/HGraf/improc.test.cpp)
+
+flawed_write_test_target()

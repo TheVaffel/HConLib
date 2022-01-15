@@ -86,4 +86,32 @@ createTestSuite("Image tests", [] {
 
         fl_assert_eq(count, IMAGE_WIDTH * IMAGE_HEIGHT);
     });
+
+    createTest("Fill sets all elements to correct value", [] {
+        hg::Image<std::array<float, 3>> im(IMAGE_WIDTH, IMAGE_HEIGHT);
+
+        std::array<float, 3> fill_value = { 1, 2, 3 };
+
+        im.fill(fill_value);
+
+        for (hg::Image<std::array<float, 3>>::iterator it = im.begin(); it != im.end(); ++it) {
+            fl_assert_eq(*it, fill_value);
+        }
+    });
+
+    createTest("Iterators also fill with correct value", [] {
+        hg::Image<int> im(IMAGE_WIDTH, IMAGE_HEIGHT);
+
+        int i = 0;
+        for (hg::Image<int>::iterator it = im.begin(); it != im.end(); ++it) {
+            *it = i;
+            i++;
+        }
+
+        i = 0;
+        for (hg::Image<int>::iterator it = im.begin(); it != im.end(); ++it) {
+            fl_assert_eq(*it, i);
+            i++;
+        }
+    });
 });

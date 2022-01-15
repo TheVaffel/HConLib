@@ -1,22 +1,26 @@
+#pragma once
 
 #include <flawed_assert.hpp>
 
 #include <iterator>
+#include <vector>
 
 namespace hg {
 
+    /*
+     * Image class
+     */
     template<typename T>
     class Image {
 
         unsigned int width, height;
         unsigned int elementStride;
 
-        T *data;
+        std::vector<T> data;
 
     public:
 
         Image(unsigned int width, unsigned int height, unsigned int strideBytes = 0, const T& fill = T());
-        ~Image();
 
         unsigned int getByteStride() const;
         unsigned int getWidth() const;
@@ -26,6 +30,8 @@ namespace hg {
         T& getPixel(int x, int y);
 
         void setPixel(int x, int y, const T& t);
+
+        void fill(const T& v);
 
 
         /*
@@ -79,7 +85,7 @@ namespace hg {
 };
 
 
-// Implementation -.-
+// Implementation
 
 namespace hg {
 
@@ -94,18 +100,13 @@ namespace hg {
 
         fl_assert_ge(this->elementStride, width);
 
-        this->data = new T[elementStride * height];
+        this->data = std::vector<T>(elementStride * height);
 
         for (uint i = 0; i < height; i++) {
             for (uint j = 0; j < width; j++) {
                 this->data[i * this->elementStride + j] = fill;
             }
         }
-    }
-
-    template<typename T>
-    Image<T>::~Image() {
-        delete[] this->data;
     }
 
     template<typename T>
@@ -124,6 +125,11 @@ namespace hg {
     }
 
     template<typename T>
+    T& Image<T>::getPixel(int x, int y) {
+        return this->data[y * this->elementStride + x];
+    }
+
+    template<typename T>
     const T& Image<T>::getPixel(int x, int y) const {
         return this->data[y * this->elementStride + x];
     }
@@ -131,5 +137,15 @@ namespace hg {
     template<typename T>
     void Image<T>::setPixel(int x, int y, const T& t) {
         this->data[y * this->elementStride + x] = t;
+    }
+
+    template<typename T>
+    void Image<T>::fill(const T& v)
+    {
+        for (unsigned int i = 0; i < this->height; i++) {
+            for (unsigned int j = 0; j < this->width; j++) {
+                this->data[i * this->elementStride + j] = v;
+            }
+        }
     }
 };

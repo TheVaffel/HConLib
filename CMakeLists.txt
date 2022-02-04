@@ -34,7 +34,8 @@ add_library(HGraf STATIC
   ${srcDir}/HGraf/triangulation.cpp
   ${srcDir}/HGraf/draw.cpp
   ${srcDir}/HGraf/mesh.cpp
-  ${srcDir}/HGraf/bvh.cpp)
+  ${srcDir}/HGraf/bvh.cpp
+  ${srcDir}/HGraf/improc_io.cpp)
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)
@@ -67,11 +68,19 @@ else()
   endif()
 endif()
 
+
+# Tests
+
 set(FLAWED_PATH ${CMAKE_HOME_DIRECTORY}/../flawed)
 set(FLAWED_OUTPUT_PATH flawed_tests)
 
 include(${FLAWED_PATH}/FlawedTest.cmake)
 
-flawed_add_tests(${srcDir}/HGraf/improc.test.cpp)
+flawed_add_test_utils(${srcDir}/HGraf/test_utils.cpp)
 
-flawed_write_test_target()
+flawed_add_tests(
+  ${srcDir}/HGraf/improc.test.cpp
+  ${srcDir}/HGraf/improc_filtering.test.cpp
+  ${srcDir}/HGraf/improc_io.test.cpp)
+
+flawed_write_test_target(OpenImageIO HGraf)

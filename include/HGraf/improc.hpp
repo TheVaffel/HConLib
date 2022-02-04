@@ -4,6 +4,7 @@
 
 #include <iterator>
 #include <vector>
+#include <functional>
 
 namespace hg {
 
@@ -33,6 +34,11 @@ namespace hg {
 
         void fill(const T& v);
 
+        const T* getData() const;
+        T* getData();
+
+        template<typename NT>
+        std::unique_ptr<hg::Image<NT>> transform(const std::function<NT(const T&)>& func) const;
 
         /*
          * Image::iterator
@@ -147,5 +153,30 @@ namespace hg {
                 this->data[i * this->elementStride + j] = v;
             }
         }
+    }
+
+    template<typename T>
+    const T* Image<T>::getData() const {
+        return this->data.data();
+    }
+
+    template<typename T>
+    T* Image<T>::getData() {
+        return this->data.data();
+    }
+
+    template<typename T>
+    template<typename NT>
+    std::unique_ptr<hg::Image<NT>> Image<T>::transform(const std::function<NT(const T&)>& func) const {
+        std::unique_ptr<hg::Image<NT>> nim =
+            std::make_unique<hg::Image<NT>>(this->getWidth(), this->getHeight());
+
+        for (int i = 0; i < this->getHeight(); i++) {
+            for (int j = 0; j < this->getWidth(); j++) {
+                nim->setPixel(j, i, func(this->getPixel(j, i)));
+            }
+        }
+
+        return nim;
     }
 };

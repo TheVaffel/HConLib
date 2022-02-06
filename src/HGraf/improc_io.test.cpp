@@ -34,6 +34,8 @@ std::unique_ptr<TestSuite> test_suite = createTestSuite("Image IO", [] {
                                    hg::ImageMaxDiffComparator<std::array<float, 4>>>();
         flawed::registerComparator<hg::Image<std::array<unsigned char, 4>>,
                                    hg::ImageMaxDiffComparator<std::array<unsigned char, 4>>>();
+        flawed::registerComparator<hg::Image<falg::Vector<4>>,
+                                   hg::ImageMaxDiffComparator<falg::Vector<4>>>();
     });
 
     afterEach([] {
@@ -138,5 +140,14 @@ std::unique_ptr<TestSuite> test_suite = createTestSuite("Image IO", [] {
         });
 
         fl_assert_tolerance(*im, *transformed_res, 1e-2);
+    });
+
+    createTest("write/read 4-component FlatAlg vector", [] {
+        auto im = getRandomVectorImage<4>(IMAGE_WIDTH, IMAGE_HEIGHT);
+        hg::writeImage(*im, IMAGE_FILE_NAME);
+
+        auto res = hg::readImage<falg::Vec4>(IMAGE_FILE_NAME);
+
+        fl_assert_tolerance(*im, *res, 1e-2);
     });
 });

@@ -223,9 +223,12 @@ namespace falg {
 
     // Convenient typedefs, making API similar to old version
 
-    typedef Matrix<2, 1> Vec2;
-    typedef Matrix<3, 1> Vec3;
-    typedef Matrix<4, 1> Vec4;
+    template<int n>
+    using Vector = Matrix<n, 1>;
+
+    typedef Vector<2> Vec2;
+    typedef Vector<3> Vec3;
+    typedef Vector<4> Vec4;
     typedef Matrix<2, 2> Mat2;
     typedef Matrix<3, 3> Mat3;
     typedef Matrix<4, 4> Mat4;

@@ -3,6 +3,8 @@
 
 #include <HGraf/improc.hpp>
 
+#include <FlatAlg.hpp>
+
 namespace hg {
 /*
  * MDC - MaxDiffComparator, take the difference between two values of some type
@@ -25,6 +27,18 @@ namespace hg {
     class MDC<unsigned char> {
     public:
         static float diff(const unsigned char &uc1, const unsigned char &uc2) { return std::abs((int)uc1 - (int)uc2); }
+    };
+
+    template <int n>
+    class MDC<falg::Vector<n>> {
+    public: static float diff(const falg::Vector<n>& v0, const falg::Vector<n>& v1) {
+        float msum = - std::numeric_limits<float>::infinity();
+        for (int i = 0; i < n; i++) {
+            msum = std::max(msum, (float)std::abs(v0[i] - v1[i]));
+        }
+
+        return msum;
+    }
     };
 
 

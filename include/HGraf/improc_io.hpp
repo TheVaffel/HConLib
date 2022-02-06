@@ -7,6 +7,8 @@
 
 #include <OpenImageIO/imageio.h>
 
+#include <FlatAlg.hpp>
+
 namespace hg {
 
     enum class ImageComponentType {
@@ -20,22 +22,20 @@ namespace hg {
     };
 
 
-    /*
+    /**
      * Holds number of components for given image type
      */
-
     template<typename T>
-    struct _ImNumComponents;
+    struct _ImNumComponents { static const int numComponents; };
 
     template<>
-    struct _ImNumComponents<float> {
-        static constexpr int numComponents = 1;
-    };
+    const int _ImNumComponents<float>::numComponents;
 
     template<>
-    struct _ImNumComponents<double> {
-        static constexpr int numComponents = 1;
-    };
+    const int _ImNumComponents<double>::numComponents;
+
+    template<>
+    const int _ImNumComponents<unsigned char>::numComponents;
 
     template<typename T, int n>
     struct _ImNumComponents<std::array<T, n>> {
@@ -43,29 +43,31 @@ namespace hg {
     };
 
 
-    /*
-     * holds component type for image type
+    /**
+     * Holds component type for image type
      */
-
     template<typename T>
-    struct _ImComponentType;
+    struct _ImComponentType { static const OIIO::TypeDesc componentType; };
 
     template<>
-    struct _ImComponentType<float> { static constexpr OIIO::TypeDesc componentType = OIIO::TypeDesc::FLOAT; };
+    const OIIO::TypeDesc _ImComponentType<float>::componentType;
 
     template<>
-    struct _ImComponentType<double> { static constexpr OIIO::TypeDesc componentType = OIIO::TypeDesc::DOUBLE; };
+    const OIIO::TypeDesc _ImComponentType<double>::componentType;
 
     template<>
-    struct _ImComponentType<unsigned char> { static constexpr OIIO::TypeDesc componentType = OIIO::TypeDesc::UINT8; };
+    const OIIO::TypeDesc _ImComponentType<unsigned char>::componentType;
 
     template<typename T, int n>
     struct _ImComponentType<std::array<T, n>> {
-        static constexpr OIIO::TypeDesc componentType =
-            _ImComponentType<T>::componentType;
+        static const OIIO::TypeDesc componentType;
     };
 
-    /*
+    template<typename T, int n>
+    const OIIO::TypeDesc _ImComponentType<std::array<T, n>>::componentType = _ImComponentType<T>::componentType;
+
+
+    /**
      * returns image spec appropriate for this image component type
      */
     template<typename T>

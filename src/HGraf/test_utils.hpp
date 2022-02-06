@@ -5,6 +5,8 @@
 
 #include <HGraf/improc.hpp>
 
+#include <FlatAlg.hpp>
+
 std::function<float()> getUniformFloatRandom(const std::string &seed_input,
                                              float lower, float higher);
 
@@ -44,3 +46,35 @@ std::unique_ptr<hg::Image<std::array<unsigned char, n>>> getRandomByteArrayImage
     std::function<unsigned char()> dist = getUniformByteRandom("some_seed");
     return getRandomTypedArrayImage<unsigned char, n>(dist, width, height);
 }
+
+template <int n>
+auto getRandomVectorImage(int width, int height) {
+    auto dist = getUniformFloatRandom("some_seed", 0, 1);
+    auto im = std::make_unique<hg::Image<falg::Vector<n>>>(width, height);
+
+    for (auto it = im->begin(); it != im->end(); ++it) {
+        falg::Vector<n> val;
+        for (int i = 0; i < n; i++) {
+            val[i] = i == 3 ? 1.0 : dist();
+        }
+        *it = val;
+    }
+
+    return im;
+}
+
+
+
+#include <HGraf/improc_io.hpp>
+namespace hg {
+    template<int n>
+    struct _ImComponentType<falg::Vector<n>> {
+        static constexpr OIIO::TypeDesc componentType =
+            OIIO::TypeDesc::FLOAT;
+    };
+
+    template<int n>
+    struct _ImNumComponents<falg::Vector<n>> {
+        static constexpr int numComponents = n;
+    };
+};

@@ -358,7 +358,7 @@ namespace hg {
 
         int di[2] = {pe[0] - ps[0], pe[1] - ps[1]};
         if(std::abs(di[0]) > 2*canvas.getWidth() || std::abs(di[1]) > 2*canvas.getHeight()) {
-            if(std::abs(ps[0]) > canvas.getWidth() || std::abs(ps[1] > canvas.getHeight())) {
+            if(std::abs(ps[0]) > canvas.getWidth() || std::abs(ps[1]) > canvas.getHeight()) {
                 int msb_wh = std::max(msb(canvas.getWidth()), msb(canvas.getHeight()));
                 int msb_ps = std::min(msb(ps[0]), msb(ps[1])); //Most significant bit of ps
                 int shift = msb_ps - msb_wh - 1;

@@ -8,6 +8,8 @@
 #include <sstream>
 #include <array>
 
+#include <flawed_assert.hpp>
+
 #ifdef __AVX__
 #include <immintrin.h>
 #else // __AVX__
@@ -1141,6 +1143,31 @@ namespace falg {
 
 #endif // ndef FLATALG_NO_IMPLEMENTATION
 
+    /*
+     * Flawed Matrix comparator
+     */
+    template<int m, int n>
+    class FlMatrixComparator final : public flawed::FlComparator<Matrix<m, n>> {
+    public:
+
+        virtual float compare(const Matrix<m, n>& m0, const Matrix<m, n>& m1) override {
+            return (m0 - m1).norm();
+        }
+
+        virtual std::string customGetError(const Matrix<m, n>& m0,
+                                           const Matrix<m, n>& m1,
+                                           float value,
+                                           float tolerance) const override {
+            std::ostringstream oss;
+
+            oss << "Left side was " << flawed::_add_color(m0.str(), flawed::_fl_green)
+                << ", right side was " << flawed::_add_color(m1.str(), flawed::_fl_red)
+                << ", difference was " << value
+                << ", while max tolerance was " << tolerance;
+
+            return flawed::_flawed_getln(oss.str());
+        }
+    };
 };
 
 #endif // ndef INCLUDED_FLATALG

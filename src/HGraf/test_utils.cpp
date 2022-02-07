@@ -31,3 +31,7 @@ std::unique_ptr<hg::Image<float>> getRandomFloatImage(int width, int height) {
 
     return im;
 }
+
+
+template <> float getMaxImageValue<float>() { return 1.0f; }
+template <> unsigned char getMaxImageValue<unsigned char>()  { return 255; }

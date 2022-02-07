@@ -7,8 +7,6 @@
 
 #include <OpenImageIO/imageio.h>
 
-#include <FlatAlg.hpp>
-
 namespace hg {
 
     enum class ImageComponentType {

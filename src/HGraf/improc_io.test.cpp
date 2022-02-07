@@ -8,6 +8,7 @@
 #include <limits>
 
 #include <HGraf/improc_diff.hpp>
+#include <HGraf/improc_flatalg.hpp>
 
 #include "./test_utils.hpp"
 

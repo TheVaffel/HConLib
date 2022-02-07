@@ -5,7 +5,7 @@
 
 #include <HGraf/improc.hpp>
 
-#include <FlatAlg.hpp>
+#include <HGraf/improc_flatalg.hpp>
 
 std::function<float()> getUniformFloatRandom(const std::string &seed_input,
                                              float lower, float higher);
@@ -14,7 +14,10 @@ std::function<unsigned char()> getUniformByteRandom(const std::string &seed_inpu
 
 std::unique_ptr<hg::Image<float>> getRandomFloatImage(int width, int height);
 
+template <typename T> T getMaxImageValue();
+
 namespace {
+
     template <typename T, int n>
     std::unique_ptr<hg::Image<std::array<T, n>>> getRandomTypedArrayImage(const std::function<T()>& dist,
                                                                           int width, int height) {
@@ -26,7 +29,7 @@ namespace {
                 for (int k = 0; k < n; k++) {
                     // Make sure alpha channel is always at max
                     // to avoid spicy compression tricks on image write
-                    arr[k] = k == 3 ? 255 : dist();
+                    arr[k] = k == 3 ? getMaxImageValue<T>() : dist();
                 }
 
                 im->setPixel(j, i, arr);
@@ -34,7 +37,8 @@ namespace {
         }
         return im;
     }
-};
+}; // namespace
+
 template<int n>
 std::unique_ptr<hg::Image<std::array<float, n>>> getRandomFloatArrayImage(int width, int height) {
     std::function<float()> dist = getUniformFloatRandom("some_seed", 0, 1);
@@ -62,19 +66,3 @@ auto getRandomVectorImage(int width, int height) {
 
     return im;
 }
-
-
-
-#include <HGraf/improc_io.hpp>
-namespace hg {
-    template<int n>
-    struct _ImComponentType<falg::Vector<n>> {
-        static constexpr OIIO::TypeDesc componentType =
-            OIIO::TypeDesc::FLOAT;
-    };
-
-    template<int n>
-    struct _ImNumComponents<falg::Vector<n>> {
-        static constexpr int numComponents = n;
-    };
-};

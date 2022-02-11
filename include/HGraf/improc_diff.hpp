@@ -71,4 +71,19 @@ namespace hg {
             return msum;
         }
     };
+
+    /**
+     * SSIM
+     */
+
+    template<typename T>
+    class ImageSSIMComparator: public flawed::FlComparator<hg::Image<T>> {
+    public:
+        virtual float compare(const hg::Image<T>& im0, const hg::Image<T>& im1) {
+            fl_assert_eq(im0.getWidth(), im1.getWidth());
+            fl_assert_eq(im0.getHeight(), im1.getHeight());
+
+            return 1;
+        }
+    };
 };

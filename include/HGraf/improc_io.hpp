@@ -27,15 +27,16 @@ namespace hg {
     struct _ImNumComponents { static const int numComponents; };
 
     template<>
-    const int _ImNumComponents<float>::numComponents;
+    constexpr int _ImNumComponents<float>::numComponents = 1;
 
     template<>
-    const int _ImNumComponents<double>::numComponents;
+    constexpr int _ImNumComponents<double>::numComponents = 1;
 
     template<>
-    const int _ImNumComponents<unsigned char>::numComponents;
+    constexpr int _ImNumComponents<unsigned char>::numComponents = 1;
 
-    template<typename T, int n>
+
+    template<typename T, std::size_t n>
     struct _ImNumComponents<std::array<T, n>> {
         static constexpr int numComponents = n;
     };
@@ -48,20 +49,20 @@ namespace hg {
     struct _ImComponentType { static const OIIO::TypeDesc componentType; };
 
     template<>
-    const OIIO::TypeDesc _ImComponentType<float>::componentType;
+    constexpr OIIO::TypeDesc _ImComponentType<float>::componentType = OIIO::TypeDesc::FLOAT;
 
     template<>
-    const OIIO::TypeDesc _ImComponentType<double>::componentType;
+    constexpr OIIO::TypeDesc _ImComponentType<double>::componentType = OIIO::TypeDesc::DOUBLE;
 
     template<>
-    const OIIO::TypeDesc _ImComponentType<unsigned char>::componentType;
+    constexpr OIIO::TypeDesc _ImComponentType<unsigned char>::componentType = OIIO::TypeDesc::UINT8;
 
-    template<typename T, int n>
+    template<typename T, std::size_t n>
     struct _ImComponentType<std::array<T, n>> {
         static const OIIO::TypeDesc componentType;
     };
 
-    template<typename T, int n>
+    template<typename T, std::size_t n>
     const OIIO::TypeDesc _ImComponentType<std::array<T, n>>::componentType = _ImComponentType<T>::componentType;
 
 
@@ -84,17 +85,20 @@ namespace hg {
                          const OIIO::ImageSpec& spec) {
             std::unique_ptr<OIIO::ImageOutput> out = OIIO::ImageOutput::create(file_name);
             if (!out) {
-                throw std::runtime_error("Could not open output image " + file_name);
+                throw std::runtime_error("Could not create output image " + file_name);
             }
 
-            out->open(file_name, spec);
+            bool opened = out->open(file_name, spec);
+            if (!opened) {
+                throw std::runtime_error("Could not open output image " + file_name);
+            }
             out->write_image(_ImComponentType<T>::componentType, im.getData());
             out->close();
         }
     }
 
 
-    /*
+    /**
      * Wrtes image with custom output format
      */
     template<typename T>

@@ -42,7 +42,7 @@ namespace hg {
     };
 
 
-    template <typename T, int n>
+    template <typename T, std::size_t n>
     class MDC<std::array<T, n>> {
     public: static float diff(const std::array<T, n>& a0, const std::array<T, n>& a1) {
         float msum =  - std::numeric_limits<float>::infinity();

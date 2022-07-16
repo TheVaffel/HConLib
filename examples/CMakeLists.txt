@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(HConLib_examples)
 
-add_definitions(-std=c++1z)
+add_definitions(-std=c++2a -fconcepts)
 
 if(NOT WIN32)
   add_definitions(-Wall -g -mavx)

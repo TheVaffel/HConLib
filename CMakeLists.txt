@@ -15,7 +15,7 @@ else()
   set(lib_search_dir ${CMAKE_HOME_DIRECTORY}/lib)
 endif()
 
-add_definitions(-std=c++2a -mavx -fconcepts)
+add_definitions(-std=c++2a -mavx -g)
 
 if(NOT WIN32)
   add_definitions(-g -Wall -fPIC -Wno-sign-compare)
@@ -35,7 +35,7 @@ add_library(HGraf STATIC
   ${srcDir}/HGraf/draw.cpp
   ${srcDir}/HGraf/mesh.cpp
   ${srcDir}/HGraf/bvh.cpp
-  ${srcDir}/HGraf/improc_io.cpp)
+  ${srcDir}/HGraf/improc_ssim.cpp)
 
 #HCam
 add_library(HCam STATIC ${srcDir}/HCam.cpp)
@@ -81,6 +81,7 @@ flawed_add_test_utils(${srcDir}/HGraf/test_utils.cpp)
 flawed_add_tests(
   ${srcDir}/HGraf/improc.test.cpp
   ${srcDir}/HGraf/improc_filtering.test.cpp
-  ${srcDir}/HGraf/improc_io.test.cpp)
+  ${srcDir}/HGraf/improc_io.test.cpp
+  ${srcDir}/HGraf/improc_diff.test.cpp)
 
-flawed_write_test_target(OpenImageIO HGraf)
+flawed_write_test_target(OpenImageIO OpenImageIO_Util HGraf)

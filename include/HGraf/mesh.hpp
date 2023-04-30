@@ -16,10 +16,10 @@ namespace hg {
 
     template<typename T>
     concept Mesh_C = requires(T t) {
-        { t.positions } -> std::same_as<std::vector<falg::Vec3>>;
-        { t.indices } -> std::same_as<std::vector<uint32_t>>;
+        { t.positions } -> std::same_as<std::vector<falg::Vec3>&>;
+        { t.indices } -> std::same_as<std::vector<uint32_t>&>;
     };
-    
+
 
     /*
      * IndexedMesh - Mesh with positions and indices

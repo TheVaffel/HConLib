@@ -44,14 +44,18 @@ namespace hg {
          * Image::iterator
          */
         template<typename ImagePtrType, typename TT>
-        class _generic_iterator: public std::iterator<std::input_iterator_tag,
-                                                     TT,
-                                                     int,
-                                                     TT*,
-                                                     TT&>{
+        class _generic_iterator {
+
             unsigned int x = 0, y = 0;
             ImagePtrType im;
         public:
+
+            using iterator_category = std::input_iterator_tag;
+            using value_type = TT;
+            using difference_type = int;
+            using pointer = TT*;
+            using reference = TT&;
+
             explicit _generic_iterator<ImagePtrType, TT>(int x, int y, ImagePtrType im) : x(x), y(y), im(im) {}
             _generic_iterator& operator++() {
                 x++;

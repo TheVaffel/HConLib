@@ -43,12 +43,6 @@ if(NOT WIN32)
   set(glslang_libs ${glslang_libs} pthread)
 endif()
 
-set(common_wingine_libs ${vulkan_libs} ${VULKAN_LIB_NAME} ${winval_libs} FlatAlg)
-
-set(wingine_libs Wingine ${common_wingine_libs} )
-
-set(wingine_with_glslang_libs WingineWithGlslang ${common_wingine_libs} ${glslang_libs})
-
 include_directories(${HConLibRoot}/include ${HConLibRoot}/../flawed/include)
 link_directories(${HConLibRoot}/lib ${HConLibRoot}/../flawed/lib)
 

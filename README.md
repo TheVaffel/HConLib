@@ -6,7 +6,6 @@ Utility libraries for C++
 * HGraf - Graphics utility functions
 * HCam - Webcam interface
 * Winval - Window system
-* Wingine - Vulkan wrapper dreaming of becoming its own graphics engine some day
 * Flaudio - Audio engine-ish
 
 ## Requirements
@@ -19,16 +18,6 @@ Utility libraries for C++
 
 * X11 (Linux)
 
-#### For Wingine
-
-* Winval
-* Vulkan
-
-The rest concerns KhronoGroup's GLSL-SPIRV translator
-* glslang (install script included, requires `git`)
-* pthread
-* c++11
-
 #### For Flaudio
 
 * asound (Linux)
@@ -37,10 +26,6 @@ The rest concerns KhronoGroup's GLSL-SPIRV translator
 ## Build
 
 * Run `build.sh` (Linux) or `build.bat` (Windows) in root folder
-
-#### For Wingine
-
-* Run `initialize_glslang.sh` and make sure Winval builds before running the build script
 
 ## General Use
 
@@ -54,11 +39,6 @@ to compile with FlatAlg etc. Some libraries require further linking, like
 
 `g++ winval_test.cpp -o winval_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l X11`
 
-and
-
-`g++ wingine_test.cpp -o wingine_test -I path/to/HConLib/include -L path/to/HConLib/lib -l Winval -l Wingine -l X11 -l glslang -l OSDependent -l pthread -l SPIRV -l SPVRemapper -l OGLCompiler -l HLSL -l vulkan -std=c++11`
-
-You can always see the CMakeLists.txt in the example folder to see what libraries are linked into the mix
 
 #### Windows
 
@@ -67,7 +47,6 @@ The above should work if  `g++` is installed. Equivalents with Visual Studio's c
 ## Examples
 
 * Compile examples by going to examples and run `compile_with_cmake.sh` in Linux or `compile_with_cmake.bat` in Windows
-* Expects the Vulkan shared library to be in default linker search path if building with Wingine
 * Supports turbojpeg for image decompression with webcam (see example/CMakeLists.txt to see how it is used)
 
 ## Q&A
